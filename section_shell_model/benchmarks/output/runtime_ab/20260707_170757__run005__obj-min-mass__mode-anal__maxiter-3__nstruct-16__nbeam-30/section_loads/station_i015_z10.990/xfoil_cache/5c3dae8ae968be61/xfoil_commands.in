@@ -1,0 +1,16 @@
+LOAD airfoil.dat
+PANE
+OPER
+ITER 100
+VISC 852558.89
+MACH 0.037492791
+PACC
+polar_output.dat
+
+ALFA 7.4892335
+CPWR cp_output.dat
+DUMP cf_output.dat
+PACC
+
+
+QUIT

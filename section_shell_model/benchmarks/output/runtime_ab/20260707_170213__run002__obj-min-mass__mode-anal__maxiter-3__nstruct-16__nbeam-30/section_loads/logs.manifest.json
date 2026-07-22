@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "package": "section_loads",
+  "dump_level": "summary",
+  "records_written": 14,
+  "run_log": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170213__run002__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\run.log",
+  "run_jsonl": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170213__run002__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\run.jsonl",
+  "manifest_jsonl": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170213__run002__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\logs.manifest.jsonl",
+  "job_manifest_jsonl": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170213__run002__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\logs.manifest.jsonl",
+  "closed_at": "2026-07-07T16:03:11.940Z"
+}

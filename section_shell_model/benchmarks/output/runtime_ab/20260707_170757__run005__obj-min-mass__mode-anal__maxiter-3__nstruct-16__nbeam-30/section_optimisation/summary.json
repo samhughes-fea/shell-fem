@@ -1,0 +1,45 @@
+{
+  "result_json": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\design_eval.json",
+  "optimizer_history_json": null,
+  "png_paths": [
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\design_vector.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\max_fi_vs_span.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\fi_reserve_vs_span.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\governing_subcomp_hashin.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\shell_vs_hashin_span.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\fi_span_heatmap.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\panel_buckling_fi_vs_span.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_optimisation\\thickness_normalised_vs_span.png"
+  ],
+  "assumptions": {
+    "single_load_case": true,
+    "hydrodynamic_load_invariant_under_sls_tip": true,
+    "note": "One extreme-load .dat file per run. SLS tip deflection evaluated against same load case."
+  },
+  "k6_stiffness_provenance": {
+    "pre_loop_k6_stack": "section_properties stage (strip midsurface solve at dv0)",
+    "in_loop_k6_stack": "section_properties stage (seeded from pre-loop) unless beam_driver='global_beam' (Group H), in which case synthesized K7 from K6 is used at the quarantine boundary only.",
+    "stiffness_solver": "prescribed",
+    "shell_theory": "fsdt"
+  },
+  "buckling_config": {
+    "enable_panel_buckling": false,
+    "ks_rho_buckling": 25.0,
+    "enable_interlaminar": false,
+    "use_hsdt_interlaminar": false,
+    "enable_global_buckling": false,
+    "global_buckling_lambda_min": 1.5,
+    "n_global_buckling_modes": 5
+  },
+  "orientation_config": {
+    "orientation_bounds_set": true,
+    "enforce_spanwise_monotone": true
+  },
+  "iteration_logging": {
+    "iteration_dump_npz": false,
+    "iteration_hotspot_k": 10,
+    "iteration_emit_schema": false,
+    "iteration_field_history": false,
+    "iteration_payload_schema_json": null
+  }
+}

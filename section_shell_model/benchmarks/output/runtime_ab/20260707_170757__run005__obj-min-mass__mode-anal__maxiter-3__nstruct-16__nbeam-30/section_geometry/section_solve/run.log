@@ -1,0 +1,6 @@
+2026-07-07T16:08:14.426Z INFO  [section_geometry] logger.init {"dump_level":"summary","station_subdir":"section_solve"}
+2026-07-07T16:08:14.427Z INFO  [section_geometry] stage.start {"stage":"SectionPropertiesStage"}
+2026-07-07T16:08:15.884Z INFO  [section_geometry] artefact {"kind":"summary_json","path":"C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_geometry\\section_solve\\section_solve_summary.json"}
+2026-07-07T16:08:15.898Z INFO  [section_geometry] artefact {"kind":"npz","path":"C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_geometry\\section_solve\\section_solve_stations.npz"}
+2026-07-07T16:08:15.901Z INFO  [section_geometry] stage.end {"stage":"SectionPropertiesStage","status":"ok"}
+2026-07-07T16:08:15.902Z INFO  [section_geometry] logger.close {}

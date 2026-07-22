@@ -1,0 +1,192 @@
+{
+  "created_at": "2026-07-07T17:02:13",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "config_source": "main_precompute module variables",
+  "use_blade_spec": false,
+  "blade_source": "spanwise+material_library",
+  "spanwise_path": "C:\\Users\\s1834431\\Projects\\fastblade\\data_library\\blade_spanwise_distribution.dat",
+  "extreme_loads_path": "C:\\Users\\s1834431\\Projects\\fastblade\\data_library\\extreme_load_distribution.dat",
+  "blade_spec_path": "spanwise+material_library",
+  "blade_spec": "spanwise+material_library",
+  "system_type_key": "4D-F",
+  "component_materials": {
+    "skin": 0,
+    "spar_cap": 0,
+    "shear_web": 0
+  },
+  "component_materials_path": "none",
+  "execution_mode": "analysis",
+  "analysis_taper_dv": {
+    "t_skin": [
+      0.03,
+      0.028800000000000003,
+      0.027600000000000003,
+      0.0264,
+      0.0252,
+      0.024,
+      0.0228,
+      0.0216,
+      0.020399999999999998,
+      0.019200000000000002,
+      0.018000000000000002,
+      0.016800000000000002,
+      0.015600000000000001,
+      0.014400000000000001,
+      0.0132,
+      0.012
+    ],
+    "t_cap": [
+      0.05,
+      0.04786666666666667,
+      0.045733333333333334,
+      0.0436,
+      0.04146666666666667,
+      0.03933333333333334,
+      0.037200000000000004,
+      0.03506666666666666,
+      0.032933333333333335,
+      0.0308,
+      0.02866666666666667,
+      0.026533333333333336,
+      0.024399999999999998,
+      0.022266666666666667,
+      0.020133333333333333,
+      0.018000000000000002
+    ],
+    "t_web": [
+      0.024,
+      0.023,
+      0.022,
+      0.021,
+      0.02,
+      0.019,
+      0.018000000000000002,
+      0.017,
+      0.016,
+      0.015,
+      0.014,
+      0.013000000000000001,
+      0.012,
+      0.011,
+      0.01,
+      0.009000000000000001
+    ]
+  },
+  "design_optimise": false,
+  "design_objective": "min_mass",
+  "design_max_iter": 3,
+  "design_n_workers": 1,
+  "section_solve_n_workers": 1,
+  "section_solve_n_workers_override": 1,
+  "ks_rho": 35.0,
+  "seed_design_from_section_properties": true,
+  "beam_driver": "prescribed",
+  "shell_theory": "fsdt",
+  "shell_n_elements_per_panel": null,
+  "shell_mesh_target_element_length_frac": 0.012,
+  "shell_mesh_min_elements_per_panel": 2,
+  "run_section_shell_model": true,
+  "iteration_pipeline_snapshots": false,
+  "iteration_snapshot_dpi": 50,
+  "iteration_snapshot_pngs": false,
+  "iteration_snapshot_max": 5,
+  "iteration_snapshot_stride": 1,
+  "grid_config": {
+    "geometry": {
+      "z_min": 1.387001,
+      "z_max": 10.99,
+      "n": 80
+    },
+    "structural": {
+      "z_min": 1.387001,
+      "z_max": 10.99,
+      "n": 16
+    },
+    "section_plot_station_spec": "root,mid,tip",
+    "n_beam_nodes": 30,
+    "beam_png_span_samples": 400,
+    "run_section_shell_model": true,
+    "section_shell_n_elements_per_panel": null,
+    "section_mesh_target_element_length_frac": 0.012,
+    "section_mesh_min_elements_per_panel": 2,
+    "section_shell_dpi": 150,
+    "enable_shell_recovery_enrichment": false,
+    "shell_recovery_n_elements_per_panel": null,
+    "section_shell_use_mitc4_v2": true,
+    "design_n_workers": 1,
+    "section_solve_n_workers": 1
+  },
+  "spanwise_resolution": {
+    "span_z_source": "precompute_inputs.span_r_z_m",
+    "n_geometry_stations": 80,
+    "n_structural_stations": 16,
+    "geometry_z_min_m": 1.387001,
+    "geometry_z_max_m": 10.99,
+    "structural_z_min_m": 1.387001,
+    "structural_z_max_m": 10.99,
+    "beam_nodes": 30,
+    "beam_png_span_samples": 400,
+    "section_plot_station_spec": "root,mid,tip",
+    "run_section_shell_model": true,
+    "section_shell_n_elements_per_panel": null,
+    "section_mesh_target_element_length_frac": 0.012,
+    "section_mesh_min_elements_per_panel": 2,
+    "section_shell_dpi": 150,
+    "section_shell_use_mitc4_v2": true,
+    "enable_shell_recovery_enrichment": false,
+    "shell_recovery_n_elements_per_panel": null,
+    "design_n_workers": 1,
+    "section_solve_n_workers": 1,
+    "shell_constitutive_source": "section_shell_model"
+  },
+  "material_resolution": {
+    "enabled": true,
+    "material_library_path": "C:\\Users\\s1834431\\Projects\\fastblade\\data_library\\material_library.dat",
+    "subcomponent_material_ids": {
+      "skin": 0,
+      "spar_cap": 0,
+      "shear_web": 0,
+      "core": 3
+    },
+    "resolved": {
+      "skin": {
+        "material_id": 0,
+        "name": "gfrp_ply",
+        "kind": "orthotropic_laminate_ply"
+      },
+      "spar_cap": {
+        "material_id": 0,
+        "name": "gfrp_ply",
+        "kind": "orthotropic_laminate_ply"
+      },
+      "shear_web": {
+        "material_id": 0,
+        "name": "gfrp_ply",
+        "kind": "orthotropic_laminate_ply"
+      },
+      "core": {
+        "material_id": 3,
+        "name": "sandwich_foam",
+        "kind": "isotropic"
+      }
+    }
+  },
+  "axial_loading": {
+    "enabled": true,
+    "u_inf_m_s": 2.5,
+    "tip_speed_ratio": 5.0,
+    "r_tip_m": 10.990001,
+    "gravity_m_s2": 9.81,
+    "azimuth_deg": 180.0,
+    "omega_rad_s": 1.13739753071906,
+    "mu_source": "section_properties"
+  },
+  "section_loads": {
+    "pitch_deg": 0.0,
+    "inflow_phi_deg": 0.0,
+    "rho_kg_m3": 1.225,
+    "u_inf_m_s": 2.5,
+    "tip_speed_ratio": 5.0,
+    "xfoil_executable": null
+  }
+}

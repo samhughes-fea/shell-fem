@@ -1,0 +1,226 @@
+{
+  "schema": "section_shell_station_v2",
+  "station_tag": "i015_rz10.990",
+  "unit_section_resultants": {
+    "N_N": 0.0,
+    "Vy_N": 133011.8,
+    "Vz_N": -90796.6,
+    "My_Nm": 0.0,
+    "Mz_Nm": 0.0,
+    "T_Nm": 0.0
+  },
+  "n_elements_per_panel": 17,
+  "mesh_element_length_frac": 0.012,
+  "target_element_length_m": 0.0118582728,
+  "layout_key": "4D-F",
+  "chord_m": 0.9881894,
+  "twist_rad": 0.06668377727765483,
+  "thin_wall": {
+    "n_panels": 18,
+    "n_total_nodes": 668,
+    "n_total_elements": 316,
+    "n_clusters": 8,
+    "panels": [
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg0",
+        "kind": "skin",
+        "arc_length_m": 0.0007852214988615241,
+        "thickness_m": 0.003,
+        "n_elements": 2
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg1",
+        "kind": "skin",
+        "arc_length_m": 0.19897840427696262,
+        "thickness_m": 0.003,
+        "n_elements": 17
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg2",
+        "kind": "skin",
+        "arc_length_m": 0.19755797676644268,
+        "thickness_m": 0.003,
+        "n_elements": 17
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg3",
+        "kind": "skin",
+        "arc_length_m": 0.19888224302172886,
+        "thickness_m": 0.003,
+        "n_elements": 17
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg4",
+        "kind": "skin",
+        "arc_length_m": 0.0011840871345411045,
+        "thickness_m": 0.003,
+        "n_elements": 2
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg5",
+        "kind": "skin",
+        "arc_length_m": 0.4298172180209857,
+        "thickness_m": 0.003,
+        "n_elements": 36
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg6",
+        "kind": "skin",
+        "arc_length_m": 0.00010475750507655233,
+        "thickness_m": 0.003,
+        "n_elements": 2
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg7",
+        "kind": "skin",
+        "arc_length_m": 0.19747465222564212,
+        "thickness_m": 0.003,
+        "n_elements": 17
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg8",
+        "kind": "skin",
+        "arc_length_m": 0.19996967475438251,
+        "thickness_m": 0.003,
+        "n_elements": 17
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg9",
+        "kind": "skin",
+        "arc_length_m": 0.20135413369966504,
+        "thickness_m": 0.003,
+        "n_elements": 17
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg10",
+        "kind": "skin",
+        "arc_length_m": 0.0010701813418500952,
+        "thickness_m": 0.003,
+        "n_elements": 2
+      },
+      {
+        "label": "skin:ComponentLabel.OUTER_SKIN:seg11",
+        "kind": "skin",
+        "arc_length_m": 0.39724619587706883,
+        "thickness_m": 0.003,
+        "n_elements": 33
+      },
+      {
+        "label": "cap:ComponentLabel.SPAR_CAP_UPPER",
+        "kind": "cap",
+        "arc_length_m": 0.5947960902994607,
+        "thickness_m": 0.012,
+        "n_elements": 46
+      },
+      {
+        "label": "cap:ComponentLabel.SPAR_CAP_LOWER",
+        "kind": "cap",
+        "arc_length_m": 0.5984915967668045,
+        "thickness_m": 0.012,
+        "n_elements": 55
+      },
+      {
+        "label": "web:web_0",
+        "kind": "web",
+        "arc_length_m": 0.13242448648728383,
+        "thickness_m": 0.004,
+        "n_elements": 11
+      },
+      {
+        "label": "web:web_1",
+        "kind": "web",
+        "arc_length_m": 0.14590101906114825,
+        "thickness_m": 0.004,
+        "n_elements": 12
+      },
+      {
+        "label": "web:web_2",
+        "kind": "web",
+        "arc_length_m": 0.10756972798898823,
+        "thickness_m": 0.004,
+        "n_elements": 9
+      },
+      {
+        "label": "web:web_3",
+        "kind": "web",
+        "arc_length_m": 0.04564484845062092,
+        "thickness_m": 0.004,
+        "n_elements": 4
+      }
+    ]
+  },
+  "mesh_summary": {
+    "layout_key": "4D-F",
+    "twist_rad": 0.06668377727765483,
+    "chord_m": 0.9881894,
+    "n_panels": 18,
+    "n_total_nodes": 668,
+    "n_total_elements": 316,
+    "n_clusters": 8,
+    "junctions_by_size": {
+      "3": 4,
+      "6": 4
+    },
+    "per_kind": {
+      "skin": {
+        "n_panels": 12,
+        "n_elements": 179,
+        "n_nodes": 382,
+        "arc_length_m": 2.024424746123208,
+        "thickness_m_avg": 0.0029999999999999996
+      },
+      "cap": {
+        "n_panels": 2,
+        "n_elements": 101,
+        "n_nodes": 206,
+        "arc_length_m": 1.1932876870662652,
+        "thickness_m_avg": 0.012
+      },
+      "web": {
+        "n_panels": 4,
+        "n_elements": 36,
+        "n_nodes": 80,
+        "arc_length_m": 0.43154008198804117,
+        "thickness_m_avg": 0.004
+      }
+    }
+  },
+  "fsdt_periodic_hashin": {
+    "solver": "fsdt_periodic_unit_cell",
+    "used_traction": true,
+    "max_fi_hashin": 18.56207951085774,
+    "needs_review": false,
+    "fi_by_panel": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "provenance_breakdown": {
+      "mitc4": 2528
+    },
+    "governing_element": {
+      "fi": 0.0,
+      "panel_index": -1,
+      "element_index": -1,
+      "ply_index": -1,
+      "subcomponent": "",
+      "needs_review": false,
+      "provenance_kinds": []
+    }
+  }
+}

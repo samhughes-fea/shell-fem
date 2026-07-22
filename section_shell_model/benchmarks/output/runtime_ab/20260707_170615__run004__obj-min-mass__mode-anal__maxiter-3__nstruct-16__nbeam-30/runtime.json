@@ -1,0 +1,50 @@
+{
+  "finished_at": "2026-07-07T17:07:57",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.26100-SP0",
+  "cpu_count": 20,
+  "total_wall_s": 101.64988839998841,
+  "stages": {
+    "pre_inputs_s": 0.00987800001166761,
+    "section_geometry_s": 40.31970370002091,
+    "section_properties_s": 0.45870299998205155,
+    "shell_runtime_prepass_s": 11.460152699961327,
+    "section_loads_s": 5.172665600082837,
+    "section_shell_model_s": 41.14877730002627,
+    "section_optimisation_s": 2.873887400026433,
+    "summary_s": 0.20069430000148714
+  },
+  "stage_fraction_of_total": {
+    "pre_inputs_s": 9.717669312924435e-05,
+    "section_geometry_s": 0.3966527099504962,
+    "section_properties_s": 0.0045125775069921655,
+    "shell_runtime_prepass_s": 0.11274141939896742,
+    "section_loads_s": 0.0508870760362136,
+    "section_shell_model_s": 0.40480887827547246,
+    "section_optimisation_s": 0.028272410774498803,
+    "summary_s": 0.001974368129276864
+  },
+  "work_units": {
+    "n_geometry_stations": 80,
+    "n_structural_stations": 16,
+    "n_beam_nodes": 30,
+    "n_beam_png_span_samples": 400,
+    "section_geometry_station_count": 3,
+    "section_shell_station_count": 3,
+    "section_properties_station_count": 16,
+    "run_section_shell_model": true,
+    "section_shell_skipped": false,
+    "section_shell_n_elements_per_panel": null,
+    "section_mesh_target_element_length_frac": 0.012,
+    "section_mesh_min_elements_per_panel": 2,
+    "shell_recovery_n_elements_per_panel": null,
+    "design_n_workers": 1,
+    "section_solve_n_workers": 1
+  },
+  "algorithms": {
+    "beam_converged": null,
+    "beam_n_iterations": null,
+    "optimizer_ran": false,
+    "optimizer_n_iter": null
+  }
+}

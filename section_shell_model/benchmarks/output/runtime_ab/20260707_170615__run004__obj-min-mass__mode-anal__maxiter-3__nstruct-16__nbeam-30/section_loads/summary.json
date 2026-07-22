@@ -1,0 +1,96 @@
+{
+  "skipped": false,
+  "stations": [
+    {
+      "i": 0,
+      "r_z_m": 1.387001,
+      "station_subdir": "station_i000_z1.387",
+      "load_field_json": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i000_z1.387\\load_field.json",
+      "png_paths": [
+        "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i000_z1.387\\force_vs_chord.png",
+        "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i000_z1.387\\airfoil_area_diagrams.png"
+      ]
+    },
+    {
+      "i": 7,
+      "r_z_m": 5.868400533333333,
+      "station_subdir": "station_i007_z5.868",
+      "load_field_json": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i007_z5.868\\load_field.json",
+      "png_paths": [
+        "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i007_z5.868\\force_vs_chord.png",
+        "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i007_z5.868\\airfoil_area_diagrams.png"
+      ]
+    },
+    {
+      "i": 15,
+      "r_z_m": 10.99,
+      "station_subdir": "station_i015_z10.990",
+      "load_field_json": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i015_z10.990\\load_field.json",
+      "png_paths": [
+        "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i015_z10.990\\force_vs_chord.png",
+        "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i015_z10.990\\airfoil_area_diagrams.png"
+      ]
+    }
+  ],
+  "station_load_json_paths": [
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i000_z1.387\\load_field.json",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i007_z5.868\\load_field.json",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i015_z10.990\\load_field.json"
+  ],
+  "png_paths": [
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i000_z1.387\\force_vs_chord.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i000_z1.387\\airfoil_area_diagrams.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i007_z5.868\\force_vs_chord.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i007_z5.868\\airfoil_area_diagrams.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i015_z10.990\\force_vs_chord.png",
+    "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\section_loads\\station_i015_z10.990\\airfoil_area_diagrams.png"
+  ],
+  "grid": {
+    "type": "structural",
+    "linspace": {
+      "z_min": 1.387001,
+      "z_max": 10.99,
+      "n": 16
+    },
+    "geometry_linspace": {
+      "z_min": 1.387001,
+      "z_max": 10.99,
+      "n": 80
+    }
+  },
+  "orchestration": {
+    "system_type_key": "4D-F",
+    "system_layout": {
+      "key": "4D-F",
+      "n_cells": 5,
+      "n_webs": 4,
+      "has_spar_caps": true,
+      "web_orientation": "flapwise",
+      "web_positioning": "uniform",
+      "web_chord_fracs": [
+        0.2,
+        0.4,
+        0.6,
+        0.8
+      ],
+      "spar_cap_positioning": "max_thickness",
+      "geometry_mode": "multicell",
+      "structural_family": "D",
+      "description": "SystemType4D-F: 5 cells, 4 flapwise webs, continuous box spar caps."
+    },
+    "component_materials": {
+      "skin": 0,
+      "spar_cap": 0,
+      "shear_web": 0
+    }
+  },
+  "job_config": {
+    "u_inf_m_s": 2.5,
+    "tip_speed_ratio": 5.0,
+    "rho_kg_m3": 1.225,
+    "pitch_deg": 0.0,
+    "inflow_phi_deg": 0.0,
+    "xfoil_executable": null,
+    "use_direct_xfoil_scalars": false
+  }
+}
