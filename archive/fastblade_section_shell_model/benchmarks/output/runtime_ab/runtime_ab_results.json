@@ -1,0 +1,34 @@
+{
+  "n_structural": 16,
+  "runs": {
+    "1": {
+      "job_dir": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30",
+      "stage_seconds": {
+        "pre_inputs_s": 0.00987800001166761,
+        "section_geometry_s": 40.31970370002091,
+        "section_properties_s": 0.45870299998205155,
+        "shell_runtime_prepass_s": 11.460152699961327,
+        "section_loads_s": 5.172665600082837,
+        "section_shell_model_s": 41.14877730002627,
+        "section_optimisation_s": 2.873887400026433,
+        "summary_s": 0.20069430000148714
+      },
+      "shell_combined_s": 52.608929999987595
+    },
+    "4": {
+      "job_dir": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170757__run005__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30",
+      "stage_seconds": {
+        "pre_inputs_s": 0.006620899890549481,
+        "section_geometry_s": 17.209802099969238,
+        "section_properties_s": 1.481318400008604,
+        "shell_runtime_prepass_s": 5.0253053000196815,
+        "section_loads_s": 3.5342548999469727,
+        "section_shell_model_s": 20.974717500037514,
+        "section_optimisation_s": 4.760516999987885,
+        "summary_s": 0.20521659997757524
+      },
+      "shell_combined_s": 26.000022800057195
+    }
+  },
+  "speedup_shell_combined": 2.0234186102279828
+}

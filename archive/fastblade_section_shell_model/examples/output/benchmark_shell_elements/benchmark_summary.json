@@ -1,0 +1,1570 @@
+{
+  "n_elements_per_panel": 8,
+  "load_cases": {
+    "My": {
+      "My": 100000.0
+    },
+    "T": {
+      "T": 100000.0
+    },
+    "N+My": {
+      "N": 1000000.0,
+      "My": 50000.0
+    }
+  },
+  "inplane_fields": [
+    "Nx",
+    "Ny",
+    "Nxy",
+    "Mx",
+    "My",
+    "Mxy"
+  ],
+  "notes": "FSDT (MITC4) vs CalculiX S4R (ccx) on the same theory-agnostic mesh. Section integrals match to ~10 % (ccx uses MITC4 energy K6 + S4R stress fields). Per-element resultants differ by element formulation. Single prismatic cell => no interlaminar.",
+  "configs": {
+    "naca0012_singleweb_carbon": {
+      "naca_code": "0012",
+      "web_x_positions": [
+        0.35
+      ],
+      "chord_m": 1.0,
+      "materials": {
+        "skin": {
+          "name": "CFRP skin",
+          "E_pa": 45000000000.0,
+          "t_m": 0.001,
+          "nu": 0.3,
+          "n_plies": 4
+        },
+        "web": {
+          "name": "CFRP web",
+          "E_pa": 43000000000.0,
+          "t_m": 0.001,
+          "nu": 0.3,
+          "n_plies": 4
+        },
+        "cap": {
+          "name": "CFRP UD cap",
+          "E_pa": 120000000000.0,
+          "t_m": 0.02,
+          "nu": 0.35,
+          "n_plies": 4
+        }
+      },
+      "elastic_centroid": [
+        0.3784975693358377,
+        -3.2438495881509138e-18
+      ],
+      "n_panels": 9,
+      "panel_labels": [
+        "skin:ComponentLabel.OUTER_SKIN:seg0",
+        "skin:ComponentLabel.OUTER_SKIN:seg1",
+        "skin:ComponentLabel.OUTER_SKIN:seg2",
+        "skin:ComponentLabel.OUTER_SKIN:seg3",
+        "skin:ComponentLabel.OUTER_SKIN:seg4",
+        "skin:ComponentLabel.OUTER_SKIN:seg5",
+        "cap:spar_cap_upper_0",
+        "cap:spar_cap_lower_0",
+        "web:web_0"
+      ],
+      "loads": {
+        "My": {
+          "applied": {
+            "My": 100000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 0.00580261220721564,
+            "rel_Ny": 14.833514163287154,
+            "rel_Nxy": 2.3350339388447487,
+            "rel_Mx": 1.0,
+            "rel_My": 1.0000000000000013,
+            "rel_Mxy": 0.9999999999999999,
+            "n_elements": 72.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": 3.102984464931069e-07,
+              "My": -40443.31362421187,
+              "Mz": 114.52119744029986
+            },
+            "ccx": {
+              "Fx": 1580.1586616939053,
+              "My": -40294.9938866555,
+              "Mz": -66.24930368687978
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.16696754176512021,
+            "ccx": 0.31403426727175554,
+            "abs_delta_fsdt_ccx": 0.14706672550663533
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.15724453396011104,
+              0.15043081707452172,
+              0.025273706586697565,
+              0.018218173222682685,
+              0.017715715676929707,
+              0.021253129566755333,
+              0.16696754176512021,
+              0.11587280821602518,
+              0.01838634832605962
+            ],
+            "ccx": [
+              0.09552113943574721,
+              0.04948415057721798,
+              0.09116947829683651,
+              0.055301423789469416,
+              0.05100658132179101,
+              0.0392732733642327,
+              0.31403426727175554,
+              0.3133441943791723,
+              0.0318478606854938
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "web:web_0"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.16696754176512021,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 576
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        },
+        "T": {
+          "applied": {
+            "T": 100000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 1.1250134398809304,
+            "rel_Ny": 1.1134845208306434,
+            "rel_Nxy": 1.5747374326497035,
+            "rel_Mx": 1.0000000000000002,
+            "rel_My": 1.0,
+            "rel_Mxy": 1.0,
+            "n_elements": 72.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": 5.847243181369799e-08,
+              "My": -3.961153436666951e-09,
+              "Mz": 5.366478098294094e-09
+            },
+            "ccx": {
+              "Fx": -3.949896962447214e-08,
+              "My": 3.808979529852653e-09,
+              "Mz": -1.7638276515011392e-07
+            }
+          },
+          "max_fi": {
+            "fsdt": 3.6953936101159686,
+            "ccx": 5.007385054749049,
+            "abs_delta_fsdt_ccx": 1.3119914446330805
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              3.6953936101159686,
+              3.1010595573807214,
+              0.638986025836766,
+              0.016696231951236228,
+              0.003001546598582815,
+              1.0484988141861296,
+              0.15958296001895717,
+              0.005550829590848348,
+              0.04906039658211997
+            ],
+            "ccx": [
+              5.007385054749049,
+              4.2210467411670285,
+              1.4545365499624199,
+              0.40904768238517764,
+              0.05968839407078876,
+              3.1013205652777,
+              0.0027856078847424515,
+              0.22351098365386188,
+              0.007481748177076688
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "web:web_0"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 3.6953936101159686,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 576
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        },
+        "N+My": {
+          "applied": {
+            "N": 1000000.0,
+            "My": 50000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 0.003366230017465265,
+            "rel_Ny": 7.476371168172035,
+            "rel_Nxy": 2.0881104482094637,
+            "rel_Mx": 0.9999999999999998,
+            "rel_My": 1.0000000000000022,
+            "rel_Mxy": 1.0,
+            "n_elements": 72.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": 999999.9999975162,
+              "My": -20160.627659522605,
+              "Mz": -403.6739210029827
+            },
+            "ccx": {
+              "Fx": 980949.2856652254,
+              "My": -20188.78818165397,
+              "Mz": -2873.2326662184764
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.5994804611959001,
+            "ccx": 0.5670292074660139,
+            "abs_delta_fsdt_ccx": 0.03245125372988622
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.5994804611959001,
+              0.4463541921162024,
+              0.28089585767570374,
+              0.04316395913951722,
+              0.04403977811044108,
+              0.4046994003090173,
+              0.05330213656704859,
+              0.31092060167262614,
+              0.03904776097958036
+            ],
+            "ccx": [
+              0.08069910165901903,
+              0.02394969548040663,
+              0.10818388700336565,
+              0.08345372951297236,
+              0.08097745911310655,
+              0.06803877837697435,
+              0.18862617951884067,
+              0.5670292074660139,
+              0.06656263942016603
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "web:web_0"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.5994804611959001,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 576
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        }
+      }
+    },
+    "naca2412_twinweb_carbon": {
+      "naca_code": "2412",
+      "web_x_positions": [
+        0.25,
+        0.6
+      ],
+      "chord_m": 1.5,
+      "materials": {
+        "skin": {
+          "name": "CFRP skin",
+          "E_pa": 45000000000.0,
+          "t_m": 0.001,
+          "nu": 0.3,
+          "n_plies": 4
+        },
+        "web": {
+          "name": "CFRP web",
+          "E_pa": 43000000000.0,
+          "t_m": 0.001,
+          "nu": 0.3,
+          "n_plies": 4
+        },
+        "cap": {
+          "name": "CFRP UD cap",
+          "E_pa": 120000000000.0,
+          "t_m": 0.02,
+          "nu": 0.35,
+          "n_plies": 4
+        }
+      },
+      "elastic_centroid": [
+        0.6504680570897039,
+        0.024898527840955153
+      ],
+      "n_panels": 18,
+      "panel_labels": [
+        "skin:ComponentLabel.OUTER_SKIN:seg0",
+        "skin:ComponentLabel.OUTER_SKIN:seg1",
+        "skin:ComponentLabel.OUTER_SKIN:seg2",
+        "skin:ComponentLabel.OUTER_SKIN:seg3",
+        "skin:ComponentLabel.OUTER_SKIN:seg4",
+        "skin:ComponentLabel.OUTER_SKIN:seg5",
+        "skin:ComponentLabel.OUTER_SKIN:seg6",
+        "skin:ComponentLabel.OUTER_SKIN:seg7",
+        "skin:ComponentLabel.OUTER_SKIN:seg8",
+        "skin:ComponentLabel.OUTER_SKIN:seg9",
+        "skin:ComponentLabel.OUTER_SKIN:seg10",
+        "skin:ComponentLabel.OUTER_SKIN:seg11",
+        "cap:spar_cap_upper_0",
+        "cap:spar_cap_lower_0",
+        "cap:spar_cap_upper_1",
+        "cap:spar_cap_lower_1",
+        "web:web_0",
+        "web:web_1"
+      ],
+      "loads": {
+        "My": {
+          "applied": {
+            "My": 100000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 0.005672179251161094,
+            "rel_Ny": 14.284241556683195,
+            "rel_Nxy": 3.19708247989004,
+            "rel_Mx": 1.0,
+            "rel_My": 1.0000000000000007,
+            "rel_Mxy": 1.0,
+            "n_elements": 147.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": -1.0932808436336927e-07,
+              "My": -60229.81517683043,
+              "Mz": 5235.589228525579
+            },
+            "ccx": {
+              "Fx": 1125.8281252534389,
+              "My": -59926.64085236974,
+              "Mz": 4892.87779031287
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.03329296255368655,
+            "ccx": 0.0626291141770925,
+            "abs_delta_fsdt_ccx": 0.029336151623405943
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.016173003056032476,
+              0.016044347576230352,
+              0.004874001784511784,
+              0.029090985446242522,
+              0.027910822371871338,
+              0.004160675797382894,
+              0.0030000800628765365,
+              0.002964050880468521,
+              0.0031165496383864545,
+              0.0019695418003215226,
+              0.0017857517965445802,
+              0.002840551970676123,
+              0.03329296255368655,
+              0.019977380107704727,
+              0.021007570212578902,
+              0.01295186802997204,
+              0.003390575728189057,
+              0.0019316586394476183
+            ],
+            "ccx": [
+              0.00962653735518728,
+              0.0060547733260547815,
+              0.01323782635905907,
+              0.009386122777575343,
+              0.008884619456811961,
+              0.007977388570689073,
+              0.005806177774009938,
+              0.014688001541595743,
+              0.00691158454248709,
+              0.011382626337667944,
+              0.01253993696230129,
+              0.010273802381123116,
+              0.0626291141770925,
+              0.042405145286210144,
+              0.03998078336264471,
+              0.025886360077999618,
+              0.006374378726779396,
+              0.00803788210700117
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "web:web_0",
+              "web:web_1"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.03329296255368655,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1176
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        },
+        "T": {
+          "applied": {
+            "T": 100000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 1.0306032883244718,
+            "rel_Ny": 1.3505838626317306,
+            "rel_Nxy": 1.3556836034576638,
+            "rel_Mx": 1.0,
+            "rel_My": 1.0,
+            "rel_Mxy": 1.0,
+            "n_elements": 147.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": -3.040249151291913e-07,
+              "My": -1.257766784597337e-08,
+              "Mz": -1.7859635132570273e-08
+            },
+            "ccx": {
+              "Fx": -2.6938361126476567e-06,
+              "My": 1.2347742321099764e-07,
+              "Mz": -7.660160624848818e-08
+            }
+          },
+          "max_fi": {
+            "fsdt": 1.469835260451904,
+            "ccx": 2.225560408193283,
+            "abs_delta_fsdt_ccx": 0.7557251477413789
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              1.3249681524155077,
+              1.2395968123857568,
+              0.3377758850143734,
+              1.469835260451904,
+              1.2023800353704082,
+              0.21698266714127945,
+              0.006731848060831184,
+              0.0013808394369877704,
+              0.3378724478520393,
+              0.0037648469053276905,
+              0.00028722799468909073,
+              0.43111804325199704,
+              0.0020287723530182443,
+              0.0016505423434335198,
+              0.06060593448954932,
+              0.004113864934130803,
+              0.021189289582665537,
+              0.006999423776195488
+            ],
+            "ccx": [
+              1.7978838207908845,
+              1.779114157117047,
+              0.7115594393948956,
+              2.225560408193283,
+              1.7692925479673365,
+              0.6430204737716626,
+              0.004958260231357291,
+              0.14212741087683203,
+              1.1241535974115007,
+              0.08809880814585934,
+              0.10211618156293624,
+              0.6012672613103972,
+              0.11958761097065272,
+              0.1751765029646945,
+              0.026259659422040876,
+              0.18035143688010793,
+              0.004639661390356662,
+              0.0026954260360655883
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "web:web_0",
+              "web:web_1"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 1.469835260451904,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1176
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        },
+        "N+My": {
+          "applied": {
+            "N": 1000000.0,
+            "My": 50000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 0.003322394116911845,
+            "rel_Ny": 7.470890024554352,
+            "rel_Nxy": 1.2804707888451219,
+            "rel_Mx": 1.0,
+            "rel_My": 1.000000000000001,
+            "rel_Mxy": 1.0,
+            "n_elements": 147.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": 999999.999998406,
+              "My": -30003.485613334782,
+              "Mz": 2655.5247172284303
+            },
+            "ccx": {
+              "Fx": 988352.3823592382,
+              "My": -29955.576235779812,
+              "Mz": 1218.976563391876
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.08886309184403456,
+            "ccx": 0.08762655095732927,
+            "abs_delta_fsdt_ccx": 0.0012365408867052868
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.08886309184403456,
+              0.07791271329048861,
+              0.05961994105001817,
+              0.06205543101069366,
+              0.044302489212829324,
+              0.042248434409221346,
+              0.0063502395614744266,
+              0.0064980001197554975,
+              0.059619941045939595,
+              0.005562766352383963,
+              0.005477084955144239,
+              0.06924402362106637,
+              0.0056281787427046575,
+              0.04621627738315291,
+              0.008785079085079334,
+              0.04045793356316488,
+              0.005714073772936845,
+              0.004891103112601153
+            ],
+            "ccx": [
+              0.011213251256086614,
+              0.003529524181172895,
+              0.010257453327896012,
+              0.003026149112255224,
+              0.003119672596469574,
+              0.011707782483860223,
+              0.010192178961783203,
+              0.024809907338066733,
+              0.011491429930532746,
+              0.023265312235985307,
+              0.02429590166226551,
+              0.023434523082499232,
+              0.02404292158031791,
+              0.08762655095732927,
+              0.02788180840774373,
+              0.06741003320062146,
+              0.008855310932318084,
+              0.02096185738730629
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "web:web_0",
+              "web:web_1"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.08886309184403456,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1176
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        }
+      }
+    },
+    "naca2412_twinweb_glass": {
+      "naca_code": "2412",
+      "web_x_positions": [
+        0.25,
+        0.6
+      ],
+      "chord_m": 1.5,
+      "materials": {
+        "skin": {
+          "name": "GFRP skin",
+          "E_pa": 25000000000.0,
+          "t_m": 0.0018,
+          "nu": 0.28,
+          "n_plies": 6
+        },
+        "web": {
+          "name": "GFRP web",
+          "E_pa": 23000000000.0,
+          "t_m": 0.0018,
+          "nu": 0.28,
+          "n_plies": 6
+        },
+        "cap": {
+          "name": "GFRP UD cap",
+          "E_pa": 40000000000.0,
+          "t_m": 0.022,
+          "nu": 0.35,
+          "n_plies": 4
+        }
+      },
+      "elastic_centroid": [
+        0.6648225079700794,
+        0.023967154199755116
+      ],
+      "n_panels": 18,
+      "panel_labels": [
+        "skin:ComponentLabel.OUTER_SKIN:seg0",
+        "skin:ComponentLabel.OUTER_SKIN:seg1",
+        "skin:ComponentLabel.OUTER_SKIN:seg2",
+        "skin:ComponentLabel.OUTER_SKIN:seg3",
+        "skin:ComponentLabel.OUTER_SKIN:seg4",
+        "skin:ComponentLabel.OUTER_SKIN:seg5",
+        "skin:ComponentLabel.OUTER_SKIN:seg6",
+        "skin:ComponentLabel.OUTER_SKIN:seg7",
+        "skin:ComponentLabel.OUTER_SKIN:seg8",
+        "skin:ComponentLabel.OUTER_SKIN:seg9",
+        "skin:ComponentLabel.OUTER_SKIN:seg10",
+        "skin:ComponentLabel.OUTER_SKIN:seg11",
+        "cap:spar_cap_upper_0",
+        "cap:spar_cap_lower_0",
+        "cap:spar_cap_upper_1",
+        "cap:spar_cap_lower_1",
+        "web:web_0",
+        "web:web_1"
+      ],
+      "loads": {
+        "My": {
+          "applied": {
+            "My": 100000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 0.013817973580377847,
+            "rel_Ny": 12.428357185647933,
+            "rel_Nxy": 1.7952907038902646,
+            "rel_Mx": 1.0,
+            "rel_My": 0.9999999999999998,
+            "rel_Mxy": 1.0,
+            "n_elements": 147.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": 3.958712113671936e-08,
+              "My": -58314.697408017426,
+              "Mz": 4930.282284165246
+            },
+            "ccx": {
+              "Fx": 2574.2932421246214,
+              "My": -57693.05925510298,
+              "Mz": 4330.763570523928
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.03957267558139785,
+            "ccx": 0.03616945684025669,
+            "abs_delta_fsdt_ccx": 0.003403218741141155
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.023096572289161864,
+              0.022326677829180346,
+              0.007850343445092505,
+              0.03957267558139785,
+              0.03768430027320927,
+              0.006051985408789308,
+              0.0047711254942884055,
+              0.0047024455479867475,
+              0.004925792303521141,
+              0.0030306029065607057,
+              0.00271711267865184,
+              0.003270681807467687,
+              0.01939819885514873,
+              0.011578441784173946,
+              0.012605563078135746,
+              0.007220195329516863,
+              0.004992981268444184,
+              0.0029866271590753835
+            ],
+            "ccx": [
+              0.011043074906726237,
+              0.010411713958873824,
+              0.016568389777024718,
+              0.015852729418927895,
+              0.014944602511257054,
+              0.013760090010382786,
+              0.009739498333389131,
+              0.018703185413904203,
+              0.011918323836571397,
+              0.013635135276383834,
+              0.013911608138415242,
+              0.010705069527753781,
+              0.03616945684025669,
+              0.02770709589048678,
+              0.02363010997240001,
+              0.017094535995861103,
+              0.010017946238051849,
+              0.008030530549857013
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "web:web_0",
+              "web:web_1"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.03957267558139785,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1176
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        },
+        "T": {
+          "applied": {
+            "T": 100000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 2.6480005638235453,
+            "rel_Ny": 2.2586273130450323,
+            "rel_Nxy": 1.1533945009636086,
+            "rel_Mx": 1.0000000000000002,
+            "rel_My": 1.0,
+            "rel_Mxy": 1.0,
+            "n_elements": 147.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": -1.394208717292671e-07,
+              "My": 2.616693536046628e-08,
+              "Mz": -8.934054853404427e-08
+            },
+            "ccx": {
+              "Fx": -1.2954977912817714e-07,
+              "My": 2.4300193466050234e-08,
+              "Mz": -2.1903997293751136e-08
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.4887185048342723,
+            "ccx": 0.7928126383515864,
+            "abs_delta_fsdt_ccx": 0.3040941335173141
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.44504917561010404,
+              0.4144350721801411,
+              0.1158320979129993,
+              0.4887185048342723,
+              0.3992362484743946,
+              0.07489385815441012,
+              0.0013707843487330384,
+              0.001289182865638557,
+              0.11593819015842843,
+              0.000559427859280647,
+              0.0003377107843390485,
+              0.14900007289412392,
+              0.0015928035997817005,
+              0.0012587064507568425,
+              0.00996456727685053,
+              0.0025253626172759927,
+              0.0070708145266166434,
+              0.002360185285252642
+            ],
+            "ccx": [
+              0.6489814982804925,
+              0.6362901748238684,
+              0.26364661970859005,
+              0.7928126383515864,
+              0.6295627248090023,
+              0.24415928395382722,
+              0.0007711601133745397,
+              0.06474724800308461,
+              0.4289711080710383,
+              0.04339633379728812,
+              0.049693720543979455,
+              0.2213679757553823,
+              0.04562075272538331,
+              0.06475639034498691,
+              0.009542205957036937,
+              0.06706974397850249,
+              0.0017623932429158217,
+              0.0009982168006229671
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "web:web_0",
+              "web:web_1"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.4887185048342723,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1176
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        },
+        "N+My": {
+          "applied": {
+            "N": 1000000.0,
+            "My": 50000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 0.008057536166319955,
+            "rel_Ny": 6.081226318416692,
+            "rel_Nxy": 1.9607642617032657,
+            "rel_Mx": 1.0,
+            "rel_My": 0.9999999999999998,
+            "rel_Mxy": 1.0,
+            "n_elements": 147.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": 999999.9999995171,
+              "My": -28886.640124698537,
+              "Mz": 2309.7606114207274
+            },
+            "ccx": {
+              "Fx": 977065.897983315,
+              "My": -28808.742337029933,
+              "Mz": -120.55492884951127
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.12316661059568874,
+            "ccx": 0.045940579429384135,
+            "abs_delta_fsdt_ccx": 0.07722603116630461
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.12316661059568874,
+              0.10953184418289987,
+              0.08047033660603418,
+              0.08707583192106727,
+              0.06326302484946032,
+              0.05765195564946718,
+              0.010100934234041648,
+              0.010290465183438704,
+              0.08047033659978631,
+              0.008788289906902997,
+              0.008618737779930073,
+              0.09221425013493241,
+              0.0031438919837223737,
+              0.026694125998601388,
+              0.004869864848907893,
+              0.02320331310439467,
+              0.0084054042488722,
+              0.007139364782026707
+            ],
+            "ccx": [
+              0.010481745604728775,
+              0.006132513090625028,
+              0.009332535190872782,
+              0.005376877460363542,
+              0.005529078431018703,
+              0.023945852914087847,
+              0.020902479433382123,
+              0.027763981822212198,
+              0.0210006734449503,
+              0.025625701533100127,
+              0.026156534163474517,
+              0.02505191852929374,
+              0.013686871700697245,
+              0.045940579429384135,
+              0.015768446476933415,
+              0.04067323366537545,
+              0.013661666579615444,
+              0.02124512897520708
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "web:web_0",
+              "web:web_1"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.12316661059568874,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1176
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        }
+      }
+    },
+    "naca4415_multiweb_hybrid": {
+      "naca_code": "4415",
+      "web_x_positions": [
+        0.2,
+        0.45,
+        0.7
+      ],
+      "chord_m": 2.0,
+      "materials": {
+        "skin": {
+          "name": "CFRP skin",
+          "E_pa": 45000000000.0,
+          "t_m": 0.001,
+          "nu": 0.3,
+          "n_plies": 4
+        },
+        "web": {
+          "name": "GFRP web",
+          "E_pa": 23000000000.0,
+          "t_m": 0.0018,
+          "nu": 0.28,
+          "n_plies": 6
+        },
+        "cap": {
+          "name": "CFRP UD cap",
+          "E_pa": 120000000000.0,
+          "t_m": 0.02,
+          "nu": 0.35,
+          "n_plies": 4
+        }
+      },
+      "elastic_centroid": [
+        0.9051583546122789,
+        0.06559805544222445
+      ],
+      "n_panels": 27,
+      "panel_labels": [
+        "skin:ComponentLabel.OUTER_SKIN:seg0",
+        "skin:ComponentLabel.OUTER_SKIN:seg1",
+        "skin:ComponentLabel.OUTER_SKIN:seg2",
+        "skin:ComponentLabel.OUTER_SKIN:seg3",
+        "skin:ComponentLabel.OUTER_SKIN:seg4",
+        "skin:ComponentLabel.OUTER_SKIN:seg5",
+        "skin:ComponentLabel.OUTER_SKIN:seg6",
+        "skin:ComponentLabel.OUTER_SKIN:seg7",
+        "skin:ComponentLabel.OUTER_SKIN:seg8",
+        "skin:ComponentLabel.OUTER_SKIN:seg9",
+        "skin:ComponentLabel.OUTER_SKIN:seg10",
+        "skin:ComponentLabel.OUTER_SKIN:seg11",
+        "skin:ComponentLabel.OUTER_SKIN:seg12",
+        "skin:ComponentLabel.OUTER_SKIN:seg13",
+        "skin:ComponentLabel.OUTER_SKIN:seg14",
+        "skin:ComponentLabel.OUTER_SKIN:seg15",
+        "skin:ComponentLabel.OUTER_SKIN:seg16",
+        "skin:ComponentLabel.OUTER_SKIN:seg17",
+        "cap:spar_cap_upper_0",
+        "cap:spar_cap_lower_0",
+        "cap:spar_cap_upper_1",
+        "cap:spar_cap_lower_1",
+        "cap:spar_cap_upper_2",
+        "cap:spar_cap_lower_2",
+        "web:web_0",
+        "web:web_1",
+        "web:web_2"
+      ],
+      "loads": {
+        "My": {
+          "applied": {
+            "My": 100000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 0.005802842475705163,
+            "rel_Ny": 17.46946956274709,
+            "rel_Nxy": 1.0380076230568367,
+            "rel_Mx": 1.0,
+            "rel_My": 1.0000000000000004,
+            "rel_Mxy": 1.0,
+            "n_elements": 220.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": -9.522611321699515e-08,
+              "My": -84499.93301557515,
+              "Mz": 2242.3238278883714
+            },
+            "ccx": {
+              "Fx": 966.4922693964545,
+              "My": -84033.55462875443,
+              "Mz": 1957.6924551908285
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.0069372298223787906,
+            "ccx": 0.012976289100461925,
+            "abs_delta_fsdt_ccx": 0.006039059278083135
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.0017582171216190374,
+              0.0017557457119323151,
+              0.0012077947144140903,
+              0.006014555871335709,
+              0.005571430942405029,
+              0.0018408972606862707,
+              0.004751904873226544,
+              0.004686255156666194,
+              0.0019574973025522106,
+              0.0006256085547964546,
+              0.0006160965370011454,
+              0.0018408972620256616,
+              0.00047632866991972374,
+              0.00043766510530440306,
+              0.0012077947156617836,
+              0.00028721064906910856,
+              0.0002620404047039472,
+              0.00120206412065244,
+              0.006126296825849294,
+              0.004358346374285665,
+              0.0069372298223787906,
+              0.0032290250272557007,
+              0.0026462960309771625,
+              0.001938141700660159,
+              0.0001566276746104657,
+              0.00019983606201518767,
+              5.999299604785606e-05
+            ],
+            "ccx": [
+              0.0009374231348733027,
+              0.0007433810747744873,
+              0.001539750863990625,
+              0.001756860010046287,
+              0.0018900006521539413,
+              0.0020155649923795905,
+              0.0016928742037782124,
+              0.0021228905406865135,
+              0.0015890348901568077,
+              0.002565325195743535,
+              0.0033524548439660727,
+              0.0033200953434603,
+              0.002862038906803018,
+              0.0008357221148560357,
+              0.0014013412848607467,
+              0.0010363030170846355,
+              0.001021351470565208,
+              0.001828331254165687,
+              0.010555327644018153,
+              0.012976289100461925,
+              0.012928223364475348,
+              0.010513876733655642,
+              0.004876506088066889,
+              0.007218051166966782,
+              0.0005871400005687155,
+              0.00037630581951937094,
+              0.00037947288152559016
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "skin:ComponentLabel.OUTER_SKIN:seg12",
+              "skin:ComponentLabel.OUTER_SKIN:seg13",
+              "skin:ComponentLabel.OUTER_SKIN:seg14",
+              "skin:ComponentLabel.OUTER_SKIN:seg15",
+              "skin:ComponentLabel.OUTER_SKIN:seg16",
+              "skin:ComponentLabel.OUTER_SKIN:seg17",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "cap:spar_cap_upper_2",
+              "cap:spar_cap_lower_2",
+              "web:web_0",
+              "web:web_1",
+              "web:web_2"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.0069372298223787906,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1760
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        },
+        "T": {
+          "applied": {
+            "T": 100000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 1.0948077342175873,
+            "rel_Ny": 1.4033826906163536,
+            "rel_Nxy": 1.302236065135403,
+            "rel_Mx": 1.0,
+            "rel_My": 1.0,
+            "rel_Mxy": 1.0,
+            "n_elements": 220.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": -6.803414603256385e-08,
+              "My": -4.0735154379734634e-08,
+              "Mz": 1.8339264666915748e-07
+            },
+            "ccx": {
+              "Fx": -2.7370127498589073e-06,
+              "My": 5.301697469209146e-07,
+              "Mz": -4.2420386630583543e-07
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.7439346004789705,
+            "ccx": 1.0642292906712296,
+            "abs_delta_fsdt_ccx": 0.3202946901922591
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.6492186672861258,
+              0.6258274711321361,
+              0.19796010082695786,
+              0.7076243090201358,
+              0.6205615084814936,
+              0.15300039600410606,
+              0.7439346004789705,
+              0.5909037645135548,
+              0.08872645145093852,
+              0.0032844794541713506,
+              0.0014309063440180198,
+              0.1530664384544767,
+              0.0007308251612668414,
+              0.0007593601361541668,
+              0.1979285672012989,
+              0.000305900254028135,
+              0.0001385385170412874,
+              0.23487768945838802,
+              0.001361609666156988,
+              0.0006188421673827057,
+              0.0007882402840198034,
+              0.0006244065941565641,
+              0.03231506147664297,
+              0.0020002436495108493,
+              0.0038017990911690626,
+              0.0016778984948353174,
+              0.000709168695207024
+            ],
+            "ccx": [
+              0.8079132391305852,
+              0.8324933221128168,
+              0.38916671538243885,
+              0.9848974717192486,
+              0.8739410506435074,
+              0.4150094288409411,
+              1.0642292906712296,
+              0.8201148567349984,
+              0.3761580491313545,
+              0.061305575320467875,
+              0.08366384629189871,
+              0.29221836233186727,
+              0.05447177199137758,
+              0.01351412864326873,
+              0.7471873982539698,
+              0.07826102832546225,
+              0.07097068996141846,
+              0.365364844734027,
+              0.0007257847837847033,
+              0.050636153576676106,
+              0.053672769934753596,
+              0.0008313042915961068,
+              0.04948639985406743,
+              0.0008976837546428094,
+              0.0026995107366366224,
+              0.0031435343773882855,
+              0.0034208023807491585
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "skin:ComponentLabel.OUTER_SKIN:seg12",
+              "skin:ComponentLabel.OUTER_SKIN:seg13",
+              "skin:ComponentLabel.OUTER_SKIN:seg14",
+              "skin:ComponentLabel.OUTER_SKIN:seg15",
+              "skin:ComponentLabel.OUTER_SKIN:seg16",
+              "skin:ComponentLabel.OUTER_SKIN:seg17",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "cap:spar_cap_upper_2",
+              "cap:spar_cap_lower_2",
+              "web:web_0",
+              "web:web_1",
+              "web:web_2"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.7439346004789705,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1760
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        },
+        "N+My": {
+          "applied": {
+            "N": 1000000.0,
+            "My": 50000.0
+          },
+          "rel_error_fsdt_vs_ccx": {
+            "rel_Nx": 0.003616315637690264,
+            "rel_Ny": 8.37820877620854,
+            "rel_Nxy": 1.014082460843741,
+            "rel_Mx": 0.9999999999999998,
+            "rel_My": 1.0000000000000033,
+            "rel_Mxy": 1.0,
+            "n_elements": 220.0
+          },
+          "section_integrals": {
+            "fsdt": {
+              "Fx": 999999.999999505,
+              "My": -42144.30526362276,
+              "Mz": 1120.396506392635
+            },
+            "ccx": {
+              "Fx": 991042.1115716184,
+              "My": -42078.12692621434,
+              "Mz": 2.311183135787104
+            }
+          },
+          "max_fi": {
+            "fsdt": 0.03544581727072563,
+            "ccx": 0.026408910458280917,
+            "abs_delta_fsdt_ccx": 0.00903690681244471
+          },
+          "per_panel_max_fi": {
+            "fsdt": [
+              0.03544581727072563,
+              0.03296613157331813,
+              0.01967749148433431,
+              0.020210158194593725,
+              0.017488635944603932,
+              0.016993378368301396,
+              0.02557543481321121,
+              0.018652174908588903,
+              0.011450798304876232,
+              0.0016310043370602225,
+              0.001672037989001965,
+              0.016993378372073646,
+              0.0015193549209222672,
+              0.001511089795994887,
+              0.019677491489346253,
+              0.0013355783773529516,
+              0.0013198873581823276,
+              0.021603502739233553,
+              0.00239367509729155,
+              0.012053056883298356,
+              0.0019401226067670553,
+              0.011060214445459403,
+              0.003662730074299527,
+              0.009744770485973008,
+              0.00042623151819296006,
+              0.0003797340300846355,
+              0.00034009232381288954
+            ],
+            "ccx": [
+              0.0031578045940181456,
+              0.001166064203064973,
+              0.002885515826392766,
+              0.0009631570096815847,
+              0.0009410916383662956,
+              0.0009593375482797592,
+              0.0009836147685008357,
+              0.0029267737812660997,
+              0.0030102399580291686,
+              0.006049022267236399,
+              0.006624671784600437,
+              0.006702361913891236,
+              0.006380797148900381,
+              0.0024401067622144947,
+              0.0029591885458866733,
+              0.003025879549908249,
+              0.003014797746192486,
+              0.004292878399738813,
+              0.008230910680328045,
+              0.026408910458280917,
+              0.0071914031631695645,
+              0.024571993157645574,
+              0.010244876212229631,
+              0.02186470235358404,
+              0.0008527795596312442,
+              0.0011948281594463574,
+              0.0007875997079093049
+            ],
+            "labels": [
+              "skin:ComponentLabel.OUTER_SKIN:seg0",
+              "skin:ComponentLabel.OUTER_SKIN:seg1",
+              "skin:ComponentLabel.OUTER_SKIN:seg2",
+              "skin:ComponentLabel.OUTER_SKIN:seg3",
+              "skin:ComponentLabel.OUTER_SKIN:seg4",
+              "skin:ComponentLabel.OUTER_SKIN:seg5",
+              "skin:ComponentLabel.OUTER_SKIN:seg6",
+              "skin:ComponentLabel.OUTER_SKIN:seg7",
+              "skin:ComponentLabel.OUTER_SKIN:seg8",
+              "skin:ComponentLabel.OUTER_SKIN:seg9",
+              "skin:ComponentLabel.OUTER_SKIN:seg10",
+              "skin:ComponentLabel.OUTER_SKIN:seg11",
+              "skin:ComponentLabel.OUTER_SKIN:seg12",
+              "skin:ComponentLabel.OUTER_SKIN:seg13",
+              "skin:ComponentLabel.OUTER_SKIN:seg14",
+              "skin:ComponentLabel.OUTER_SKIN:seg15",
+              "skin:ComponentLabel.OUTER_SKIN:seg16",
+              "skin:ComponentLabel.OUTER_SKIN:seg17",
+              "cap:spar_cap_upper_0",
+              "cap:spar_cap_lower_0",
+              "cap:spar_cap_upper_1",
+              "cap:spar_cap_lower_1",
+              "cap:spar_cap_upper_2",
+              "cap:spar_cap_lower_2",
+              "web:web_0",
+              "web:web_1",
+              "web:web_2"
+            ]
+          },
+          "hashin_audit": {
+            "max_fi_hashin": 0.03544581727072563,
+            "needs_review": false,
+            "provenance_breakdown": {
+              "mitc4": 1760
+            },
+            "governing_element": {
+              "fi": 0.0,
+              "panel_index": -1,
+              "element_index": -1,
+              "ply_index": -1,
+              "subcomponent": "",
+              "needs_review": false,
+              "provenance_kinds": []
+            }
+          }
+        }
+      }
+    }
+  }
+}
