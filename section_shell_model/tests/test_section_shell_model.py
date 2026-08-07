@@ -114,7 +114,7 @@ def test_hashin_fi_golden_pure_shear_envelope():
 
 def test_six_series_airfoil_converted_for_multicell_geometry() -> None:
     """Spanwise six-series polygon must be resampled to [upper; lower] LE→TE."""
-    from blade_structure_utilities.geometry_utilities.sdf.naca import airfoil_vertices_from_spanwise
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca import airfoil_vertices_from_spanwise
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
         open_outline_from_airfoil,
         polygon_area_signed,

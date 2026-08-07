@@ -44,15 +44,19 @@ def build_shell_panel_topology(
     n_cap_samples: int = 80,
     structural_family: str = "C",
     web_alignment: str = "chord_normal",
+    skin_thickness: float | None = None,
+    web_thickness: float | None = None,
+    cap_height: float | None = None,
     skin_lam: Any | None = None,
     web_lam: Any | None = None,
     cap_lam: Any | None = None,
 ) -> "ShellPanelTopology":
-    """Build the panel topology panels from a NACA 4-digit code and web positions.
+    """Convenience: NACA + webs → geometry worker → mesh inputs → panel topology.
 
-    Uses ``section_geometry`` (SDF-based) to construct a :class:`MultiCellSection`,
-    then calls ``build_shell_mesh_inputs`` and ``build_section_v2`` to produce
-    junction-consistent panels matching the ``repro_section_strip_mesh`` topology.
+    Geometry construction is owned by ``section_geometry`` (use-case-agnostic
+    worker). Prefer production paths that already have a sized section and call
+    :func:`shell_panel_topology_from_shell_inputs` with
+    :func:`build_shell_mesh_inputs`.
 
     Parameters
     ----------
@@ -60,36 +64,44 @@ def build_shell_panel_topology(
         Four-digit NACA code string, e.g. ``"2412"``.
     web_x_positions
         Chord-normalised x-positions of shear webs (empty list for zero webs --
-        only supported for ``structural_family in ("A", "B")``, per
-        :class:`MultiCellSection`'s zero-web support).
+        only supported for ``structural_family in ("A", "B")``).
     chord_m
         Chord length [m] for the SDF.
     twist_rad
         Twist angle [rad] for the B-frame rotation.
     structural_family
-        Spar-cap family (``"A"``, ``"B"``, ``"C"`` or ``"D"``), passed straight
-        through to :class:`MultiCellSection`. Defaults to ``"C"`` (this
-        function's long-standing default) for backward compatibility.
+        Spar-cap family (``"A"``, ``"B"``, ``"C"`` or ``"D"``).
     web_alignment
-        Web orientation (``"chord_normal"`` or ``"flapwise"``), passed straight
-        through to :class:`MultiCellSection`. Defaults to ``"chord_normal"``
-        for backward compatibility.
+        Web orientation (``"chord_normal"`` or ``"flapwise"``).
+    skin_thickness, web_thickness, cap_height
+        Optional geometric thicknesses [m] passed to the geometry worker.
+        When omitted, ``MultiCellSection`` defaults apply. Prefer matching
+        these to laminate stack thicknesses for a consistent midline/lam path.
     """
-    from blade_structure_utilities.geometry_utilities.section_geometry import AirfoilSDF, MultiCellSection
+    from blade_structure_utilities.geometry_utilities.section_geometry import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.engine.sections.section import (
+        BladeSectionGeometry,
+    )
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
         build_shell_mesh_inputs,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.topology import build_section_v2
 
     airfoil_sdf = AirfoilSDF.from_naca(naca_code, n_points=200, chord=chord_m)
-    # web_x_positions are chord-normalised fractions; scale to absolute coords for MultiCellSection.
     web_x_abs = [x * chord_m for x in web_x_positions]
-    section = MultiCellSection(
-        airfoil_sdf,
-        web_x_positions=web_x_abs,
-        structural_family=structural_family,
-        web_alignment=web_alignment,
-    )
+    section_kwargs: dict[str, Any] = {
+        "web_x_positions": list(web_x_abs),
+        "web_alignment": web_alignment,
+        "structural_family": structural_family,
+        "twist_angle": float(twist_rad),
+        "core_enabled": True,
+    }
+    if skin_thickness is not None:
+        section_kwargs["skin_thickness"] = float(skin_thickness)
+    if web_thickness is not None:
+        section_kwargs["web_thickness"] = float(web_thickness)
+    if cap_height is not None:
+        section_kwargs["cap_height"] = float(cap_height)
+    section = BladeSectionGeometry.from_n_web(airfoil_sdf, **section_kwargs)
 
     shell_inputs = build_shell_mesh_inputs(
         section,

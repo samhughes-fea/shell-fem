@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import build_shell_mesh_inputs
 from blade_structure_utilities.fem_utilities.section_shell_model.vis import save_section_centerline_mesh_figure

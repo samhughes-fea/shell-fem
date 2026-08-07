@@ -8,7 +8,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def airfoil():
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 
     return AirfoilSDF.from_naca("0012", n_points=100, chord=1.0)
 
@@ -31,7 +31,7 @@ def _web_polylines_from_shell(shell: object) -> list[np.ndarray]:
 @pytest.mark.parametrize("layout_key", ["2C-CN", "2D-CN", "3C-CN"])
 def test_cap_mesh_nodes_intersect_web_midlines(layout_key: str):
     """Cap mesh carries web-centric shared nodes at cap-web intersections."""
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
@@ -82,7 +82,7 @@ def test_cap_mesh_nodes_intersect_web_midlines(layout_key: str):
 @pytest.mark.parametrize("layout_key", ["2C-CN", "2D-CN"])
 def test_mitc4_cap_nodes_include_resampled_cap_midline_knots(layout_key: str):
     """Class C: MITC4 cap nodes include all cap midline knots from shell inputs."""
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (

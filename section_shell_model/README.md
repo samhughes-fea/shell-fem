@@ -78,7 +78,8 @@ Hashin / von Mises **formulas** live in `material_utilities.failure`; the worker
 
 | Package | Role |
 |---|---|
-| `geometry_utilities.section_geometry` | Midline / strip geometry |
+| `geometry_utilities.section_geometry` | Geometry **worker** (owns nested `sdf/`); produces midlines / props |
+| `geometry_utilities.section_contract` | Thin DTO handoff (`ShellMidlineStrip`, `BeamResultantVector`, …) |
 | `material_utilities` | CLPT ABD, failure formulas, layup / panel adapters |
 | `load_utilities.beam_to_shell_loads` | Beam → shell load mapping |
 

@@ -244,7 +244,7 @@ def main() -> None:
     import numpy as np
 
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import resolve_system_type
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 
     chord_m = 1.655959896
     twist_deg = 34.110405083

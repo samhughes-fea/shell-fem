@@ -38,7 +38,7 @@ _LAYOUT_KEYS = ["2D-F", "2D-CN", "1A-CN", "3C-F", "5D-CN"]
 
 @pytest.fixture(scope="session")
 def airfoil():
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 
     return AirfoilSDF.from_naca("0012", n_points=100, chord=1.0)
 
@@ -376,7 +376,7 @@ def _web_element_lengths(mesh) -> list[float]:
 
 def _build_uniform_density_mesh(layout_key: str, chord_m: float, *, h_target_m: float):
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
         ENDPOINT_TOL_FRAC,
         build_section_strip_mesh,

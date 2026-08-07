@@ -46,7 +46,7 @@ def _min_dist_cap_interior_vertices_to_webs(shell: object) -> float:
 
 @pytest.fixture(scope="module")
 def airfoil():
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 
     return AirfoilSDF.from_naca("0012", n_points=100, chord=1.0)
 
@@ -54,7 +54,7 @@ def airfoil():
 @pytest.mark.parametrize("layout_key", ["1C-CN"])
 def test_discrete_caps_retain_web_intersections_without_webfoot_forcing(layout_key: str):
     """Discrete caps (Y=C): cap strips still intersect webs without foot forcing."""
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
         build_shell_mesh_inputs,

@@ -12,7 +12,7 @@ _MIN_SEG = 1e-12
 
 @pytest.fixture(scope="module")
 def airfoil():
-    from blade_structure_utilities.geometry_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 
     return AirfoilSDF.from_naca("0012", n_points=100, chord=1.0)
 

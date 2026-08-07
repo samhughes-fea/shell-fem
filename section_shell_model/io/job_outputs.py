@@ -108,7 +108,7 @@ def build_airfoil_for_station(
     n_points: int = 120,
 ) -> NDArray[np.float64]:
     """NACA polyline (metres chord) for shell recovery; respects ``naca_series`` (4/5/6)."""
-    from blade_structure_utilities.geometry_utilities.sdf.naca import airfoil_vertices_from_spanwise
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca import airfoil_vertices_from_spanwise
 
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.naca_profile import (
         naca_four_digit,

@@ -7,10 +7,13 @@ topology generator.
 
 **Pipeline boundary**
 
-This module is the handoff point between geometry and meshing.  Once
-:func:`build_shell_mesh_inputs` returns, no further SDF evaluation
-(``section[label](x, y)`` / component ``__call__``) should occur on the
-underlying section — all geometry is materialised as B-frame polylines inside
+This module is the handoff point between the geometry worker
+(``section_geometry``) and FE meshing. Prefer constructing the section via
+:func:`~blade_structure_utilities.geometry_utilities.section_geometry.build_section_geometry`
+/ ``build_section_with_thicknesses`` first. Once :func:`build_shell_mesh_inputs`
+returns, no further SDF evaluation (``section[label](x, y)`` / component
+``__call__``) should occur on the underlying section — all geometry is
+materialised as B-frame polylines inside
 :class:`~blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip.ShellMidlineStrip`
 records.
 
