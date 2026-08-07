@@ -17,13 +17,18 @@ from typing import Any
 
 @_dataclass
 class ShellPanelTopology:
-    """Output of :func:`build_shell_panel_topology`."""
-    section: Any
+    """Output of :func:`build_shell_panel_topology` / ``shell_panel_topology_from_shell_inputs``.
+
+    ``section`` is optional (viz / SDF plots only). The solve path must use
+    ``shell_inputs`` polylines — no SDF re-evaluation after the contract handoff.
+    """
+
     shell_inputs: Any
     panels: list
     booms: list
     webs_geom: list
     n_cells: int
+    section: Any | None = None
 
 
 @_dataclass
@@ -50,33 +55,16 @@ def build_shell_panel_topology(
     skin_lam: Any | None = None,
     web_lam: Any | None = None,
     cap_lam: Any | None = None,
+    retain_section: bool = True,
 ) -> "ShellPanelTopology":
-    """Convenience: NACA + webs → geometry worker → mesh inputs → panel topology.
+    """Thin convenience: NACA + webs → geometry worker → mesh inputs → panels.
 
-    Geometry construction is owned by ``section_geometry`` (use-case-agnostic
-    worker). Prefer production paths that already have a sized section and call
+    Prefer production callers that already have a geometry-worker result and use
     :func:`shell_panel_topology_from_shell_inputs` with
-    :func:`build_shell_mesh_inputs`.
+    :func:`build_shell_mesh_inputs` (or midlines from ``build_section_geometry``).
 
-    Parameters
-    ----------
-    naca_code
-        Four-digit NACA code string, e.g. ``"2412"``.
-    web_x_positions
-        Chord-normalised x-positions of shear webs (empty list for zero webs --
-        only supported for ``structural_family in ("A", "B")``).
-    chord_m
-        Chord length [m] for the SDF.
-    twist_rad
-        Twist angle [rad] for the B-frame rotation.
-    structural_family
-        Spar-cap family (``"A"``, ``"B"``, ``"C"`` or ``"D"``).
-    web_alignment
-        Web orientation (``"chord_normal"`` or ``"flapwise"``).
-    skin_thickness, web_thickness, cap_height
-        Optional geometric thicknesses [m] passed to the geometry worker.
-        When omitted, ``MultiCellSection`` defaults apply. Prefer matching
-        these to laminate stack thicknesses for a consistent midline/lam path.
+    ``retain_section`` keeps the live SDF section on the topology for viz only;
+    the FE solve uses ``shell_inputs`` polylines.
     """
     from blade_structure_utilities.geometry_utilities.section_geometry import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.engine.sections.section import (
@@ -87,9 +75,8 @@ def build_shell_panel_topology(
     )
 
     airfoil_sdf = AirfoilSDF.from_naca(naca_code, n_points=200, chord=chord_m)
-    web_x_abs = [x * chord_m for x in web_x_positions]
     section_kwargs: dict[str, Any] = {
-        "web_x_positions": list(web_x_abs),
+        "web_x_positions": [x * chord_m for x in web_x_positions],
         "web_alignment": web_alignment,
         "structural_family": structural_family,
         "twist_angle": float(twist_rad),
@@ -110,25 +97,27 @@ def build_shell_panel_topology(
         n_cap_samples=n_cap_samples,
     )
     return shell_panel_topology_from_shell_inputs(
-        section, shell_inputs, skin_lam=skin_lam, web_lam=web_lam, cap_lam=cap_lam,
+        shell_inputs,
+        section=section if retain_section else None,
+        skin_lam=skin_lam,
+        web_lam=web_lam,
+        cap_lam=cap_lam,
     )
 
 
 def shell_panel_topology_from_shell_inputs(
-    section: Any,
     shell_inputs: Any,
     *,
+    section: Any | None = None,
     skin_lam: Any | None = None,
     web_lam: Any | None = None,
     cap_lam: Any | None = None,
 ) -> "ShellPanelTopology":
     """Build a :class:`ShellPanelTopology` from already-materialised mesh inputs.
 
-    This is the **theory-agnostic** seam: the caller supplies the section and the
-    :class:`ShellMeshInputs` (midline strips) built once via ``build_section_view``
-    + ``build_shell_mesh_inputs``, and only the FE panel topology
-    (:func:`build_section_v2`) is derived here.  The FSDT (and opt-in CalculiX)
-    solves consume the **same** ``shell_inputs`` this way — no per-theory geometry rebuild.
+    Contract-first seam: ``shell_inputs`` carries ``ShellMidlineStrip`` polylines.
+    ``section`` is optional and only for viz (SDF plots); the FE solve must not
+    re-evaluate SDF.
     """
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.topology import build_section_v2
 
@@ -139,12 +128,12 @@ def shell_panel_topology_from_shell_inputs(
         cap_lam=cap_lam,
     )
     return ShellPanelTopology(
-        section=section,
         shell_inputs=shell_inputs,
         panels=list(panels),
         booms=list(booms),
         webs_geom=list(webs_geom),
         n_cells=int(n_cells),
+        section=section,
     )
 
 

@@ -75,7 +75,9 @@ def fsdt_periodic_station_hashin(
         SectionLinearStaticRunner,
     )
 
-    panel_topology = shell_panel_topology_from_shell_inputs(section_view, shell_inputs)
+    panel_topology = shell_panel_topology_from_shell_inputs(
+        shell_inputs, section=section_view
+    )
     traction_field = None
     traction_points = None
     used_traction = False

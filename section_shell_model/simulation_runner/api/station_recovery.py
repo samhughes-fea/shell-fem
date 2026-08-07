@@ -243,7 +243,9 @@ def build_fsdt_station_analysis(
             "(Channel-A fi_track='periodic' has been removed)."
         )
 
-    panel_topology = shell_panel_topology_from_shell_inputs(section_view, shell_inputs)
+    panel_topology = shell_panel_topology_from_shell_inputs(
+        shell_inputs, section=section_view
+    )
     prov = provenance or ShellStationProvenance(
         mesh_n_elements_per_panel=n_elements_per_panel,
         mesh_element_length_frac=(
