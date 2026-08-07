@@ -1,4 +1,0 @@
-{"ts":"2026-07-07T16:05:59.750Z","level":"INFO","package":"section_optimisation","stage":null,"station":null,"event":"logger.init","payload":{"dump_level":"summary","station_subdir":null}}
-{"ts":"2026-07-07T16:05:59.752Z","level":"INFO","package":"section_optimisation","stage":"SectionOptimisationStage","station":null,"event":"stage.start","payload":{"stage":"SectionOptimisationStage"}}
-{"ts":"2026-07-07T16:06:00.976Z","level":"INFO","package":"section_optimisation","stage":"SectionOptimisationStage","station":null,"event":"stage.error","payload":{"stage":"SectionOptimisationStage","status":"error","error":"module 'numpy' has no attribute 'trapz'"}}
-{"ts":"2026-07-07T16:06:00.976Z","level":"INFO","package":"section_optimisation","stage":"SectionOptimisationStage","station":null,"event":"logger.close","payload":{}}
