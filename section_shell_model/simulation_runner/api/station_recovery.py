@@ -1,0 +1,302 @@
+"""Orchestration-facing station solve + Hashin FI workflow (simulation_runner API).
+
+Main track: :class:`SectionLinearStaticRunner` construct → ``execute()`` →
+``get_results()`` (full P→S→T→Q container). Saint-Venant ``K6`` is omitted on
+the linear-static path (deprecated).
+"""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+import numpy as np
+
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+    BEAM_LOAD_AXIS_YZ,
+    FRAME_SECTION_YZ,
+    BeamResultantVector,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.station_analysis_types import (
+    SectionShellRecoveryBundle,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
+    ShellSectionStationAnalysis,
+    ShellStationProvenance,
+    ShellTheory,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
+    ShellPanelTopology,
+    shell_panel_topology_from_shell_inputs,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
+    LinearStaticCascadeResult,
+    governing_fi_from_quaternary,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticResult,
+    SectionLinearStaticRunner,
+)
+
+FiTrack = Literal["linear_static"]
+
+
+def _fi_by_panel_from_results(
+    results: SectionLinearStaticResult,
+    *,
+    n_panels: int,
+) -> list[float]:
+    """Reduce quaternary Hashin in-plane field series to per-panel maxima."""
+    q = results.quaternary_results
+    hi = None if q is None or q.hashin_fi is None else q.hashin_fi.in_plane
+    panel_index = (
+        None if results.tertiary_results is None else results.tertiary_results.panel_index
+    )
+    fi_by_panel: list[float] = []
+    for pi in range(int(n_panels)):
+        pmax = 0.0
+        if hi is not None and panel_index is not None:
+            for ri in range(hi.shape[0]):
+                if int(panel_index[ri]) != pi:
+                    continue
+                if hi[ri].size:
+                    pmax = max(pmax, float(np.nanmax(hi[ri])))
+        fi_by_panel.append(pmax)
+    return fi_by_panel
+
+
+def run_station_linear_static_hashin(
+    panel_topology: ShellPanelTopology,
+    *,
+    resultants: BeamResultantVector | None = None,
+    N: float = 0.0,
+    Vy: float = 0.0,
+    Vz: float = 0.0,
+    My: float = 0.0,
+    Mz: float = 0.0,
+    T: float = 0.0,
+    about_yz: tuple[float, float] | None = None,
+    traction_field: Any | None = None,
+    traction_points_yz: np.ndarray | None = None,
+    shell_theory: ShellTheory = ShellTheory.FSDT,
+    n_elements_per_panel: int | None = None,
+    target_element_length_m: float | None = None,
+    min_elements_per_panel: int = 2,
+    compute_section_deformation_1a: bool = False,
+) -> dict[str, Any]:
+    """Deprecated shim: station runner → dict with FI reductions for legacy callers."""
+    if resultants is None:
+        resultants = BeamResultantVector.from_named(
+            N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
+            frame=FRAME_SECTION_YZ,
+            about_yz=about_yz if about_yz is not None else BEAM_LOAD_AXIS_YZ,
+        )
+    static = SectionLinearStaticRunner(
+        panel_topology=panel_topology,
+        resultants=resultants,
+        traction_field=traction_field,
+        traction_points_yz=traction_points_yz,
+        n_elements_per_panel=n_elements_per_panel,
+        target_element_length_m=target_element_length_m,
+        min_elements_per_panel=min_elements_per_panel,
+        shell_theory=shell_theory,
+        compute_section_deformation_1a=compute_section_deformation_1a,
+    ).execute()
+    results = static.get_results()
+    quaternary = results.quaternary_results
+    if quaternary is None:
+        raise RuntimeError("execute() did not populate quaternary_results")
+    max_fi, needs_review = governing_fi_from_quaternary(quaternary)
+    assert static.assembly is not None
+    cascade = LinearStaticCascadeResult.from_executed_runner(static)
+    return {
+        "cascade": cascade,
+        "quaternary": quaternary,
+        "runner": static,
+        "assembly": static.assembly,
+        "max_fi_hashin": max_fi,
+        "needs_review": needs_review,
+        "fi_by_panel": _fi_by_panel_from_results(
+            results, n_panels=len(static.assembly.panel_maps)
+        ),
+        "governing": dict(quaternary.governing or {}),
+        "track": "linear_static",
+        "used_traction": bool(static.used_traction),
+    }
+
+
+def run_station_hashin(
+    panel_topology: ShellPanelTopology,
+    *,
+    fi_track: FiTrack = "linear_static",
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Deprecated shim: dispatch station Hashin FI (linear-static main track only)."""
+    if fi_track == "linear_static":
+        return run_station_linear_static_hashin(panel_topology, **kwargs)
+    raise ValueError(
+        f"unknown fi_track={fi_track!r}; expected 'linear_static' "
+        "(Channel-A fi_track='periodic' has been removed)."
+    )
+
+
+def _bundle_from_linear_static(
+    panel_topology: ShellPanelTopology,
+    static: SectionLinearStaticRunner,
+) -> SectionShellRecoveryBundle:
+    """Recovery bundle from an executed station runner, with static-secondary panel rows.
+
+    Thin-wall / Vlasov slots (``q_tot``, ``sig_p``, ``I_omega``, …) are left empty
+    on purpose: the linear-static cascade does not populate Bredt thin-wall fields.
+    Prefer ``all_panel_results``, ``panel_abd``, and ``y_e`` / ``z_e`` (zeros here
+    unless a future helper fills elastic-centroid metadata).
+    """
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_secondary.panel_row_nesting import (
+        nest_resultant_rows_by_panel,
+    )
+
+    panels = list(panel_topology.panels)
+    asm = static.assembly
+    if asm is None:
+        raise RuntimeError("executed runner missing assembly")
+    nested: list[list[Any]] = [[] for _ in panels]
+    secondary = static.secondary_results
+    if secondary is not None and secondary.elemental_results is not None:
+        rows = list(secondary.elemental_results.resultant_rows or [])
+        nested = nest_resultant_rows_by_panel(rows, len(panels))
+    reference = None
+    for panel_rows in nested:
+        if panel_rows:
+            reference = panel_rows[len(panel_rows) // 2]
+            break
+    return SectionShellRecoveryBundle(
+        panels=panels,
+        booms=getattr(panel_topology, "booms", []),
+        webs_geom=getattr(panel_topology, "webs_geom", []),
+        q_tot=[],
+        sig_p=[],
+        sig_b=[],
+        q0=[],
+        props=None,
+        y_sc=0.0,
+        z_sc=0.0,
+        y_e=0.0,
+        z_e=0.0,
+        areas=[],
+        I_omega=0.0,
+        gamma_y=0.0,
+        gamma_z=0.0,
+        GA_y=0.0,
+        GA_z=0.0,
+        q_primary=[],
+        q_warp=[],
+        reference_resultants=reference,
+        all_panel_results=nested,
+        all_panel_diagnostics=[{} for _ in panels],
+        panel_abd=np.asarray(asm.abd_p, dtype=float),
+        panel_thickness_m=np.asarray(asm.t_p, dtype=float),
+        panel_G_eff=np.asarray(asm.g_p, dtype=float),
+        panel_labels=list(asm.lab_p),
+        shell_midline_strips=tuple(getattr(getattr(panel_topology, "shell_inputs", None), "midlines", ()) or ()),
+    )
+
+
+def _bundle_from_linear_cascade(
+    panel_topology: ShellPanelTopology,
+    cascade: Any,
+) -> SectionShellRecoveryBundle:
+    """Backward-compatible alias: accept cascade view or executed runner."""
+    if isinstance(cascade, SectionLinearStaticRunner):
+        return _bundle_from_linear_static(panel_topology, cascade)
+    return _bundle_from_linear_static(panel_topology, cascade.runner)
+
+
+def build_fsdt_station_analysis(
+    section_view: Any,
+    shell_inputs: Any,
+    *,
+    z_station: float,
+    N: float = 1.0,
+    Vy: float = 0.0,
+    Vz: float = 0.0,
+    My: float = 0.0,
+    Mz: float = 0.0,
+    T: float = 0.0,
+    n_elements_per_panel: int | None = None,
+    target_element_length_m: float | None = None,
+    min_elements_per_panel: int = 2,
+    station_id: str = "station-0",
+    provenance: ShellStationProvenance | None = None,
+    fi_track: FiTrack = "linear_static",
+    enable_buckling: bool = False,
+) -> ShellSectionStationAnalysis:
+    """Main-track station analysis for recovery prepass (linear-static).
+
+    Omits Saint-Venant ``K6`` on the constitutive handoff (deprecated).
+    """
+    from blade_structure_utilities.fem_utilities.section_shell_model.interface.station_analysis_builder import (
+        build_station_analysis_from_shell_bundle,
+    )
+
+    if fi_track != "linear_static":
+        raise ValueError(
+            f"unknown fi_track={fi_track!r}; expected 'linear_static' "
+            "(Channel-A fi_track='periodic' has been removed)."
+        )
+
+    panel_topology = shell_panel_topology_from_shell_inputs(section_view, shell_inputs)
+    prov = provenance or ShellStationProvenance(
+        mesh_n_elements_per_panel=n_elements_per_panel,
+        mesh_element_length_frac=(
+            None if target_element_length_m is None else float(target_element_length_m)
+        ),
+    )
+    static = SectionLinearStaticRunner(
+        panel_topology=panel_topology,
+        N=N,
+        Vy=Vy,
+        Vz=Vz,
+        My=My,
+        Mz=Mz,
+        T=T,
+        n_elements_per_panel=n_elements_per_panel,
+        target_element_length_m=target_element_length_m,
+        min_elements_per_panel=min_elements_per_panel,
+    ).execute()
+    bundle = _bundle_from_linear_static(panel_topology, static)
+    if enable_buckling:
+        from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_buckling import (
+            run_section_linear_buckling_from_static,
+        )
+
+        buck = run_section_linear_buckling_from_static(
+            static,
+            station_id=str(station_id),
+            z_station=float(z_station),
+            provenance=prov,
+        )
+        # Builder reads recovery_bundle.station_buckling when present.
+        setattr(bundle, "station_buckling", buck.station_bundle)
+
+    strips = tuple(
+        getattr(shell_inputs, "midlines", ())
+        or getattr(bundle, "shell_midline_strips", ())
+        or ()
+    )
+    return build_station_analysis_from_shell_bundle(
+        z_station=float(z_station),
+        strips=strips,
+        recovery_bundle=bundle,
+        K6=None,
+        station_id=str(station_id),
+        provenance=prov,
+    )
+
+
+bundle_from_linear_cascade = _bundle_from_linear_cascade
+
+__all__ = [
+    "build_fsdt_station_analysis",
+    "bundle_from_linear_cascade",
+    "run_station_hashin",
+    "run_station_linear_static_hashin",
+]

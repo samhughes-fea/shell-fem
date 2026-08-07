@@ -1,0 +1,13 @@
+# Local benchmark run artefacts (do not commit)
+out/
+output/
+**/logs.manifest.json
+**/logs.manifest.jsonl
+**/progress.jsonl
+**/run.jsonl
+**/run.log
+**/job_exit.json
+**/*.npz
+**/*.png
+**/*.jpg
+**/*.pdf
