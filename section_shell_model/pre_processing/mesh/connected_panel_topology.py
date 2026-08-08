@@ -21,7 +21,10 @@ from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.
     panel_endpoints,
     resolve_n_elements,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.discretise import discretise_strip
+from blade_structure_utilities.mesh_utilities.section_mesh.discretise import (
+    cap_required_stations_from_panels,
+    discretise_strip,
+)
 from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.connected_assembly_core import (
     assign_global_nodes_cluster_basis,
     assign_global_nodes_independent,
@@ -79,6 +82,7 @@ def build_connected_panel_maps(
             target_element_length_m,
             min_n=int(min_elements_per_panel),
         )
+    required_per_panel = cap_required_stations_from_panels(panels)
 
     for pi, p in enumerate(panels):
         label = str(getattr(p, "label", f"panel_{pi}"))
@@ -105,6 +109,7 @@ def build_connected_panel_maps(
                 resolve_n_elements(n_elem_spec, pi),
                 panel_label=label,
                 nodes_yz=nodes_yz,
+                required_s=required_per_panel[pi],
             )
         n_local_nodes = 2 * len(s_nodes)
         global_nodes = [-1] * n_local_nodes

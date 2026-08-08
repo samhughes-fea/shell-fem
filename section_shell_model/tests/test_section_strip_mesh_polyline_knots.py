@@ -28,6 +28,22 @@ def _web_polylines_from_shell(shell: object) -> list[np.ndarray]:
     return webs
 
 
+def _min_dist_to_polylines(q: np.ndarray, polylines: list[np.ndarray]) -> np.ndarray:
+    """Per-point minimum distance to any segment of any polyline."""
+    best = np.full(q.shape[0], np.inf)
+    for w in polylines:
+        for j in range(w.shape[0] - 1):
+            a = w[j]
+            ab = w[j + 1] - a
+            l2 = float(np.dot(ab, ab))
+            if l2 <= 0.0:
+                continue
+            t = np.clip(((q - a) @ ab) / l2, 0.0, 1.0)
+            proj = a + t[:, None] * ab
+            best = np.minimum(best, np.linalg.norm(q - proj, axis=1))
+    return best
+
+
 @pytest.mark.parametrize("layout_key", ["2C-CN", "2D-CN", "3C-CN"])
 def test_cap_mesh_nodes_intersect_web_midlines(layout_key: str):
     """Cap mesh carries web-centric shared nodes at cap-web intersections."""
@@ -79,15 +95,30 @@ def test_cap_mesh_nodes_intersect_web_midlines(layout_key: str):
     assert best < 1e-4, (layout_key, best)
 
 
-@pytest.mark.parametrize("layout_key", ["2C-CN", "2D-CN"])
-def test_mitc4_cap_nodes_include_resampled_cap_midline_knots(layout_key: str):
-    """Class C: MITC4 cap nodes include all cap midline knots from shell inputs."""
+@pytest.mark.parametrize("layout_key", ["2C-CN", "2D-CN", "5D-F"])
+def test_mitc4_cap_nodes_pin_web_junctions_without_slivers(layout_key: str):
+    """Class C: cap nodes pin cap-web junctions and honour the target length.
+
+    Caps used to keep *every* midline knot. The cap midline is a dense sampling
+    of the offset airfoil arc (~200 knots against a ~55-element target), so that
+    both over-refined the cap and — wherever a cap-web junction insert landed
+    microns from a sampling knot — left sliver elements whose spurious in-plane
+    shear dominated the section's Hashin envelope and drove laminate sizing off
+    a meshing artefact.
+
+    What must actually hold: strip ends are exact, every cap-web junction keeps
+    a shared node, and no element is a sliver. A junction closer to a strip end
+    than the sliver floor is merged into that end — creating the sliver to
+    preserve it exactly would defeat the point — so it is only required to be
+    within the floor.
+    """
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
     from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
+    from blade_structure_utilities.mesh_utilities.line_1d import LineMeshSpec
 
     chord_m = 1.655959896
     twist_rad = float(np.deg2rad(34.110405083))
@@ -103,9 +134,10 @@ def test_mitc4_cap_nodes_include_resampled_cap_midline_knots(layout_key: str):
         n_web_samples=20,
         n_cap_samples=80,
     )
+    h_target = _target_element_length_demo_m(chord_m)
     mesh = build_section_strip_mesh(
         shell,
-        target_element_length_m=_target_element_length_demo_m(chord_m),
+        target_element_length_m=h_target,
         endpoint_tol=1e-6,
     )
     cap_mesh = {
@@ -114,14 +146,30 @@ def test_mitc4_cap_nodes_include_resampled_cap_midline_knots(layout_key: str):
         if pm.kind == "cap"
     }
     assert cap_mesh
+    webs = _web_polylines_from_shell(shell)
+    sliver_floor = LineMeshSpec().min_segment_length_frac * h_target
+
     for m in shell.midlines:  # type: ignore[attr-defined]
         if m.kind != "cap":
             continue
         arr = np.asarray(m.midline_b, dtype=float)
         yz = cap_mesh[m.label]
-        for q in arr:
+
+        assert np.allclose(yz[0], arr[0], atol=1e-12, rtol=0.0), (layout_key, m.label)
+        assert np.allclose(yz[-1], arr[-1], atol=1e-12, rtol=0.0), (layout_key, m.label)
+
+        junctions = arr[_min_dist_to_polylines(arr, webs) <= 1e-6] if webs else arr[:0]
+        for q in junctions:
             d = float(np.linalg.norm(yz - q.reshape(1, 2), axis=1).min())
-            assert d < 1e-8, (layout_key, m.label, d)
+            near_end = min(
+                float(np.linalg.norm(q - arr[0])), float(np.linalg.norm(q - arr[-1]))
+            )
+            tol = sliver_floor if near_end < sliver_floor else 1e-9
+            assert d <= tol, (layout_key, m.label, d, tol)
+
+        el = np.linalg.norm(np.diff(yz, axis=0), axis=1)
+        assert el.min() >= 0.2 * h_target, (layout_key, m.label, el.min(), h_target)
+        assert el.max() <= 1.6 * h_target, (layout_key, m.label, el.max(), h_target)
 
 
 def test_1a_cn_skin_mesh_endpoints_match_panel_polyline(airfoil):
