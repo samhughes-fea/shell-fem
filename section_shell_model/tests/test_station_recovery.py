@@ -15,10 +15,20 @@ from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runn
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
     SectionLinearStaticRunner,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+    build_section_strip_mesh,
+)
 
 
 def _pb():
     return build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+
+
+def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 4):
+    return build_section_strip_mesh(
+        panel_topology.shell_inputs,
+        n_elements_per_panel=n_elements_per_panel,
+    )
 
 
 def test_section_linear_static_runner_execute_get_results() -> None:
@@ -43,7 +53,7 @@ def test_section_linear_static_runner_execute_get_results() -> None:
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         resultants=resultants,
-        n_elements_per_panel=4,
+        section_strip_mesh=_strip_mesh(panel_topology, n_elements_per_panel=4),
         load_channel="thinwall",
         section_force_vector=sfv,
     ).execute()
@@ -72,9 +82,20 @@ def test_execute_requires_panel_topology() -> None:
         SectionLinearStaticRunner(My=1.0e3).execute()
 
 
+def test_execute_requires_section_strip_mesh() -> None:
+    with pytest.raises(ValueError, match="section_strip_mesh"):
+        SectionLinearStaticRunner(panel_topology=_pb(), My=1.0e3).execute()
+
+
 def test_deprecated_run_station_hashin_shim_still_works() -> None:
     panel_topology = _pb()
-    out = run_station_hashin(panel_topology, N=1.0e5, My=3.0e4, n_elements_per_panel=4)
+    mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
+    out = run_station_hashin(
+        panel_topology,
+        N=1.0e5,
+        My=3.0e4,
+        section_strip_mesh=mesh,
+    )
     assert out["track"] == "linear_static"
     max_fi = float(out["max_fi_hashin"])
     assert np.isfinite(max_fi) and max_fi >= 0.0
@@ -96,13 +117,13 @@ def test_run_station_hashin_periodic_track_removed() -> None:
 
 def test_build_fsdt_station_analysis_omits_deprecated_k6() -> None:
     panel_topology = _pb()
+    mesh = _strip_mesh(panel_topology, n_elements_per_panel=3)
     analysis = build_fsdt_station_analysis(
         panel_topology.section,
         panel_topology.shell_inputs,
         z_station=0.35,
         My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=mesh,
         station_id="linear-static-no-k6",
         enable_buckling=False,
     )

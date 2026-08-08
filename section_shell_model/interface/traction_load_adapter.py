@@ -5,7 +5,7 @@ Production path: :func:`run_section_linear_static_from_load_field`.
 from __future__ import annotations
 
 import warnings
-from typing import Mapping
+from typing import Any, Mapping
 
 import numpy as np
 
@@ -169,6 +169,7 @@ def run_section_linear_static_from_load_field(
     n_elements_per_panel: int = 10,
     target_element_length_m: float | None = None,
     min_elements_per_panel: int = 2,
+    section_strip_mesh: Any | None = None,
     L_x: float = 1.0,
     interface_constraint_mode: str = "shared",
     bc_mode: str = "contour_support",
@@ -182,7 +183,7 @@ def run_section_linear_static_from_load_field(
     Exclusive Channel A/B provenance matches
     :func:`section_resultants_from_load_field`: usable traction zeros beam
     shears and overlays face loads; otherwise distributed ``q`` enters Channel A
-    only.
+    only. Density kwargs build a strip mesh when ``section_strip_mesh`` is omitted.
     """
     N, Vy, Vz, My, Mz, T = beam_resultants_from_load_field(
         load_field,
@@ -204,6 +205,7 @@ def run_section_linear_static_from_load_field(
         n_elements_per_panel=n_elements_per_panel,
         target_element_length_m=target_element_length_m,
         min_elements_per_panel=min_elements_per_panel,
+        section_strip_mesh=section_strip_mesh,
         L_x=L_x,
         interface_constraint_mode=interface_constraint_mode,
         bc_mode=bc_mode,

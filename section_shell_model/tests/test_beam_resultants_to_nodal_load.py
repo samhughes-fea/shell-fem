@@ -24,6 +24,16 @@ from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
     SectionLinearStaticRunner,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+    build_section_strip_mesh,
+)
+
+
+def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 4):
+    return build_section_strip_mesh(
+        panel_topology.shell_inputs,
+        n_elements_per_panel=n_elements_per_panel,
+    )
 
 
 def _asm_naca():
@@ -31,8 +41,13 @@ def _asm_naca():
     panels = panel_topology.panels
     nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in panels]
     nxy = [np.zeros_like(a) for a in nx]
+    mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
     asm = assemble_section_from_panels(
-        panels, nx, nxy, n_elements_per_panel=4, shell_theory=ShellTheory.FSDT,
+        panels,
+        nx,
+        nxy,
+        section_strip_mesh=mesh,
+        shell_theory=ShellTheory.FSDT,
     )
     return panel_topology, asm
 
@@ -72,7 +87,7 @@ def test_linear_static_cascade_reaches_quaternary():
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         resultants=vec,
-        n_elements_per_panel=4,
+        section_strip_mesh=_strip_mesh(panel_topology, n_elements_per_panel=4),
         load_channel="equipollent",
         compute_section_deformation_1a=True,
     ).execute()
@@ -97,11 +112,12 @@ def test_torsion_about_shear_centre_opt_in_reconstructs_T():
     y_sc, z_sc = shear_centre_about_yz_from_panel_topology(panel_topology)
     assert np.isfinite(y_sc) and np.isfinite(z_sc)
 
+    mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         T=50.0,
         torsion_about_shear_centre=True,
-        n_elements_per_panel=4,
+        section_strip_mesh=mesh,
         load_channel="equipollent",
     ).execute()
     assert static.resultants is not None
@@ -118,7 +134,7 @@ def test_torsion_about_shear_centre_opt_in_reconstructs_T():
     static_default = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         T=50.0,
-        n_elements_per_panel=4,
+        section_strip_mesh=mesh,
         load_channel="equipollent",
     ).execute()
     assert static_default.resultants is not None
@@ -131,8 +147,7 @@ def test_linear_static_from_resultants_rejects_non_fsdt() -> None:
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
             My=1.0e3,
-            n_elements_per_panel=3,
-            min_elements_per_panel=2,
+            section_strip_mesh=_strip_mesh(panel_topology, n_elements_per_panel=3),
             load_channel="equipollent",
             shell_theory=ShellTheory.CALCULIX_CCX,
         ).execute()

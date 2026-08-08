@@ -148,8 +148,8 @@ class SectionLinearStaticRunner:
     Low-level FE path: :meth:`from_cache` / :meth:`from_global` then :meth:`solve`.
 
     Prefer ``section_strip_mesh=`` from ``mesh_utilities.section_mesh`` so density
-    stays outside FE. Density kwargs remain as remesh-only legacy when the strip
-    mesh is omitted.
+    stays outside FE. Remesh-via-density kwargs are rejected — callers (or FE
+    shims) must build the strip mesh before construct/execute.
     """
 
     def __init__(
@@ -319,11 +319,6 @@ class SectionLinearStaticRunner:
         from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.traction_face_load import (
             traction_face_loads,
         )
-        from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
-            MIN_ELEMENTS_PER_PANEL,
-            TARGET_ELEMENT_LENGTH_FRAC,
-            target_element_length_m_from_chord,
-        )
         from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.connected_assembly_core import (
             build_clamp_supports,
         )
@@ -358,39 +353,22 @@ class SectionLinearStaticRunner:
             traction_points_yz=self._traction_points_yz,
         )
 
-        min_el = (
-            MIN_ELEMENTS_PER_PANEL
-            if self._min_elements_per_panel is None
-            else int(self._min_elements_per_panel)
-        )
         panels = list(panel_topology.panels)
         strip_mesh = self._section_strip_mesh
-        mesh_n_el = self._n_elements_per_panel
-        mesh_h_m = self._target_element_length_m
-        # Remesh-only legacy: resolve density when no prebuilt strip mesh.
-        if strip_mesh is None and mesh_n_el is None and mesh_h_m is None:
-            si = getattr(panel_topology, "shell_inputs", None)
-            chord = getattr(si, "chord_m", None) if si is not None else None
-            if chord is None or not np.isfinite(float(chord)) or float(chord) <= 0.0:
-                # Fallback: section bounding-box span in the (y, z) plane.
-                ys, zs = [], []
-                for p in panels:
-                    nodes = np.asarray(getattr(p, "nodes", None), dtype=float)
-                    if nodes.ndim == 2 and nodes.shape[0] and nodes.shape[1] >= 2:
-                        ys.append(nodes[:, 0])
-                        zs.append(nodes[:, 1])
-                if ys:
-                    y_all = np.concatenate(ys)
-                    z_all = np.concatenate(zs)
-                    chord = float(
-                        np.linalg.norm(
-                            [np.nanmax(y_all) - np.nanmin(y_all), np.nanmax(z_all) - np.nanmin(z_all)]
-                        )
-                    )
-                else:
-                    chord = 1.0
-            mesh_h_m = target_element_length_m_from_chord(
-                float(chord), frac=TARGET_ELEMENT_LENGTH_FRAC
+        if strip_mesh is None:
+            raise ValueError(
+                "section_strip_mesh is required; build it with "
+                "mesh_utilities.section_mesh.build_section_strip_mesh "
+                "(density is owned outside FE)."
+            )
+        if (
+            self._n_elements_per_panel is not None
+            or self._target_element_length_m is not None
+            or self._min_elements_per_panel is not None
+        ):
+            raise ValueError(
+                "Density kwargs are not accepted on SectionLinearStaticRunner; "
+                "pass a prebuilt section_strip_mesh= instead."
             )
         nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in panels]
         nxy = [np.zeros_like(a) for a in nx]
@@ -399,9 +377,6 @@ class SectionLinearStaticRunner:
             nx,
             nxy,
             L_x=self._L_x,
-            n_elements_per_panel=None if strip_mesh is not None else mesh_n_el,
-            target_element_length_m=None if strip_mesh is not None else mesh_h_m,
-            min_elements_per_panel=min_el,
             interface_constraint_mode=self._interface_constraint_mode,
             shell_theory=self._shell_theory,
             phase_collector=self._phase_collector,
