@@ -174,6 +174,7 @@ class SectionLinearStaticRunner:
         section_strip_mesh: Any | None = None,
         L_x: float = 1.0,
         interface_constraint_mode: str = "shared",
+        cap_tie_mode: str = "none",
         bc_mode: str = "contour_support",
         shell_theory: ShellTheory = ShellTheory.FSDT,
         load_channel: str = "thinwall",
@@ -231,7 +232,9 @@ class SectionLinearStaticRunner:
         self._section_strip_mesh = section_strip_mesh
         self._L_x = float(L_x)
         self._interface_constraint_mode = str(interface_constraint_mode)
+        self._cap_tie_mode = str(cap_tie_mode or "none")
         self._bc_mode = str(bc_mode)
+        self.cap_tie_report: Any | None = None
         self._shell_theory = shell_theory
         self._load_channel = str(load_channel or "thinwall")
         self._shell_midlines = shell_midlines
@@ -385,6 +388,20 @@ class SectionLinearStaticRunner:
         ndof = int(asm.cache.n_dof_node)
         fixed = build_clamp_supports(asm.panel_maps, ndof=ndof, bc_mode=self._bc_mode)
         constraints = dict(asm.node_meta.constraints or {})
+
+        if self._cap_tie_mode != "none":
+            from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.cap_tie_constraints import (
+                build_cap_tie_constraints,
+            )
+
+            cap_mpcs, self.cap_tie_report = build_cap_tie_constraints(
+                asm.panel_maps,
+                asm.node_meta,
+                ndof=ndof,
+                mode=self._cap_tie_mode,
+                existing=constraints,
+            )
+            constraints.update(cap_mpcs)
 
         resultants = self._resultants_in
         if resultants is None:
