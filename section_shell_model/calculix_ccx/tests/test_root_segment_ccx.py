@@ -23,7 +23,7 @@ from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.ro
     build_ccx_root_segment_mesh,
     estimate_root_diameter_m,
 )
-from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.constitutive.default_laminates import (
+from blade_structure_utilities.material_utilities.adapters.default_laminates import (
     WallLaminate,
 )
 

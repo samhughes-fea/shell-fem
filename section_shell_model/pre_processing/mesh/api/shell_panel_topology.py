@@ -57,21 +57,30 @@ def build_shell_panel_topology(
     cap_lam: Any | None = None,
     retain_section: bool = True,
 ) -> "ShellPanelTopology":
-    """Thin convenience: NACA + webs → geometry worker → mesh inputs → panels.
+    """Thin convenience: NACA + webs → midlines → strips-first mesh inputs → panels.
 
     Prefer production callers that already have a geometry-worker result and use
     :func:`shell_panel_topology_from_shell_inputs` with
-    :func:`build_shell_mesh_inputs` (or midlines from ``build_section_geometry``).
+    :func:`shell_mesh_inputs_from_geometry_result`.
 
     ``retain_section`` keeps the live SDF section on the topology for viz only;
     the FE solve uses ``shell_inputs`` polylines.
     """
+    import numpy as np
+
     from blade_structure_utilities.geometry_utilities.section_geometry import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.engine.sections.section import (
         BladeSectionGeometry,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import (
+        build_shell_midline_strips,
+        rotate_chord_to_blade,
+    )
+    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_strip_topology import (
+        build_shell_strip_topology,
+    )
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
+        shell_mesh_inputs_from_strips,
     )
 
     airfoil_sdf = AirfoilSDF.from_naca(naca_code, n_points=200, chord=chord_m)
@@ -90,11 +99,23 @@ def build_shell_panel_topology(
         section_kwargs["cap_height"] = float(cap_height)
     section = BladeSectionGeometry.from_n_web(airfoil_sdf, **section_kwargs)
 
-    shell_inputs = build_shell_mesh_inputs(
+    raw = build_shell_midline_strips(
         section,
-        twist_rad=twist_rad,
-        n_web_samples=n_web_samples,
-        n_cap_samples=n_cap_samples,
+        twist_rad=float(twist_rad),
+        n_web_samples=int(n_web_samples),
+        n_cap_samples=int(n_cap_samples),
+    )
+    strips = build_shell_strip_topology(raw)
+    le_S = np.asarray(airfoil_sdf.leading_edge, dtype=float).reshape(1, 2)
+    te_S = np.asarray(airfoil_sdf.trailing_edge, dtype=float).reshape(1, 2)
+    le_b = tuple(float(v) for v in rotate_chord_to_blade(le_S, float(twist_rad))[0])
+    te_b = tuple(float(v) for v in rotate_chord_to_blade(te_S, float(twist_rad))[0])
+    shell_inputs = shell_mesh_inputs_from_strips(
+        strips,
+        chord_m=float(chord_m),
+        twist_rad=float(twist_rad),
+        leading_edge_b=le_b,  # type: ignore[arg-type]
+        trailing_edge_b=te_b,  # type: ignore[arg-type]
     )
     return shell_panel_topology_from_shell_inputs(
         shell_inputs,
@@ -119,9 +140,9 @@ def shell_panel_topology_from_shell_inputs(
     ``section`` is optional and only for viz (SDF plots); the FE solve must not
     re-evaluate SDF.
     """
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.topology import build_section_v2
+    from blade_structure_utilities.material_utilities.adapters import bind_shell_panels
 
-    panels, booms, webs_geom, n_cells = build_section_v2(
+    panels, booms, webs_geom, n_cells = bind_shell_panels(
         shell_inputs,
         skin_lam=skin_lam,
         web_lam=web_lam,

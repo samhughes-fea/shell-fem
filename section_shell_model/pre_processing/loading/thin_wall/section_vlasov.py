@@ -80,7 +80,7 @@ def compute_section_vlasov(
     Parameters
     ----------
     airfoil   : (N, 2) array [y, z]
-    panels    : Panel objects (``pre_processing.containers.panel_types.Panel``)
+    panels    : Panel objects (``material_utilities.adapters.panel_types.Panel``)
     B         : bimoment [N·m²]
     dB_dx     : rate of bimoment along span [N·m]
     webs_geom : list of (upper_pt, lower_pt) tuples for spar webs; if provided,
