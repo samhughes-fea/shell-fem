@@ -21,7 +21,7 @@ from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.
     panel_endpoints,
     resolve_n_elements,
 )
-from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.strip_discretise import discretise_strip
+from blade_structure_utilities.mesh_utilities.section_mesh.discretise import discretise_strip
 from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.connected_assembly_core import (
     assign_global_nodes_cluster_basis,
     assign_global_nodes_independent,
@@ -54,35 +54,62 @@ def build_connected_panel_maps(
     endpoint_tol: float = 1e-6,
     min_elements_per_panel: int = 2,
     interface_constraint_mode: str = "shared",
+    section_strip_mesh: Any | None = None,
 ) -> ConnectedPanelTopology:
-    """Discretise panels, cluster endpoints, and assign global node IDs."""
+    """Discretise panels (or consume prebuilt strip mesh), cluster, assign global IDs.
+
+    When ``section_strip_mesh`` is provided, skip ``discretise_strip`` and use
+    each ``StripPanelMesh`` ``s_nodes`` / ``elements`` (mesh-worker ownership).
+    """
     panel_maps: list[PanelGlobalMap] = []
     endpoints: list[tuple[int, str, np.ndarray]] = []
-    n_elem_spec = effective_n_elements_spec(
-        panels,
-        n_elements_per_panel,
-        target_element_length_m,
-        min_n=int(min_elements_per_panel),
-    )
+    strip_meshes = None
+    if section_strip_mesh is not None:
+        strip_meshes = list(getattr(section_strip_mesh, "panel_meshes", []) or [])
+        if len(strip_meshes) != len(panels):
+            raise ValueError(
+                f"section_strip_mesh.panel_meshes length {len(strip_meshes)} "
+                f"!= panels length {len(panels)}"
+            )
+        n_elem_spec = None
+    else:
+        n_elem_spec = effective_n_elements_spec(
+            panels,
+            n_elements_per_panel,
+            target_element_length_m,
+            min_n=int(min_elements_per_panel),
+        )
 
     for pi, p in enumerate(panels):
-        s_panel = np.asarray(p.s, dtype=float)
-        if len(s_panel) < 2:
-            panel_maps.append(
-                PanelGlobalMap(np.array([]), [], [], str(getattr(p, "label", f"panel_{pi}")), pi)
-            )
-            continue
+        label = str(getattr(p, "label", f"panel_{pi}"))
         nodes_yz = np.asarray(getattr(p, "nodes"), dtype=float)
-        s_nodes, elems = discretise_strip(
-            s_panel,
-            resolve_n_elements(n_elem_spec, pi),
-            panel_label=str(getattr(p, "label", "") or ""),
-            nodes_yz=nodes_yz,
-        )
+        if strip_meshes is not None:
+            pm = strip_meshes[pi]
+            pm_label = str(getattr(pm, "panel_label", ""))
+            if pm_label and pm_label != label:
+                raise ValueError(
+                    f"panel[{pi}] label {label!r} != strip mesh label {pm_label!r}"
+                )
+            s_nodes = np.asarray(pm.s_nodes, dtype=float)
+            elems = [list(e) for e in (pm.elements or [])]
+            if s_nodes.size < 2:
+                panel_maps.append(PanelGlobalMap(np.array([]), [], [], label, pi))
+                continue
+        else:
+            s_panel = np.asarray(p.s, dtype=float)
+            if len(s_panel) < 2:
+                panel_maps.append(PanelGlobalMap(np.array([]), [], [], label, pi))
+                continue
+            s_nodes, elems = discretise_strip(
+                s_panel,
+                resolve_n_elements(n_elem_spec, pi),
+                panel_label=label,
+                nodes_yz=nodes_yz,
+            )
         n_local_nodes = 2 * len(s_nodes)
         global_nodes = [-1] * n_local_nodes
         panel_maps.append(
-            PanelGlobalMap(s_nodes, elems, global_nodes, str(getattr(p, "label", f"panel_{pi}")), pi)
+            PanelGlobalMap(s_nodes, elems, global_nodes, label, pi)
         )
         ep = panel_endpoints(nodes_yz)
         endpoints.append((pi, "start", ep["start"]))

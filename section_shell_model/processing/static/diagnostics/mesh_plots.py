@@ -104,7 +104,7 @@ def _add_skin_inward_rays_class_c_near_caps(
     chord_m: float,
 ) -> None:
     """Draw Class C ray directions used by cap interior resampling."""
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         _SKIN_RAY_CAP_BBOX_MARGIN_M,
         _concat_skin_ring_vertices,
         _normal_2d_ccw,

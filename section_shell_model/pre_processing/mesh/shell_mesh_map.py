@@ -8,8 +8,12 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from .mesh_topology import NElements, cluster_points, panel_endpoints
-from .strip_discretise import discretise_strip
+from blade_structure_utilities.mesh_utilities.section_mesh.discretise import discretise_strip
+from blade_structure_utilities.mesh_utilities.section_mesh.mesh_topology import (
+    NElements,
+    cluster_points,
+    panel_endpoints,
+)
 
 
 def resolve_n_elements(spec: NElements, pi: int, default: int = 10) -> int:

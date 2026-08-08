@@ -81,7 +81,7 @@ def _all_layout_keys() -> tuple[str, ...]:
 
 def _target_element_length_demo_m(chord_m: float) -> float:
     """~uniform physical spacing for MITC4 demo (metres), scaled from chord."""
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
         TARGET_ELEMENT_LENGTH_FRAC,
         target_element_length_m_from_chord,
     )
@@ -98,7 +98,7 @@ def _smoke_geo_export_vs_shell_inputs(
     """``build_shell_mesh_inputs`` may split skin and snap web/cap ends to the skin midline.
 
     Cap strips may additionally run
-    :func:`~blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section._resample_cap_interiors_from_skin_rays`,
+    :func:`~blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs._resample_cap_interiors_from_skin_rays`,
     which replaces interior vertices (different ``N`` than ``n_cap_samples``) while
     keeping endpoints; those caps are only checked for endpoint agreement here.
     """
@@ -169,13 +169,13 @@ def _run_single_layout(
     from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import (
         build_shell_midline_strips,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
         ENDPOINT_TOL_FRAC,
         TARGET_ELEMENT_LENGTH_FRAC,
         build_section_strip_mesh,
         target_element_length_m_from_chord,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         ShellMeshInputs,
         build_shell_mesh_inputs,
     )

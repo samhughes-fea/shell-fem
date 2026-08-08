@@ -33,8 +33,8 @@ def test_cap_mesh_nodes_intersect_web_midlines(layout_key: str):
     """Cap mesh carries web-centric shared nodes at cap-web intersections."""
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
 
@@ -84,8 +84,8 @@ def test_mitc4_cap_nodes_include_resampled_cap_midline_knots(layout_key: str):
     """Class C: MITC4 cap nodes include all cap midline knots from shell inputs."""
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
 
@@ -127,11 +127,11 @@ def test_mitc4_cap_nodes_include_resampled_cap_midline_knots(layout_key: str):
 def test_1a_cn_skin_mesh_endpoints_match_panel_polyline(airfoil):
     """Skin strip MITC4 endpoints match underlying panel polyline ends (no drift)."""
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.topology import build_section_v2
+    from blade_structure_utilities.material_utilities.adapters import bind_shell_panels
 
     layout_key = "1A-CN"
     layout = resolve_system_type(layout_key)
@@ -139,7 +139,7 @@ def test_1a_cn_skin_mesh_endpoints_match_panel_polyline(airfoil):
     shell = build_shell_mesh_inputs(
         section, twist_rad=0.0, layout_key=layout_key, n_web_samples=20, n_cap_samples=40
     )
-    panels, _, _, _ = build_section_v2(shell)
+    panels, _, _, _ = bind_shell_panels(shell)
     mesh = build_section_strip_mesh(shell, n_elements_per_panel=5, endpoint_tol=1e-6)
 
     for pi, pm in enumerate(mesh.panel_meshes):
