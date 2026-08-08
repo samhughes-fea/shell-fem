@@ -127,23 +127,29 @@ CascadeBin = SectionLinearStaticResult
 
 
 class SectionLinearStaticRunner:
-    """FE worker facade: geometry + panel materials + loads → F=KU → cascade bin.
+    """Classical FEM facade: bound panels + external force vector → Ke/Fe → cascade.
 
-    Use-case agnostic (no sizing/fatigue modes). Orchestration (parallelism,
-    iteration, single-shot) lives in the caller. Default path fills the full
-    P→S→T→Q bin via :meth:`execute` / :meth:`get_results`::
+    Use-case agnostic (no sizing/fatigue modes). Constitutive bind
+    (``bind_shell_panels``) and external force-vector shaping
+    (``BeamResultantVector`` → ``SectionForceVector``) happen **outside** this
+    worker. Thinwall path requires ``section_force_vector=``; the runner only
+    applies external → global ``f``, forms ``Ke``/``Fe``, assembles, BCs, solves,
+    and fills P→S→T→Q via :meth:`execute` / :meth:`get_results`::
 
+        sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
         static = SectionLinearStaticRunner(
-            panel_topology=panel_topology, resultants=resultants,
-        ).execute()  # default mesh: TARGET_ELEMENT_LENGTH_FRAC (~1.2% chord)
+            panel_topology=panel_topology,
+            resultants=resultants,
+            section_force_vector=sfv,
+            load_channel="thinwall",
+        ).execute()
         bin = static.get_results()  # CascadeBin
-        fi_field = bin.quaternary_results.hashin_fi.in_plane  # sizing may read Q
-        # fatigue may read bin.tertiary_results (ply/shell stresses)
 
     Low-level FE path: :meth:`from_cache` / :meth:`from_global` then :meth:`solve`.
 
-    Mesh density defaults to :data:`TARGET_ELEMENT_LENGTH_FRAC` when
-    ``n_elements_per_panel`` and ``target_element_length_m`` are both unset.
+    Prefer ``section_strip_mesh=`` from ``mesh_utilities.section_mesh`` so density
+    stays outside FE. Density kwargs remain as remesh-only legacy when the strip
+    mesh is omitted.
     """
 
     def __init__(
@@ -165,6 +171,7 @@ class SectionLinearStaticRunner:
         n_elements_per_panel: Any = None,
         target_element_length_m: float | None = None,
         min_elements_per_panel: int | None = None,
+        section_strip_mesh: Any | None = None,
         L_x: float = 1.0,
         interface_constraint_mode: str = "shared",
         bc_mode: str = "contour_support",
@@ -221,6 +228,7 @@ class SectionLinearStaticRunner:
         self._n_elements_per_panel = n_elements_per_panel
         self._target_element_length_m = target_element_length_m
         self._min_elements_per_panel = min_elements_per_panel
+        self._section_strip_mesh = section_strip_mesh
         self._L_x = float(L_x)
         self._interface_constraint_mode = str(interface_constraint_mode)
         self._bc_mode = str(bc_mode)
@@ -311,7 +319,7 @@ class SectionLinearStaticRunner:
         from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.traction_face_load import (
             traction_face_loads,
         )
-        from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
+        from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
             MIN_ELEMENTS_PER_PANEL,
             TARGET_ELEMENT_LENGTH_FRAC,
             target_element_length_m_from_chord,
@@ -356,9 +364,11 @@ class SectionLinearStaticRunner:
             else int(self._min_elements_per_panel)
         )
         panels = list(panel_topology.panels)
+        strip_mesh = self._section_strip_mesh
         mesh_n_el = self._n_elements_per_panel
         mesh_h_m = self._target_element_length_m
-        if mesh_n_el is None and mesh_h_m is None:
+        # Remesh-only legacy: resolve density when no prebuilt strip mesh.
+        if strip_mesh is None and mesh_n_el is None and mesh_h_m is None:
             si = getattr(panel_topology, "shell_inputs", None)
             chord = getattr(si, "chord_m", None) if si is not None else None
             if chord is None or not np.isfinite(float(chord)) or float(chord) <= 0.0:
@@ -389,12 +399,13 @@ class SectionLinearStaticRunner:
             nx,
             nxy,
             L_x=self._L_x,
-            n_elements_per_panel=mesh_n_el,
-            target_element_length_m=mesh_h_m,
+            n_elements_per_panel=None if strip_mesh is not None else mesh_n_el,
+            target_element_length_m=None if strip_mesh is not None else mesh_h_m,
             min_elements_per_panel=min_el,
             interface_constraint_mode=self._interface_constraint_mode,
             shell_theory=self._shell_theory,
             phase_collector=self._phase_collector,
+            section_strip_mesh=strip_mesh,
         )
         ndof = int(asm.cache.n_dof_node)
         fixed = build_clamp_supports(asm.panel_maps, ndof=ndof, bc_mode=self._bc_mode)
@@ -429,30 +440,13 @@ class SectionLinearStaticRunner:
             )
 
             if sfv is None:
-                midlines = self._shell_midlines
-                if midlines is None:
-                    si = getattr(panel_topology, "shell_inputs", None)
-                    midlines = getattr(si, "midlines", None) if si is not None else None
-                if midlines is None:
-                    raise ValueError(
-                        "load_channel='thinwall' requires shell_midlines "
-                        "(or panel_topology.shell_inputs.midlines) "
-                        "or a precomputed section_force_vector; "
-                        "use load_channel='equipollent' for mesh-native Channel A"
-                    )
-                from blade_structure_utilities.load_utilities.beam_to_shell_loads import (
-                    MaterialMap,
-                )
-                from blade_structure_utilities.load_utilities.beam_to_shell_loads.thinwall import (
-                    distribute_beam_resultants,
-                )
-
-                mats = self._load_materials or MaterialMap()
-                sfv = distribute_beam_resultants(
-                    resultants,
-                    midlines,
-                    mats,
-                    L_x=1.0,
+                raise ValueError(
+                    "load_channel='thinwall' requires a precomputed "
+                    "section_force_vector (external force vector / SectionForceVector). "
+                    "Shape BeamResultantVector → SectionForceVector outside the FE worker "
+                    "via load_utilities.beam_to_shell_loads.thinwall.distribute_beam_resultants; "
+                    "this runner only applies external → global force vector f. "
+                    "Use load_channel='equipollent' for mesh-native Channel A."
                 )
             f = section_force_vector_to_nodal_load(
                 asm.node_meta,

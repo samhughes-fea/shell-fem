@@ -21,9 +21,10 @@ from blade_structure_utilities.geometry_utilities.section_contract.beam_resultan
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import ShellPanelTopology
-from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.mesh_topology import NElements
-from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
+from blade_structure_utilities.mesh_utilities.section_mesh.mesh_topology import NElements
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
     MIN_ELEMENTS_PER_PANEL,
+    build_section_strip_mesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.section_assembly import (
     SectionAssemblyResult,
@@ -74,6 +75,30 @@ class LinearStaticCascadeResult:
         )
 
 
+def _section_strip_mesh_for_shim(
+    panel_topology: ShellPanelTopology,
+    *,
+    section_strip_mesh: Any | None,
+    n_elements_per_panel: NElements | None,
+    target_element_length_m: float | None,
+    min_elements_per_panel: int,
+) -> Any:
+    """Prefer caller mesh; otherwise build once from ``panel_topology.shell_inputs``."""
+    if section_strip_mesh is not None:
+        return section_strip_mesh
+    shell_inputs = getattr(panel_topology, "shell_inputs", None)
+    if shell_inputs is None:
+        raise ValueError(
+            "section_strip_mesh is required when panel_topology.shell_inputs is missing"
+        )
+    return build_section_strip_mesh(
+        shell_inputs,
+        n_elements_per_panel=n_elements_per_panel,
+        target_element_length_m=target_element_length_m,
+        min_elements_per_panel=min_elements_per_panel,
+    )
+
+
 def run_section_linear_static_from_resultants(
     panel_topology: ShellPanelTopology,
     *,
@@ -92,6 +117,7 @@ def run_section_linear_static_from_resultants(
     n_elements_per_panel: NElements | None = None,
     target_element_length_m: float | None = None,
     min_elements_per_panel: int = MIN_ELEMENTS_PER_PANEL,
+    section_strip_mesh: Any | None = None,
     L_x: float = 1.0,
     interface_constraint_mode: str = "shared",
     bc_mode: str = "contour_support",
@@ -99,12 +125,42 @@ def run_section_linear_static_from_resultants(
     compute_section_deformation_1a: bool = False,
     load_channel: str | None = None,
 ) -> LinearStaticCascadeResult:
-    """Deprecated shim: construct → :meth:`~SectionLinearStaticRunner.execute` → cascade view."""
+    """Deprecated shim: construct → :meth:`~SectionLinearStaticRunner.execute` → cascade view.
+
+    Density kwargs build a :class:`SectionStripMesh` before the runner when
+    ``section_strip_mesh`` is not supplied.
+    """
     # Face-traction overlay is only combined with Channel A (equipollent).
     # Thinwall (default) does not stack matching aero shears.
     channel = load_channel
     if channel is None:
         channel = "equipollent" if traction_field is not None else "thinwall"
+    sfv = None
+    if str(channel).lower() in {"thinwall", "thinwall_shaped", "c1"}:
+        from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+            BEAM_LOAD_AXIS_YZ,
+            FRAME_SECTION_YZ,
+        )
+        from blade_structure_utilities.load_utilities.beam_to_shell_loads import (
+            shape_section_force_vector_from_panel_topology,
+        )
+
+        R = resultants
+        if R is None:
+            origin = about_yz if about_yz is not None else BEAM_LOAD_AXIS_YZ
+            R = BeamResultantVector.from_named(
+                N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
+                frame=FRAME_SECTION_YZ,
+                about_yz=origin,
+            )
+        sfv = shape_section_force_vector_from_panel_topology(R, panel_topology)
+    strip_mesh = _section_strip_mesh_for_shim(
+        panel_topology,
+        section_strip_mesh=section_strip_mesh,
+        n_elements_per_panel=n_elements_per_panel,
+        target_element_length_m=target_element_length_m,
+        min_elements_per_panel=min_elements_per_panel,
+    )
     runner = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         resultants=resultants,
@@ -119,15 +175,14 @@ def run_section_linear_static_from_resultants(
         shear_centre_E_mean=shear_centre_E_mean,
         traction_field=traction_field,
         traction_points_yz=traction_points_yz,
-        n_elements_per_panel=n_elements_per_panel,
-        target_element_length_m=target_element_length_m,
-        min_elements_per_panel=min_elements_per_panel,
+        section_strip_mesh=strip_mesh,
         L_x=L_x,
         interface_constraint_mode=interface_constraint_mode,
         bc_mode=bc_mode,
         shell_theory=shell_theory,
         compute_section_deformation_1a=compute_section_deformation_1a,
         load_channel=channel,
+        section_force_vector=sfv,
     ).execute()
     return LinearStaticCascadeResult.from_executed_runner(runner)
 

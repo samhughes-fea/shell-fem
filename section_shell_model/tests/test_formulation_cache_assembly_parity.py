@@ -16,7 +16,7 @@ from blade_structure_utilities.fem_utilities.section_shell_model.processing.stat
     _dof,
     panel_abd_tuple_from_lam,
 )
-from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.strip_discretise import (
+from blade_structure_utilities.mesh_utilities.section_mesh.discretise import (
     discretise_strip,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.section_assembly import assemble_section_system

@@ -86,11 +86,14 @@ def assemble_section_from_panels(
     interface_constraint_mode: str = "shared",
     shell_theory: ShellTheory = ShellTheory.FSDT,
     phase_collector: PhaseCollector | None = None,
+    section_strip_mesh: Any | None = None,
 ) -> SectionAssemblyResult:
     """Thin assembly path: topology → formulation cache → scatter-add K/f.
 
     Used by production periodic K6 caching and by ``assemble_global_shell``.
     Does not apply contour clamps, MPCs, or resultant recovery.
+
+    Pass ``section_strip_mesh`` to skip remesh (mesh-worker ownership of density).
     """
     topology = build_connected_panel_maps(
         panels,
@@ -99,6 +102,7 @@ def assemble_section_from_panels(
         endpoint_tol=endpoint_tol,
         min_elements_per_panel=min_elements_per_panel,
         interface_constraint_mode=interface_constraint_mode,
+        section_strip_mesh=section_strip_mesh,
     )
     cache = build_formulation_cache(
         topology.panel_maps,

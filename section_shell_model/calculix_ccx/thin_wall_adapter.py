@@ -19,7 +19,7 @@ from typing import Any
 import numpy as np
 
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
-from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.mesh_topology import NElements
+from blade_structure_utilities.mesh_utilities.section_mesh.mesh_topology import NElements
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import SectionVlasovResult
 from .solve import solve_global_coupled_ccx
 

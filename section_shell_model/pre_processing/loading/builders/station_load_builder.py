@@ -28,7 +28,7 @@ from .outline_frames import (
     bframe_outline_to_sframe_chord,
     xfoil_te_arc_offset,
 )
-from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import ShellMeshInputs
+from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import ShellMeshInputs
 from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.distributions import CfDistribution, CpDistribution
 from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.geometry import SectionOutlineGeometry
 from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.integration import ForceResultantIntegrator

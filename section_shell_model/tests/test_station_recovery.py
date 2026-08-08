@@ -22,13 +22,30 @@ def _pb():
 
 
 def test_section_linear_static_runner_execute_get_results() -> None:
+    from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+        BEAM_LOAD_AXIS_YZ,
+        FRAME_SECTION_YZ,
+        BeamResultantVector,
+    )
+    from blade_structure_utilities.load_utilities.beam_to_shell_loads import (
+        shape_section_force_vector_from_panel_topology,
+    )
+
     panel_topology = _pb()
-    static = SectionLinearStaticRunner(
-        panel_topology=panel_topology,
+    resultants = BeamResultantVector.from_named(
         N=1.0e5,
         My=3.0e4,
         Vz=2.0e4,
+        frame=FRAME_SECTION_YZ,
+        about_yz=BEAM_LOAD_AXIS_YZ,
+    )
+    sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
+    static = SectionLinearStaticRunner(
+        panel_topology=panel_topology,
+        resultants=resultants,
         n_elements_per_panel=4,
+        load_channel="thinwall",
+        section_force_vector=sfv,
     ).execute()
     results = static.get_results()
     quaternary = results.quaternary_results

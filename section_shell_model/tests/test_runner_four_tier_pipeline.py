@@ -12,7 +12,7 @@ from blade_structure_utilities.fem_utilities.section_shell_model.processing.stat
     _PanelGlobalMap,
     _dof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.strip_discretise import (
+from blade_structure_utilities.mesh_utilities.section_mesh.discretise import (
     discretise_strip,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.formulation_factory import (

@@ -1,28 +1,19 @@
 """
-FE kernel worker: section geometry + panel materials + loads → F=KU → cascade bin.
+FE kernel worker: element ``Ke``/``Fe`` → assemble / solve → cascade bin.
 
 Use-case agnostic. Prefer::
 
     bin = SectionLinearStaticRunner(...).execute().get_results()  # CascadeBin / P→S→T→Q
 
-Orchestration (sizing loops, rainflow, parallelism) lives in use-case packages.
-See package README. Public strip meshing:
-``build_shell_mesh_inputs`` → ``build_section_v2`` → ``build_section_strip_mesh``.
+**Target contract:** prebuilt mesh with constitutive data already assigned;
+this worker owns formulation, assembly, BCs, solve, and P→S→T→Q recovery.
+Strip meshing lives in ``mesh_utilities.section_mesh``. Constitutive bind
+lives in ``material_utilities.adapters`` (``bind_shell_panels``). Orchestration
+(sizing loops, rainflow, parallelism) lives in use-case packages.
 """
 
 from __future__ import annotations
 
-from .pre_processing.mesh.section_strip_mesh import (
-    SectionStripMesh,
-    StripJunctionCluster,
-    StripPanelMesh,
-    build_section_strip_mesh,
-)
-from .pre_processing.mesh.shell_inputs_from_section import (
-    ShellMeshInputs,
-    build_shell_mesh_inputs,
-)
-from .pre_processing.mesh.topology import build_section_v2
 from .pre_processing.containers.types import (
     BeamSectionConstitutiveInput,
     FieldProvenance,
@@ -72,13 +63,6 @@ from .processing.static.results.compute_tertiary.local_clpt_shell import (
 )
 
 __all__ = [
-    "build_section_strip_mesh",
-    "SectionStripMesh",
-    "StripJunctionCluster",
-    "StripPanelMesh",
-    "ShellMeshInputs",
-    "build_section_v2",
-    "build_shell_mesh_inputs",
     "BeamSectionConstitutiveInput",
     "FieldProvenance",
     "ProvenanceKind",

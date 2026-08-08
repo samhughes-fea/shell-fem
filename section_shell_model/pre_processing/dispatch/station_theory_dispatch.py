@@ -58,12 +58,14 @@ def fsdt_periodic_station_hashin(
     target_element_length_m: float | None,
     min_elements_per_panel: int,
     load_field: Any | None = None,
+    section_strip_mesh: Any | None = None,
 ) -> dict[str, Any]:
     """Linear-static FSDT cascade + Hashin FI summary for orchestration JSON.
 
     Usable face traction is applied on the contour-supported linear-static RHS
     (same free set as beam loads). Beam-only stations use the cascade without
-    Channel B overlay.
+    Channel B overlay. Density kwargs build a :class:`SectionStripMesh` before
+    the runner when ``section_strip_mesh`` is not supplied.
     """
     from blade_structure_utilities.fem_utilities.section_shell_model.interface.traction_load_adapter import (
         traction_points_from_load_field,
@@ -73,6 +75,9 @@ def fsdt_periodic_station_hashin(
     )
     from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
         SectionLinearStaticRunner,
+    )
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
     )
 
     panel_topology = shell_panel_topology_from_shell_inputs(
@@ -90,6 +95,33 @@ def fsdt_periodic_station_hashin(
     # Default Channel C (thinwall). When usable face traction is present, use
     # Channel B alone (do not stack tip-integrated V with matching face traction).
     load_channel = "surface_traction" if used_traction else "thinwall"
+    sfv = None
+    if load_channel == "thinwall":
+        from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+            BEAM_LOAD_AXIS_YZ,
+            BeamResultantVector,
+            FRAME_SECTION_YZ,
+        )
+        from blade_structure_utilities.load_utilities.beam_to_shell_loads import (
+            shape_section_force_vector,
+        )
+
+        resultants = BeamResultantVector.from_named(
+            N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
+            frame=FRAME_SECTION_YZ,
+            about_yz=BEAM_LOAD_AXIS_YZ,
+        )
+        sfv = shape_section_force_vector(
+            resultants, getattr(shell_inputs, "midlines", None)
+        )
+    strip_mesh = section_strip_mesh
+    if strip_mesh is None:
+        strip_mesh = build_section_strip_mesh(
+            shell_inputs,
+            n_elements_per_panel=n_elements_per_panel,
+            target_element_length_m=target_element_length_m,
+            min_elements_per_panel=min_elements_per_panel,
+        )
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         N=N,
@@ -100,11 +132,9 @@ def fsdt_periodic_station_hashin(
         T=T,
         traction_field=traction_field,
         traction_points_yz=traction_points,
-        n_elements_per_panel=n_elements_per_panel,
-        target_element_length_m=target_element_length_m,
-        min_elements_per_panel=min_elements_per_panel,
+        section_strip_mesh=strip_mesh,
         load_channel=load_channel,
-        shell_midlines=getattr(shell_inputs, "midlines", None),
+        section_force_vector=sfv,
     ).execute()
     results = static.get_results()
     quaternary = results.quaternary_results
