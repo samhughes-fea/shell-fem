@@ -137,24 +137,68 @@ def _cap_argmax(result):
     return best
 
 
+def _retimed_cap_thickness(shell_inputs, mesh, t_spar: float):
+    """Rebind the cap through-thickness on frozen geometry, touching no node.
+
+    The polylines, node coordinates, element connectivity and element counts are
+    reused **as the same arrays**; only the scalar ``thickness_m`` on the cap
+    strips and their meshes changes. Every container involved is a frozen
+    dataclass, so ``replace`` gives a new view over the same geometry rather
+    than a rebuild.
+
+    Three carriers hold the cap thickness and all three have to move together,
+    or the FE and the mesh disagree about the same panel:
+
+    * ``ShellMidlineStrip.thickness_m`` — what ``shell_panel_bind`` reads to set
+      panel thickness (``float(m.thickness_m)``);
+    * ``StripSourcePanel.thickness_m`` — the meshing-side record;
+    * ``StripPanelMesh.thickness_m`` — what the assembled strip mesh carries.
+
+    Returns ``(shell_inputs, mesh)`` views at the requested cap thickness.
+    """
+    from dataclasses import replace
+
+    midlines = [
+        replace(m, thickness_m=float(t_spar)) if m.kind == "cap" else m
+        for m in shell_inputs.midlines
+    ]
+    panels = [
+        replace(p, thickness_m=float(t_spar)) if p.kind == "cap" else p
+        for p in mesh.panels
+    ]
+    panel_meshes = [
+        replace(pm, thickness_m=float(t_spar)) if pm.kind == "cap" else pm
+        for pm in mesh.panel_meshes
+    ]
+    return (
+        replace(shell_inputs, midlines=midlines),
+        replace(mesh, panels=panels, panel_meshes=panel_meshes),
+    )
+
+
 def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
-    """Vary ONLY the laminate: one mesh, built once, reused at every thickness.
+    """Vary ONLY the cap through-thickness: one mesh, built once, never rebuilt.
 
     ``evaluate_station`` cannot do this — its prep-cache key includes ``t_spar``,
-    so every step is a genuine geometry+mesh rebuild. Driving the runner directly
-    with a prebuilt ``SectionStripMesh`` is the only way to hold the mesh still.
-    Whatever wander survives here would be physics, not meshing.
+    so every step there is a genuine geometry+mesh rebuild. Driving the runner
+    directly with a prebuilt ``SectionStripMesh`` is the only way to hold the
+    mesh still, which is what separates the physical outer-ply response from
+    the meshing noise that dominates a free-mesh sweep.
 
-    **This run is currently INCONCLUSIVE and self-reports as such.** Panel
-    thickness is read from the midline strip (``shell_panel_bind.py:126``,
-    ``float(m.thickness_m)``), not from the ``t_spar`` kwarg — that kwarg only
-    selects the laminate. Freezing ``shell_inputs`` to freeze the mesh therefore
-    also freezes the cap's *geometric* thickness, so the sweep varies nothing
-    that reaches the FE and every step returns an identical answer. A valid
-    version has to vary ``midlines[cap].thickness_m`` and the matching
-    ``StripPanelMesh.thickness_m`` while holding every polyline fixed. The guard
-    below fails the run rather than let a flat line be read as "physics is
-    monotone".
+    ~~An earlier version of this run was invalid.~~ It froze ``shell_inputs`` to
+    freeze the mesh, which also froze the cap's *geometric* thickness: panel
+    thickness is read from ``midlines[i].thickness_m``
+    (``shell_panel_bind.py:126``), not from the ``t_spar`` kwarg, which only
+    selects the laminate. Nothing that reached the FE varied, so every step
+    returned an identical answer and a flat line could have been read as
+    "physics is monotone".
+
+    This version rebinds the cap thickness on all three carriers via
+    :func:`_retimed_cap_thickness` while reusing the node arrays themselves, and
+    passes the same ``t_spar`` to the laminate builder so geometry and material
+    move together — the physical case. Two guards remain: the mesh must be
+    bit-identical across steps, and ``fi_spar`` must actually move, or the run
+    refuses to report.
     """
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
         ShellPanelTopology,
@@ -205,22 +249,25 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
     print("-" * len(hdr))
 
     out = []
+    ref_elems = [list(pm.elements) for pm in mesh.panel_meshes]
     for t_spar in T_SPARS:
-        # Only the laminates change; shell_inputs and mesh are the same objects.
+        # Same node arrays; only the cap's scalar thickness is rebound, and the
+        # same t_spar selects the laminate so geometry and material agree.
+        si_t, mesh_t = _retimed_cap_thickness(shell_inputs, mesh, t_spar)
         panels, booms, webs_geom, n_cells = shell_panels_from_mesh_inputs(
-            shell_inputs, component_materials=mats,
+            si_t, component_materials=mats,
             t_skin=T_SKIN, t_spar=t_spar, t_web=T_WEB,
         )
         topo = ShellPanelTopology(
-            shell_inputs=shell_inputs, panels=list(panels), booms=list(booms),
+            shell_inputs=si_t, panels=list(panels), booms=list(booms),
             webs_geom=list(webs_geom), n_cells=int(n_cells), section=section,
         )
         runner = SectionLinearStaticRunner(
             panel_topology=topo,
-            section_strip_mesh=mesh,
+            section_strip_mesh=mesh_t,
             resultants=resultants,
             section_force_vector=shape_section_force_vector(
-                resultants, shell_inputs.midlines
+                resultants, si_t.midlines
             ),
             load_channel="thinwall",
             cap_tie_mode=cap_tie_mode,
@@ -241,8 +288,19 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
                     fi_spar = max(fi_spar, float(np.nanmax(hi[sel])))
         gp = int(gov.get("panel_index", -1))
         gl = labels[gp] if 0 <= gp < len(labels) else "?"
-        n_nodes = sum(int(pm.yz_nodes.shape[0]) for pm in mesh.panel_meshes)
+        n_nodes = sum(int(pm.yz_nodes.shape[0]) for pm in mesh_t.panel_meshes)
         assert n_nodes == n_nodes_ref, "mesh changed — the freeze failed"
+        # Node count alone would not catch a reconnection, so check the element
+        # tables too: this run only means something if the discretisation is
+        # bit-identical and the cap thickness is the single variable.
+        assert [list(pm.elements) for pm in mesh_t.panel_meshes] == ref_elems, (
+            "element connectivity changed — the freeze failed"
+        )
+        assert all(
+            abs(float(pm.thickness_m) - float(t_spar)) <= 1e-15
+            for pm in mesh_t.panel_meshes
+            if pm.kind == "cap"
+        ), "cap thickness did not reach the strip mesh"
         out.append({"t_req": t_spar, "t_real": t_spar, "fi_spar": fi_spar,
                     "max_fi": gov.get("fi"),
                     "argmax": {"panel": str(gl), "elem": int(gov.get("element_index", -1)),
@@ -262,9 +320,9 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
         raise RuntimeError(
             "frozen-mesh run is INCONCLUSIVE: fi_spar is identical at every "
             "thickness, so t_spar never reached the FE. Panel thickness comes "
-            "from midlines[i].thickness_m, which was frozen along with the mesh. "
-            "Vary the strip thickness (geometry AND StripPanelMesh) while holding "
-            "the polylines fixed before trusting this run."
+            "from midlines[i].thickness_m; check _retimed_cap_thickness is "
+            "rebinding all three carriers (ShellMidlineStrip, StripSourcePanel, "
+            "StripPanelMesh) before trusting this run."
         )
     return out
 
