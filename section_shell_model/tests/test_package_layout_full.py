@@ -32,15 +32,12 @@ def test_production_entrypoints_importable() -> None:
         CascadeBin,
         SectionLinearStaticResult,
         SectionLinearStaticRunner,
-        run_section_linear_static_from_resultants,
-        run_station_hashin,
     )
 
+    assert SectionLinearStaticRunner is not None
     assert hasattr(SectionLinearStaticRunner, "execute")
     assert hasattr(SectionLinearStaticRunner, "get_results")
     assert CascadeBin is SectionLinearStaticResult
-    assert callable(run_station_hashin)  # transitional shim
-    assert callable(run_section_linear_static_from_resultants)  # transitional shim
 
 
 def test_no_legacy_foundation_import_paths() -> None:

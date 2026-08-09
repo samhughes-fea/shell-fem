@@ -24,8 +24,11 @@ from blade_structure_utilities.fem_utilities.section_shell_model.processing.stat
     assemble_section_from_panels,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
+    LinearStaticCascadeResult,
     governing_fi_from_quaternary,
-    run_section_linear_static_from_resultants,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticRunner,
 )
 from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import TractionField
 from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
@@ -96,12 +99,24 @@ def test_half_specified_traction_raises() -> None:
     mesh = _strip_mesh(panel_topology)
     tf, pts = _synthetic_traction()
     with pytest.raises(ValueError, match="must be supplied together"):
-        run_section_linear_static_from_resultants(
-            panel_topology, My=1.0e3, traction_field=tf, section_strip_mesh=mesh,
+        LinearStaticCascadeResult.from_executed_runner(
+            SectionLinearStaticRunner(
+                panel_topology=panel_topology,
+                My=1.0e3,
+                traction_field=tf,
+                section_strip_mesh=mesh,
+                load_channel="equipollent",
+            ).execute()
         )
     with pytest.raises(ValueError, match="must be supplied together"):
-        run_section_linear_static_from_resultants(
-            panel_topology, My=1.0e3, traction_points_yz=pts, section_strip_mesh=mesh,
+        LinearStaticCascadeResult.from_executed_runner(
+            SectionLinearStaticRunner(
+                panel_topology=panel_topology,
+                My=1.0e3,
+                traction_points_yz=pts,
+                section_strip_mesh=mesh,
+                load_channel="equipollent",
+            ).execute()
         )
 
 
@@ -125,12 +140,15 @@ def test_combined_rhs_equals_beam_plus_traction() -> None:
         ndof=ndof,
         L_x=1.0,
     )
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        resultants=resultants,
-        traction_field=tf,
-        traction_points_yz=pts,
-        section_strip_mesh=_strip_mesh(panel_topology),
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            resultants=resultants,
+            traction_field=tf,
+            traction_points_yz=pts,
+            section_strip_mesh=_strip_mesh(panel_topology),
+            load_channel="equipollent",
+        ).execute()
     )
     assert cascade.used_traction is True
     np.testing.assert_allclose(cascade.f_nodal, f_beam + f_tr, rtol=0.0, atol=1e-12)
@@ -139,12 +157,15 @@ def test_combined_rhs_equals_beam_plus_traction() -> None:
 def test_linear_static_traction_cascade_reaches_quaternary_fi() -> None:
     panel_topology = _pb()
     tf, pts = _synthetic_traction(q_y=5.0e3, q_z=1.0e3)
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        T=10.0,
-        traction_field=tf,
-        traction_points_yz=pts,
-        section_strip_mesh=_strip_mesh(panel_topology),
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            T=10.0,
+            traction_field=tf,
+            traction_points_yz=pts,
+            section_strip_mesh=_strip_mesh(panel_topology),
+            load_channel="equipollent",
+        ).execute()
     )
     fi, _needs = governing_fi_from_quaternary(cascade.quaternary)
     assert np.isfinite(fi)

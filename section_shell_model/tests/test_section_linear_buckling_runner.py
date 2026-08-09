@@ -29,13 +29,16 @@ from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runn
     run_section_linear_buckling_from_static,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
-    run_section_linear_static_from_resultants,
+    LinearStaticCascadeResult,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (
     build_fsdt_station_analysis,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_buckling_runner import (
     SectionLinearBucklingRunner,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticRunner,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
     build_section_strip_mesh,
@@ -168,13 +171,20 @@ def test_solve_eigen_skips_missing_abd() -> None:
     assert state.n_modes_found == 0
 
 
+def _static_cascade_my(panel_topology, *, My: float = 1.0e3):
+    return LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            My=My,
+            section_strip_mesh=_strip_mesh(panel_topology),
+            load_channel="equipollent",
+        ).execute()
+    )
+
+
 def test_nested_resultants_from_static_cascade_panel_alignment() -> None:
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        My=1.0e3,
-        section_strip_mesh=_strip_mesh(panel_topology),
-    )
+    cascade = _static_cascade_my(panel_topology)
     nested = nested_resultants_from_static_cascade(cascade)
     assert len(nested) == len(cascade.assembly.panel_maps)
     assert any(len(panel_rows or []) > 0 for panel_rows in nested)
@@ -182,11 +192,7 @@ def test_nested_resultants_from_static_cascade_panel_alignment() -> None:
 
 def test_buckling_from_static_cascade_fold() -> None:
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        My=1.0e3,
-        section_strip_mesh=_strip_mesh(panel_topology),
-    )
+    cascade = _static_cascade_my(panel_topology)
     buck = run_section_linear_buckling_from_static(
         cascade,
         station_id="buck-test",
@@ -209,11 +215,7 @@ def test_buckling_from_static_cascade_fold() -> None:
 
 def test_buckling_panel_track_still_available() -> None:
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        My=1.0e3,
-        section_strip_mesh=_strip_mesh(panel_topology),
-    )
+    cascade = _static_cascade_my(panel_topology)
     buck = run_section_linear_buckling_from_static(
         cascade,
         station_id="buck-panel",

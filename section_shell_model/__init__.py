@@ -34,11 +34,6 @@ from .pre_processing.containers.types import (
     supported_shell_theories,
     validate_shell_configuration,
 )
-from .simulation_runner.api.linear_static import run_section_linear_static_from_resultants
-from .simulation_runner.api.station_recovery import (
-    run_station_hashin,
-    run_station_linear_static_hashin,
-)
 from .processing.static.results.containers.diagnostics_bin import DiagnosticsBin
 from .simulation_runner.section_linear_static_runner import (
     CascadeBin,
@@ -88,9 +83,6 @@ __all__ = [
     "DiagnosticsBin",
     "SectionLinearStaticResult",
     "SectionLinearStaticRunner",
-    "run_section_linear_static_from_resultants",
-    "run_station_hashin",
-    "run_station_linear_static_hashin",
     "build_shell_station_analysis_with_recovery_point_set",
     "extract_shell_laminate_recovery_data",
     "build_station_analysis_from_shell_bundle",

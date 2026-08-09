@@ -37,10 +37,13 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
     from blade_structure_utilities.material_utilities.laminate import laminate_definition_from_legacy
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
     from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
-        run_section_linear_static_from_resultants,
+        LinearStaticCascadeResult,
     )
     from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (
         bundle_from_linear_cascade,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+        SectionLinearStaticRunner,
     )
 
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
@@ -48,17 +51,20 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
     )
 
     panel_topology = build_shell_panel_topology("0012", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        N=1.0,
-        Vy=1.0,
-        Vz=1.0,
-        My=1.0,
-        Mz=1.0,
-        T=0.0,
-        section_strip_mesh=build_section_strip_mesh(
-            panel_topology.shell_inputs, n_elements_per_panel=4
-        ),
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            N=1.0,
+            Vy=1.0,
+            Vz=1.0,
+            My=1.0,
+            Mz=1.0,
+            T=0.0,
+            section_strip_mesh=build_section_strip_mesh(
+                panel_topology.shell_inputs, n_elements_per_panel=4
+            ),
+            load_channel="equipollent",
+        ).execute()
     )
     bundle = bundle_from_linear_cascade(panel_topology, cascade)
     ref = bundle.reference_resultants
@@ -260,10 +266,13 @@ def test_mitc4_integration_no_placeholders():
     """Linear-static MITC4 solve: all resultant provenance must be MITC4 or DERIVED."""
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology  # noqa: E402
     from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (  # noqa: E402
-        run_section_linear_static_from_resultants,
+        LinearStaticCascadeResult,
     )
     from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (  # noqa: E402
         bundle_from_linear_cascade,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (  # noqa: E402
+        SectionLinearStaticRunner,
     )
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ProvenanceKind  # noqa: E402
 
@@ -272,17 +281,20 @@ def test_mitc4_integration_no_placeholders():
     )
 
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        N=1.0,
-        Vy=1.0,
-        Vz=1.0,
-        My=1.0,
-        Mz=1.0,
-        T=1.0,
-        section_strip_mesh=build_section_strip_mesh(
-            panel_topology.shell_inputs, n_elements_per_panel=6
-        ),
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            N=1.0,
+            Vy=1.0,
+            Vz=1.0,
+            My=1.0,
+            Mz=1.0,
+            T=1.0,
+            section_strip_mesh=build_section_strip_mesh(
+                panel_topology.shell_inputs, n_elements_per_panel=6
+            ),
+            load_channel="equipollent",
+        ).execute()
     )
     bundle = bundle_from_linear_cascade(panel_topology, cascade)
     assert bundle.reference_resultants is not None
@@ -532,10 +544,13 @@ def test_equilibrium_tiered_thresholds_skin_skin_vs_skin_web():
 def test_linear_static_returns_active_transverse_shear_fields():
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
     from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
-        run_section_linear_static_from_resultants,
+        LinearStaticCascadeResult,
     )
     from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (
         bundle_from_linear_cascade,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+        SectionLinearStaticRunner,
     )
 
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
@@ -543,17 +558,20 @@ def test_linear_static_returns_active_transverse_shear_fields():
     )
 
     panel_topology = build_shell_panel_topology("2412", [0.25, 0.60], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        N=1.3e4,
-        Vy=5e4,
-        Vz=8.3e5,
-        My=5.5e6,
-        Mz=3.3e5,
-        T=2.5e4,
-        section_strip_mesh=build_section_strip_mesh(
-            panel_topology.shell_inputs, n_elements_per_panel=2
-        ),
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            N=1.3e4,
+            Vy=5e4,
+            Vz=8.3e5,
+            My=5.5e6,
+            Mz=3.3e5,
+            T=2.5e4,
+            section_strip_mesh=build_section_strip_mesh(
+                panel_topology.shell_inputs, n_elements_per_panel=2
+            ),
+            load_channel="equipollent",
+        ).execute()
     )
     bundle = bundle_from_linear_cascade(panel_topology, cascade)
     all_panel = bundle.all_panel_results or []

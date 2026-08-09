@@ -15,8 +15,24 @@ from blade_structure_utilities.geometry_utilities.section_contract.beam_resultan
     FRAME_SECTION_YZ,
     BeamResultantVector,
 )
+from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import (
+    ShellMidlineStrip,
+)
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
+    ShellPanelTopology,
+)
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.containers import (
+    MaterialMap,
+    SectionForceVector,
+)
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import (
+    TractionField,
+)
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+    SectionStripMesh,
+)
 from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.solve_states import (
     ConstrainedShellSystem,
     DisassembledShellResults,
@@ -155,7 +171,7 @@ class SectionLinearStaticRunner:
     def __init__(
         self,
         *,
-        panel_topology: Any | None = None,
+        panel_topology: ShellPanelTopology | None = None,
         resultants: BeamResultantVector | None = None,
         N: float = 0.0,
         Vy: float = 0.0,
@@ -166,21 +182,21 @@ class SectionLinearStaticRunner:
         about_yz: tuple[float, float] | None = None,
         torsion_about_shear_centre: bool = False,
         shear_centre_E_mean: float = 70e9,
-        traction_field: Any | None = None,
+        traction_field: TractionField | None = None,
         traction_points_yz: np.ndarray | None = None,
         n_elements_per_panel: Any = None,
         target_element_length_m: float | None = None,
         min_elements_per_panel: int | None = None,
-        section_strip_mesh: Any | None = None,
+        section_strip_mesh: SectionStripMesh | None = None,
         L_x: float = 1.0,
         interface_constraint_mode: str = "shared",
         cap_tie_mode: str = "none",
         bc_mode: str = "contour_support",
         shell_theory: ShellTheory = ShellTheory.FSDT,
         load_channel: str = "thinwall",
-        shell_midlines: Any | None = None,
-        load_materials: Any | None = None,
-        section_force_vector: Any | None = None,
+        shell_midlines: list[ShellMidlineStrip] | tuple[ShellMidlineStrip, ...] | None = None,
+        load_materials: MaterialMap | None = None,
+        section_force_vector: SectionForceVector | None = None,
         compute_section_deformation_1a: bool = False,
         compute_gaussian: bool = False,
         compute_nodal: bool = False,

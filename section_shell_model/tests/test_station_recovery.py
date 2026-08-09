@@ -10,7 +10,6 @@ from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (
     build_fsdt_station_analysis,
-    run_station_hashin,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
     SectionLinearStaticRunner,
@@ -87,28 +86,14 @@ def test_execute_requires_section_strip_mesh() -> None:
         SectionLinearStaticRunner(panel_topology=_pb(), My=1.0e3).execute()
 
 
-def test_deprecated_run_station_hashin_shim_still_works() -> None:
-    panel_topology = _pb()
-    mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
-    out = run_station_hashin(
-        panel_topology,
-        N=1.0e5,
-        My=3.0e4,
-        section_strip_mesh=mesh,
-    )
-    assert out["track"] == "linear_static"
-    max_fi = float(out["max_fi_hashin"])
-    assert np.isfinite(max_fi) and max_fi >= 0.0
-    fi = np.asarray(out["fi_by_panel"], dtype=float)
-    assert fi.ndim == 1 and fi.size > 0
-
-
-def test_run_station_hashin_unknown_fi_track_raises() -> None:
+def test_build_fsdt_station_analysis_unknown_fi_track_raises() -> None:
     panel_topology = _pb()
     mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
     with pytest.raises(ValueError, match="unknown fi_track|removed"):
-        run_station_hashin(
-            panel_topology,
+        build_fsdt_station_analysis(
+            panel_topology.section,
+            panel_topology.shell_inputs,
+            z_station=0.35,
             N=1.0e5,
             My=3.0e4,
             section_strip_mesh=mesh,
@@ -116,12 +101,14 @@ def test_run_station_hashin_unknown_fi_track_raises() -> None:
         )
 
 
-def test_run_station_hashin_periodic_track_removed() -> None:
+def test_build_fsdt_station_analysis_periodic_track_removed() -> None:
     panel_topology = _pb()
     mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
     with pytest.raises(ValueError, match="removed"):
-        run_station_hashin(
-            panel_topology,
+        build_fsdt_station_analysis(
+            panel_topology.section,
+            panel_topology.shell_inputs,
+            z_station=0.35,
             N=1.0e5,
             My=3.0e4,
             section_strip_mesh=mesh,

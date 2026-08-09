@@ -8,12 +8,22 @@ from typing import Any
 import numpy as np
 import pytest
 
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+    BEAM_LOAD_AXIS_YZ,
+    FRAME_SECTION_YZ,
+    BeamResultantVector,
+)
 from blade_structure_utilities.fem_utilities.section_shell_model.interface.traction_load_adapter import (
     load_field_for_dispatch,
     resolve_shell_station_resultants,
-    run_section_linear_static_from_load_field,
     section_resultants_from_load_field,
     traction_points_from_load_field,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
+    LinearStaticCascadeResult,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticRunner,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types import (
     DistributedStationLoadSpec,
@@ -238,14 +248,26 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
     N, Vy, Vz, My, Mz, T = section_resultants_from_load_field(lf)
     assert Vy == 0.0 and Vz == 0.0 and T == 12.0
 
-    cascade = run_section_linear_static_from_load_field(
-        panel_topology,
-        load_field=lf,
-        section_strip_mesh=build_section_strip_mesh(
-            panel_topology.shell_inputs,
-            n_elements_per_panel=6,
-            min_elements_per_panel=2,
-        ),
+    traction_points = traction_points_from_load_field(lf)
+    traction_field = lf.traction_field if traction_points is not None else None
+    resultants = BeamResultantVector.from_named(
+        N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
+        frame=FRAME_SECTION_YZ,
+        about_yz=BEAM_LOAD_AXIS_YZ,
+    )
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            resultants=resultants,
+            traction_field=traction_field,
+            traction_points_yz=traction_points,
+            section_strip_mesh=build_section_strip_mesh(
+                panel_topology.shell_inputs,
+                n_elements_per_panel=6,
+                min_elements_per_panel=2,
+            ),
+            load_channel="equipollent",
+        ).execute()
     )
     assert cascade.used_traction is True
     assert cascade.quaternary is not None

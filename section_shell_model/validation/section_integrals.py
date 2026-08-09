@@ -169,7 +169,7 @@ def multistation_equilibrium_interlaminar(
     then gives the physical interlaminar shear — the reference the single-section
     FSDT transverse-shear recovery is compared against.
 
-    ``solver`` is e.g. ``run_section_linear_static_from_resultants``.
+    ``solver`` is a callable ``(panel_topology, *, My, section_strip_mesh) → cascade``.
     Returns ``tau_eq_max`` / ``tau_eq_mean`` [Pa] and ``dsigma_dx_max`` [Pa/m].
     """
     from lib.interlaminar_shear import interlaminar_shear_max  # type: ignore[import-untyped]

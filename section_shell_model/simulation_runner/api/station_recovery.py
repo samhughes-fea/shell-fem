@@ -28,40 +28,11 @@ from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.
     ShellPanelTopology,
     shell_panel_topology_from_shell_inputs,
 )
-from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
-    LinearStaticCascadeResult,
-    governing_fi_from_quaternary,
-)
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
-    SectionLinearStaticResult,
     SectionLinearStaticRunner,
 )
 
 FiTrack = Literal["linear_static"]
-
-
-def _fi_by_panel_from_results(
-    results: SectionLinearStaticResult,
-    *,
-    n_panels: int,
-) -> list[float]:
-    """Reduce quaternary Hashin in-plane field series to per-panel maxima."""
-    q = results.quaternary_results
-    hi = None if q is None or q.hashin_fi is None else q.hashin_fi.in_plane
-    panel_index = (
-        None if results.tertiary_results is None else results.tertiary_results.panel_index
-    )
-    fi_by_panel: list[float] = []
-    for pi in range(int(n_panels)):
-        pmax = 0.0
-        if hi is not None and panel_index is not None:
-            for ri in range(hi.shape[0]):
-                if int(panel_index[ri]) != pi:
-                    continue
-                if hi[ri].size:
-                    pmax = max(pmax, float(np.nanmax(hi[ri])))
-        fi_by_panel.append(pmax)
-    return fi_by_panel
 
 
 def _require_section_strip_mesh(
@@ -88,96 +59,6 @@ def _require_section_strip_mesh(
             "pass a prebuilt section_strip_mesh= instead."
         )
     return section_strip_mesh
-
-
-def run_station_linear_static_hashin(
-    panel_topology: ShellPanelTopology,
-    *,
-    resultants: BeamResultantVector | None = None,
-    N: float = 0.0,
-    Vy: float = 0.0,
-    Vz: float = 0.0,
-    My: float = 0.0,
-    Mz: float = 0.0,
-    T: float = 0.0,
-    about_yz: tuple[float, float] | None = None,
-    traction_field: Any | None = None,
-    traction_points_yz: np.ndarray | None = None,
-    shell_theory: ShellTheory = ShellTheory.FSDT,
-    n_elements_per_panel: int | None = None,
-    target_element_length_m: float | None = None,
-    min_elements_per_panel: int | None = None,
-    section_strip_mesh: Any | None = None,
-    compute_section_deformation_1a: bool = False,
-) -> dict[str, Any]:
-    """Deprecated shim: station runner → dict with FI reductions for legacy callers.
-
-    Requires ``section_strip_mesh=`` (density is owned outside FE).
-    """
-    if resultants is None:
-        resultants = BeamResultantVector.from_named(
-            N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
-            frame=FRAME_SECTION_YZ,
-            about_yz=about_yz if about_yz is not None else BEAM_LOAD_AXIS_YZ,
-        )
-    from blade_structure_utilities.load_utilities.beam_to_shell_loads import (
-        shape_section_force_vector_from_panel_topology,
-    )
-
-    sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
-    strip_mesh = _require_section_strip_mesh(
-        section_strip_mesh=section_strip_mesh,
-        n_elements_per_panel=n_elements_per_panel,
-        target_element_length_m=target_element_length_m,
-        min_elements_per_panel=min_elements_per_panel,
-    )
-    static = SectionLinearStaticRunner(
-        panel_topology=panel_topology,
-        resultants=resultants,
-        traction_field=traction_field,
-        traction_points_yz=traction_points_yz,
-        section_strip_mesh=strip_mesh,
-        shell_theory=shell_theory,
-        compute_section_deformation_1a=compute_section_deformation_1a,
-        load_channel="thinwall",
-        section_force_vector=sfv,
-    ).execute()
-    results = static.get_results()
-    quaternary = results.quaternary_results
-    if quaternary is None:
-        raise RuntimeError("execute() did not populate quaternary_results")
-    max_fi, needs_review = governing_fi_from_quaternary(quaternary)
-    assert static.assembly is not None
-    cascade = LinearStaticCascadeResult.from_executed_runner(static)
-    return {
-        "cascade": cascade,
-        "quaternary": quaternary,
-        "runner": static,
-        "assembly": static.assembly,
-        "max_fi_hashin": max_fi,
-        "needs_review": needs_review,
-        "fi_by_panel": _fi_by_panel_from_results(
-            results, n_panels=len(static.assembly.panel_maps)
-        ),
-        "governing": dict(quaternary.governing or {}),
-        "track": "linear_static",
-        "used_traction": bool(static.used_traction),
-    }
-
-
-def run_station_hashin(
-    panel_topology: ShellPanelTopology,
-    *,
-    fi_track: FiTrack = "linear_static",
-    **kwargs: Any,
-) -> dict[str, Any]:
-    """Deprecated shim: dispatch station Hashin FI (linear-static main track only)."""
-    if fi_track == "linear_static":
-        return run_station_linear_static_hashin(panel_topology, **kwargs)
-    raise ValueError(
-        f"unknown fi_track={fi_track!r}; expected 'linear_static' "
-        "(Channel-A fi_track='periodic' has been removed)."
-    )
 
 
 def _bundle_from_linear_static(
@@ -348,6 +229,4 @@ bundle_from_linear_cascade = _bundle_from_linear_cascade
 __all__ = [
     "build_fsdt_station_analysis",
     "bundle_from_linear_cascade",
-    "run_station_hashin",
-    "run_station_linear_static_hashin",
 ]

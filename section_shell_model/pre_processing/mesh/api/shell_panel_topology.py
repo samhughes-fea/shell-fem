@@ -11,11 +11,20 @@ topology geometry for all shell formulations.
 
 from __future__ import annotations
 
-from dataclasses import dataclass as _dataclass
+from dataclasses import dataclass
 from typing import Any
 
+from blade_structure_utilities.geometry_utilities.section_geometry.interface.section_midline_host import (
+    SectionMidlineHost,
+)
+from blade_structure_utilities.material_utilities.adapters.laminate_like import LaminateLike
+from blade_structure_utilities.material_utilities.adapters.material_zone import MaterialZone
+from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
+    ShellMeshInputs,
+)
 
-@_dataclass
+
+@dataclass(frozen=True)
 class ShellPanelTopology:
     """Output of :func:`build_shell_panel_topology` / ``shell_panel_topology_from_shell_inputs``.
 
@@ -23,17 +32,18 @@ class ShellPanelTopology:
     ``shell_inputs`` polylines — no SDF re-evaluation after the contract handoff.
     """
 
-    shell_inputs: Any
-    panels: list
-    booms: list
-    webs_geom: list
+    shell_inputs: ShellMeshInputs
+    panels: tuple[MaterialZone, ...]
+    booms: tuple[Any, ...]
+    webs_geom: tuple[Any, ...]
     n_cells: int
-    section: Any | None = None
+    section: SectionMidlineHost | None = None
 
 
-@_dataclass
+@dataclass(frozen=True)
 class TaperedShellPanelTopology:
     """Restricted tapered counterpart to :class:`ShellPanelTopology`."""
+
     inboard: ShellPanelTopology
     outboard: ShellPanelTopology
     L_x: float
@@ -52,11 +62,11 @@ def build_shell_panel_topology(
     skin_thickness: float | None = None,
     web_thickness: float | None = None,
     cap_height: float | None = None,
-    skin_lam: Any | None = None,
-    web_lam: Any | None = None,
-    cap_lam: Any | None = None,
+    skin_lam: LaminateLike | None = None,
+    web_lam: LaminateLike | None = None,
+    cap_lam: LaminateLike | None = None,
     retain_section: bool = True,
-) -> "ShellPanelTopology":
+) -> ShellPanelTopology:
     """Thin convenience: NACA + webs → midlines → strips-first mesh inputs → panels.
 
     Prefer production callers that already have a geometry-worker result and use
@@ -127,13 +137,13 @@ def build_shell_panel_topology(
 
 
 def shell_panel_topology_from_shell_inputs(
-    shell_inputs: Any,
+    shell_inputs: ShellMeshInputs,
     *,
-    section: Any | None = None,
-    skin_lam: Any | None = None,
-    web_lam: Any | None = None,
-    cap_lam: Any | None = None,
-) -> "ShellPanelTopology":
+    section: SectionMidlineHost | None = None,
+    skin_lam: LaminateLike | None = None,
+    web_lam: LaminateLike | None = None,
+    cap_lam: LaminateLike | None = None,
+) -> ShellPanelTopology:
     """Build a :class:`ShellPanelTopology` from already-materialised mesh inputs.
 
     Contract-first seam: ``shell_inputs`` carries ``ShellMidlineStrip`` polylines.
@@ -150,9 +160,9 @@ def shell_panel_topology_from_shell_inputs(
     )
     return ShellPanelTopology(
         shell_inputs=shell_inputs,
-        panels=list(panels),
-        booms=list(booms),
-        webs_geom=list(webs_geom),
+        panels=tuple(panels),
+        booms=tuple(booms),
+        webs_geom=tuple(webs_geom),
         n_cells=int(n_cells),
         section=section,
     )
@@ -169,10 +179,10 @@ def build_tapered_shell_panel_topology(
     L_x: float = 1.0,
     n_web_samples: int = 20,
     n_cap_samples: int = 80,
-    skin_lam: Any | None = None,
-    web_lam: Any | None = None,
-    cap_lam: Any | None = None,
-) -> "TaperedShellPanelTopology":
+    skin_lam: LaminateLike | None = None,
+    web_lam: LaminateLike | None = None,
+    cap_lam: LaminateLike | None = None,
+) -> TaperedShellPanelTopology:
     """Build matched inboard/outboard shell panel topology sections for a tapered strip."""
     panel_topology_in = build_shell_panel_topology(
         naca_code,

@@ -6,11 +6,14 @@ from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.
     build_shell_panel_topology,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
-    run_section_linear_static_from_resultants,
+    LinearStaticCascadeResult,
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (
     _bundle_from_linear_cascade,
     build_fsdt_station_analysis,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticRunner,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
     build_section_strip_mesh,
@@ -31,10 +34,14 @@ def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 3):
 
 def test_linear_handoff_all_panel_results_nonempty_for_my() -> None:
     panel_topology = _pb()
-    cascade = run_section_linear_static_from_resultants(
-        panel_topology,
-        My=1.0e3,
-        section_strip_mesh=_strip_mesh(panel_topology),
+    mesh = _strip_mesh(panel_topology)
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            My=1.0e3,
+            section_strip_mesh=mesh,
+            load_channel="equipollent",
+        ).execute()
     )
     bundle = _bundle_from_linear_cascade(panel_topology, cascade)
     nested = list(bundle.all_panel_results or [])
