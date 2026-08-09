@@ -43,6 +43,10 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
         bundle_from_linear_cascade,
     )
 
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
     panel_topology = build_shell_panel_topology("0012", [0.35], chord_m=1.0)
     cascade = run_section_linear_static_from_resultants(
         panel_topology,
@@ -52,7 +56,9 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
         My=1.0,
         Mz=1.0,
         T=0.0,
-        n_elements_per_panel=4,
+        section_strip_mesh=build_section_strip_mesh(
+            panel_topology.shell_inputs, n_elements_per_panel=4
+        ),
     )
     bundle = bundle_from_linear_cascade(panel_topology, cascade)
     ref = bundle.reference_resultants
@@ -261,6 +267,10 @@ def test_mitc4_integration_no_placeholders():
     )
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ProvenanceKind  # noqa: E402
 
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
     cascade = run_section_linear_static_from_resultants(
         panel_topology,
@@ -270,7 +280,9 @@ def test_mitc4_integration_no_placeholders():
         My=1.0,
         Mz=1.0,
         T=1.0,
-        n_elements_per_panel=6,
+        section_strip_mesh=build_section_strip_mesh(
+            panel_topology.shell_inputs, n_elements_per_panel=6
+        ),
     )
     bundle = bundle_from_linear_cascade(panel_topology, cascade)
     assert bundle.reference_resultants is not None
@@ -526,6 +538,10 @@ def test_linear_static_returns_active_transverse_shear_fields():
         bundle_from_linear_cascade,
     )
 
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
     panel_topology = build_shell_panel_topology("2412", [0.25, 0.60], chord_m=1.0)
     cascade = run_section_linear_static_from_resultants(
         panel_topology,
@@ -535,7 +551,9 @@ def test_linear_static_returns_active_transverse_shear_fields():
         My=5.5e6,
         Mz=3.3e5,
         T=2.5e4,
-        n_elements_per_panel=2,
+        section_strip_mesh=build_section_strip_mesh(
+            panel_topology.shell_inputs, n_elements_per_panel=2
+        ),
     )
     bundle = bundle_from_linear_cascade(panel_topology, cascade)
     all_panel = bundle.all_panel_results or []

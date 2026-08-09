@@ -64,32 +64,30 @@ def _fi_by_panel_from_results(
     return fi_by_panel
 
 
-def _section_strip_mesh_for_shim(
-    panel_topology: ShellPanelTopology,
+def _require_section_strip_mesh(
     *,
     section_strip_mesh: Any | None,
-    n_elements_per_panel: int | None,
-    target_element_length_m: float | None,
-    min_elements_per_panel: int,
+    n_elements_per_panel: int | None = None,
+    target_element_length_m: float | None = None,
+    min_elements_per_panel: int | None = None,
 ) -> Any:
-    """Prefer caller mesh; otherwise build once from ``panel_topology.shell_inputs``."""
-    if section_strip_mesh is not None:
-        return section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
-        build_section_strip_mesh,
-    )
-
-    shell_inputs = getattr(panel_topology, "shell_inputs", None)
-    if shell_inputs is None:
+    """Require a prebuilt mesh; reject density kwargs (owned outside FE)."""
+    if section_strip_mesh is None:
         raise ValueError(
-            "section_strip_mesh is required when panel_topology.shell_inputs is missing"
+            "section_strip_mesh is required; build it with "
+            "mesh_utilities.section_mesh.build_section_strip_mesh "
+            "(density is owned outside FE)."
         )
-    return build_section_strip_mesh(
-        shell_inputs,
-        n_elements_per_panel=n_elements_per_panel,
-        target_element_length_m=target_element_length_m,
-        min_elements_per_panel=min_elements_per_panel,
-    )
+    if (
+        n_elements_per_panel is not None
+        or target_element_length_m is not None
+        or min_elements_per_panel is not None
+    ):
+        raise ValueError(
+            "Density kwargs are not accepted on this shim; "
+            "pass a prebuilt section_strip_mesh= instead."
+        )
+    return section_strip_mesh
 
 
 def run_station_linear_static_hashin(
@@ -108,14 +106,13 @@ def run_station_linear_static_hashin(
     shell_theory: ShellTheory = ShellTheory.FSDT,
     n_elements_per_panel: int | None = None,
     target_element_length_m: float | None = None,
-    min_elements_per_panel: int = 2,
+    min_elements_per_panel: int | None = None,
     section_strip_mesh: Any | None = None,
     compute_section_deformation_1a: bool = False,
 ) -> dict[str, Any]:
     """Deprecated shim: station runner → dict with FI reductions for legacy callers.
 
-    Density kwargs build a :class:`SectionStripMesh` before the runner when
-    ``section_strip_mesh`` is not supplied.
+    Requires ``section_strip_mesh=`` (density is owned outside FE).
     """
     if resultants is None:
         resultants = BeamResultantVector.from_named(
@@ -128,8 +125,7 @@ def run_station_linear_static_hashin(
     )
 
     sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
-    strip_mesh = _section_strip_mesh_for_shim(
-        panel_topology,
+    strip_mesh = _require_section_strip_mesh(
         section_strip_mesh=section_strip_mesh,
         n_elements_per_panel=n_elements_per_panel,
         target_element_length_m=target_element_length_m,
@@ -268,7 +264,7 @@ def build_fsdt_station_analysis(
     T: float = 0.0,
     n_elements_per_panel: int | None = None,
     target_element_length_m: float | None = None,
-    min_elements_per_panel: int = 2,
+    min_elements_per_panel: int | None = None,
     section_strip_mesh: Any | None = None,
     station_id: str = "station-0",
     provenance: ShellStationProvenance | None = None,
@@ -278,14 +274,10 @@ def build_fsdt_station_analysis(
     """Main-track station analysis for recovery prepass (linear-static).
 
     Omits Saint-Venant ``K6`` on the constitutive handoff (deprecated).
-    Density kwargs build a :class:`SectionStripMesh` before the runner when
-    ``section_strip_mesh`` is not supplied.
+    Requires ``section_strip_mesh=`` (density is owned outside FE).
     """
     from blade_structure_utilities.fem_utilities.section_shell_model.interface.station_analysis_builder import (
         build_station_analysis_from_shell_bundle,
-    )
-    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
-        build_section_strip_mesh,
     )
 
     if fi_track != "linear_static":
@@ -297,12 +289,13 @@ def build_fsdt_station_analysis(
     panel_topology = shell_panel_topology_from_shell_inputs(
         shell_inputs, section=section_view
     )
-    prov = provenance or ShellStationProvenance(
-        mesh_n_elements_per_panel=n_elements_per_panel,
-        mesh_element_length_frac=(
-            None if target_element_length_m is None else float(target_element_length_m)
-        ),
+    strip_mesh = _require_section_strip_mesh(
+        section_strip_mesh=section_strip_mesh,
+        n_elements_per_panel=n_elements_per_panel,
+        target_element_length_m=target_element_length_m,
+        min_elements_per_panel=min_elements_per_panel,
     )
+    prov = provenance or ShellStationProvenance()
     resultants = BeamResultantVector.from_named(
         N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
         frame=FRAME_SECTION_YZ,
@@ -313,14 +306,6 @@ def build_fsdt_station_analysis(
     )
 
     sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
-    strip_mesh = section_strip_mesh
-    if strip_mesh is None:
-        strip_mesh = build_section_strip_mesh(
-            shell_inputs,
-            n_elements_per_panel=n_elements_per_panel,
-            target_element_length_m=target_element_length_m,
-            min_elements_per_panel=min_elements_per_panel,
-        )
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         resultants=resultants,

@@ -12,10 +12,21 @@ from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runn
     _bundle_from_linear_cascade,
     build_fsdt_station_analysis,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+    build_section_strip_mesh,
+)
 
 
 def _pb():
     return build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+
+
+def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 3):
+    return build_section_strip_mesh(
+        panel_topology.shell_inputs,
+        n_elements_per_panel=n_elements_per_panel,
+        min_elements_per_panel=2,
+    )
 
 
 def test_linear_handoff_all_panel_results_nonempty_for_my() -> None:
@@ -23,8 +34,7 @@ def test_linear_handoff_all_panel_results_nonempty_for_my() -> None:
     cascade = run_section_linear_static_from_resultants(
         panel_topology,
         My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
     )
     bundle = _bundle_from_linear_cascade(panel_topology, cascade)
     nested = list(bundle.all_panel_results or [])
@@ -40,8 +50,7 @@ def test_station_analysis_sees_cascade_shell_resultants() -> None:
         panel_topology.shell_inputs,
         z_station=0.35,
         My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
         station_id="handoff-test",
     )
     assert len(analysis.shell_resultants) > 0

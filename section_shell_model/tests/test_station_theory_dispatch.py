@@ -86,6 +86,10 @@ def test_require_shell_theory_supports_returns_capability() -> None:
 
 
 def test_dispatch_routes_fsdt_to_periodic_hashin(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh.build_section_strip_mesh",
+        lambda *a, **k: object(),
+    )
     monkeypatch.setattr(std, "fsdt_periodic_station_hashin", lambda *a, **k: {"solver": "fsdt"})
     res = dispatch_station_theory(_request(ShellTheory.FSDT))
     assert res.fsdt_periodic_extra == {"solver": "fsdt"}
@@ -132,12 +136,10 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
             return _FakeResults()
 
     import blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner as slsr
+    import blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology as spt
 
     monkeypatch.setattr(slsr, "SectionLinearStaticRunner", _FakeRunner)
-    monkeypatch.setattr(
-        "blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology.shell_panel_topology_from_shell_inputs",
-        lambda *_a, **_k: object(),
-    )
+    monkeypatch.setattr(spt, "shell_panel_topology_from_shell_inputs", lambda *_a, **_k: object())
 
     n_panels = 4
     outline = np.column_stack(
@@ -184,9 +186,7 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
         My=0.0,
         Mz=0.0,
         T=1.0,
-        n_elements_per_panel=4,
-        target_element_length_m=None,
-        min_elements_per_panel=2,
+        section_strip_mesh=object(),
         load_field=lf,
     )
     assert out["solver"] == "fsdt_linear_static_cascade"

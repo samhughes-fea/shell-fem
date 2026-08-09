@@ -105,14 +105,28 @@ def test_deprecated_run_station_hashin_shim_still_works() -> None:
 
 def test_run_station_hashin_unknown_fi_track_raises() -> None:
     panel_topology = _pb()
+    mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
     with pytest.raises(ValueError, match="unknown fi_track|removed"):
-        run_station_hashin(panel_topology, N=1.0e5, My=3.0e4, n_elements_per_panel=4, fi_track="not_a_track")  # type: ignore[arg-type]
+        run_station_hashin(
+            panel_topology,
+            N=1.0e5,
+            My=3.0e4,
+            section_strip_mesh=mesh,
+            fi_track="not_a_track",  # type: ignore[arg-type]
+        )
 
 
 def test_run_station_hashin_periodic_track_removed() -> None:
     panel_topology = _pb()
+    mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
     with pytest.raises(ValueError, match="removed"):
-        run_station_hashin(panel_topology, N=1.0e5, My=3.0e4, n_elements_per_panel=4, fi_track="periodic")  # type: ignore[arg-type]
+        run_station_hashin(
+            panel_topology,
+            N=1.0e5,
+            My=3.0e4,
+            section_strip_mesh=mesh,
+            fi_track="periodic",  # type: ignore[arg-type]
+        )
 
 
 def test_build_fsdt_station_analysis_omits_deprecated_k6() -> None:

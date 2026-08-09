@@ -173,14 +173,20 @@ def multistation_equilibrium_interlaminar(
     Returns ``tau_eq_max`` / ``tau_eq_mean`` [Pa] and ``dsigma_dx_max`` [Pa/m].
     """
     from lib.interlaminar_shear import interlaminar_shear_max  # type: ignore[import-untyped]
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
 
     geom = section_element_geometry(pb.panels, n_elements_per_panel)
     t_wall = float(getattr(getattr(pb.panels[0], "lam", None), "t", 1e-3) or 1e-3)
+    strip_mesh = build_section_strip_mesh(
+        pb.shell_inputs, n_elements_per_panel=n_elements_per_panel
+    )
     sig_prev = section_sigma_field(
-        solver(pb, My=My0 - Vz * dz, n_elements_per_panel=n_elements_per_panel), geom
+        solver(pb, My=My0 - Vz * dz, section_strip_mesh=strip_mesh), geom
     )["sigma_xx"]
     sig_next = section_sigma_field(
-        solver(pb, My=My0 + Vz * dz, n_elements_per_panel=n_elements_per_panel), geom
+        solver(pb, My=My0 + Vz * dz, section_strip_mesh=strip_mesh), geom
     )["sigma_xx"]
     tau_eq = interlaminar_shear_max(sig_prev, sig_next, dz, t_wall)
     dsig_dx = np.abs(sig_next - sig_prev) / (2.0 * dz)

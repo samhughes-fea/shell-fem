@@ -166,10 +166,10 @@ def run_section_linear_static_from_load_field(
     panel_topology: ShellPanelTopology,
     *,
     load_field: SectionStationLoadField,
-    n_elements_per_panel: int = 10,
+    section_strip_mesh: Any,
+    n_elements_per_panel: int | None = None,
     target_element_length_m: float | None = None,
-    min_elements_per_panel: int = 2,
-    section_strip_mesh: Any | None = None,
+    min_elements_per_panel: int | None = None,
     L_x: float = 1.0,
     interface_constraint_mode: str = "shared",
     bc_mode: str = "contour_support",
@@ -183,7 +183,7 @@ def run_section_linear_static_from_load_field(
     Exclusive Channel A/B provenance matches
     :func:`section_resultants_from_load_field`: usable traction zeros beam
     shears and overlays face loads; otherwise distributed ``q`` enters Channel A
-    only. Density kwargs build a strip mesh when ``section_strip_mesh`` is omitted.
+    only. Requires ``section_strip_mesh=`` (density is owned outside FE).
     """
     N, Vy, Vz, My, Mz, T = beam_resultants_from_load_field(
         load_field,

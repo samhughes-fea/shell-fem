@@ -37,6 +37,17 @@ from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runn
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_buckling_runner import (
     SectionLinearBucklingRunner,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+    build_section_strip_mesh,
+)
+
+
+def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 3):
+    return build_section_strip_mesh(
+        panel_topology.shell_inputs,
+        n_elements_per_panel=n_elements_per_panel,
+        min_elements_per_panel=2,
+    )
 
 
 def _isotropic_abd(*, E: float = 70e9, nu: float = 0.3, t: float = 0.005) -> np.ndarray:
@@ -162,8 +173,7 @@ def test_nested_resultants_from_static_cascade_panel_alignment() -> None:
     cascade = run_section_linear_static_from_resultants(
         panel_topology,
         My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
     )
     nested = nested_resultants_from_static_cascade(cascade)
     assert len(nested) == len(cascade.assembly.panel_maps)
@@ -175,8 +185,7 @@ def test_buckling_from_static_cascade_fold() -> None:
     cascade = run_section_linear_static_from_resultants(
         panel_topology,
         My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
     )
     buck = run_section_linear_buckling_from_static(
         cascade,
@@ -203,8 +212,7 @@ def test_buckling_panel_track_still_available() -> None:
     cascade = run_section_linear_static_from_resultants(
         panel_topology,
         My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
     )
     buck = run_section_linear_buckling_from_static(
         cascade,
@@ -224,8 +232,7 @@ def test_enable_buckling_attaches_to_station_analysis() -> None:
         panel_topology.shell_inputs,
         z_station=0.35,
         My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
         station_id="buck-attach",
         enable_buckling=True,
     )

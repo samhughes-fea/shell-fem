@@ -54,18 +54,18 @@ def fsdt_periodic_station_hashin(
     My: float,
     Mz: float,
     T: float,
-    n_elements_per_panel: int | None,
-    target_element_length_m: float | None,
-    min_elements_per_panel: int,
+    section_strip_mesh: Any,
     load_field: Any | None = None,
-    section_strip_mesh: Any | None = None,
+    n_elements_per_panel: int | None = None,
+    target_element_length_m: float | None = None,
+    min_elements_per_panel: int | None = None,
 ) -> dict[str, Any]:
     """Linear-static FSDT cascade + Hashin FI summary for orchestration JSON.
 
     Usable face traction is applied on the contour-supported linear-static RHS
     (same free set as beam loads). Beam-only stations use the cascade without
-    Channel B overlay. Density kwargs build a :class:`SectionStripMesh` before
-    the runner when ``section_strip_mesh`` is not supplied.
+    Channel B overlay. Requires ``section_strip_mesh=`` (density is owned
+    outside FE; dispatch builds the mesh once before calling this helper).
     """
     from blade_structure_utilities.fem_utilities.section_shell_model.interface.traction_load_adapter import (
         traction_points_from_load_field,
@@ -76,9 +76,22 @@ def fsdt_periodic_station_hashin(
     from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
         SectionLinearStaticRunner,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
-        build_section_strip_mesh,
-    )
+
+    if section_strip_mesh is None:
+        raise ValueError(
+            "section_strip_mesh is required; build it with "
+            "mesh_utilities.section_mesh.build_section_strip_mesh "
+            "(density is owned outside FE)."
+        )
+    if (
+        n_elements_per_panel is not None
+        or target_element_length_m is not None
+        or min_elements_per_panel is not None
+    ):
+        raise ValueError(
+            "Density kwargs are not accepted on fsdt_periodic_station_hashin; "
+            "pass a prebuilt section_strip_mesh= instead."
+        )
 
     panel_topology = shell_panel_topology_from_shell_inputs(
         shell_inputs, section=section_view
@@ -115,13 +128,6 @@ def fsdt_periodic_station_hashin(
             resultants, getattr(shell_inputs, "midlines", None)
         )
     strip_mesh = section_strip_mesh
-    if strip_mesh is None:
-        strip_mesh = build_section_strip_mesh(
-            shell_inputs,
-            n_elements_per_panel=n_elements_per_panel,
-            target_element_length_m=target_element_length_m,
-            min_elements_per_panel=min_elements_per_panel,
-        )
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         N=N,
@@ -171,6 +177,18 @@ def fsdt_periodic_station_hashin(
 
 
 def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResult:
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
+    # Density ownership: build once at the dispatch boundary, then hand a mesh
+    # into the FE shim (no remesh / density kwargs on the solve path).
+    strip_mesh = build_section_strip_mesh(
+        request.shell_inputs,
+        n_elements_per_panel=request.n_elements_per_panel,
+        target_element_length_m=request.target_element_length_m,
+        min_elements_per_panel=request.min_elements_per_panel,
+    )
     return StationTheorySolveResult(
         fsdt_periodic_extra=fsdt_periodic_station_hashin(
             request.section_view,
@@ -181,9 +199,7 @@ def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResu
             My=request.My,
             Mz=request.Mz,
             T=request.T,
-            n_elements_per_panel=request.n_elements_per_panel,
-            target_element_length_m=request.target_element_length_m,
-            min_elements_per_panel=request.min_elements_per_panel,
+            section_strip_mesh=strip_mesh,
             load_field=request.load_field,
         )
     )

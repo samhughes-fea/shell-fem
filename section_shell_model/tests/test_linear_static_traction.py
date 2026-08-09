@@ -28,10 +28,21 @@ from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runn
     run_section_linear_static_from_resultants,
 )
 from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import TractionField
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+    build_section_strip_mesh,
+)
 
 
 def _pb():
     return build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+
+
+def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 3):
+    return build_section_strip_mesh(
+        panel_topology.shell_inputs,
+        n_elements_per_panel=n_elements_per_panel,
+        min_elements_per_panel=2,
+    )
 
 
 def _assemble(panel_topology, *, ne: int = 4):
@@ -82,14 +93,15 @@ def test_traction_face_loads_conserves_total_force() -> None:
 
 def test_half_specified_traction_raises() -> None:
     panel_topology = _pb()
+    mesh = _strip_mesh(panel_topology)
     tf, pts = _synthetic_traction()
     with pytest.raises(ValueError, match="must be supplied together"):
         run_section_linear_static_from_resultants(
-            panel_topology, My=1.0e3, traction_field=tf, n_elements_per_panel=3,
+            panel_topology, My=1.0e3, traction_field=tf, section_strip_mesh=mesh,
         )
     with pytest.raises(ValueError, match="must be supplied together"):
         run_section_linear_static_from_resultants(
-            panel_topology, My=1.0e3, traction_points_yz=pts, n_elements_per_panel=3,
+            panel_topology, My=1.0e3, traction_points_yz=pts, section_strip_mesh=mesh,
         )
 
 
@@ -118,8 +130,7 @@ def test_combined_rhs_equals_beam_plus_traction() -> None:
         resultants=resultants,
         traction_field=tf,
         traction_points_yz=pts,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
     )
     assert cascade.used_traction is True
     np.testing.assert_allclose(cascade.f_nodal, f_beam + f_tr, rtol=0.0, atol=1e-12)
@@ -133,8 +144,7 @@ def test_linear_static_traction_cascade_reaches_quaternary_fi() -> None:
         T=10.0,
         traction_field=tf,
         traction_points_yz=pts,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
     )
     fi, _needs = governing_fi_from_quaternary(cascade.quaternary)
     assert np.isfinite(fi)

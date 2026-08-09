@@ -230,12 +230,22 @@ def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, Section
 
 def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
     """Production load-field path: zero shears + quaternary FI on linear cascade."""
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
     panel_topology, lf = _load_field_aligned_to_skin_mesh(m_x=12.0)
     N, Vy, Vz, My, Mz, T = section_resultants_from_load_field(lf)
     assert Vy == 0.0 and Vz == 0.0 and T == 12.0
 
     cascade = run_section_linear_static_from_load_field(
-        panel_topology, load_field=lf, n_elements_per_panel=6, min_elements_per_panel=2,
+        panel_topology,
+        load_field=lf,
+        section_strip_mesh=build_section_strip_mesh(
+            panel_topology.shell_inputs,
+            n_elements_per_panel=6,
+            min_elements_per_panel=2,
+        ),
     )
     assert cascade.used_traction is True
     assert cascade.quaternary is not None

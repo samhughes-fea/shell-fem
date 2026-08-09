@@ -21,11 +21,6 @@ from blade_structure_utilities.geometry_utilities.section_contract.beam_resultan
 )
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
 from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import ShellPanelTopology
-from blade_structure_utilities.mesh_utilities.section_mesh.mesh_topology import NElements
-from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
-    MIN_ELEMENTS_PER_PANEL,
-    build_section_strip_mesh,
-)
 from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.section_assembly import (
     SectionAssemblyResult,
 )
@@ -75,28 +70,30 @@ class LinearStaticCascadeResult:
         )
 
 
-def _section_strip_mesh_for_shim(
-    panel_topology: ShellPanelTopology,
+def _require_section_strip_mesh(
     *,
     section_strip_mesh: Any | None,
-    n_elements_per_panel: NElements | None,
-    target_element_length_m: float | None,
-    min_elements_per_panel: int,
+    n_elements_per_panel: Any = None,
+    target_element_length_m: float | None = None,
+    min_elements_per_panel: int | None = None,
 ) -> Any:
-    """Prefer caller mesh; otherwise build once from ``panel_topology.shell_inputs``."""
-    if section_strip_mesh is not None:
-        return section_strip_mesh
-    shell_inputs = getattr(panel_topology, "shell_inputs", None)
-    if shell_inputs is None:
+    """Require a prebuilt mesh; reject density kwargs (owned outside FE)."""
+    if section_strip_mesh is None:
         raise ValueError(
-            "section_strip_mesh is required when panel_topology.shell_inputs is missing"
+            "section_strip_mesh is required; build it with "
+            "mesh_utilities.section_mesh.build_section_strip_mesh "
+            "(density is owned outside FE)."
         )
-    return build_section_strip_mesh(
-        shell_inputs,
-        n_elements_per_panel=n_elements_per_panel,
-        target_element_length_m=target_element_length_m,
-        min_elements_per_panel=min_elements_per_panel,
-    )
+    if (
+        n_elements_per_panel is not None
+        or target_element_length_m is not None
+        or min_elements_per_panel is not None
+    ):
+        raise ValueError(
+            "Density kwargs are not accepted on this shim; "
+            "pass a prebuilt section_strip_mesh= instead."
+        )
+    return section_strip_mesh
 
 
 def run_section_linear_static_from_resultants(
@@ -114,9 +111,9 @@ def run_section_linear_static_from_resultants(
     shear_centre_E_mean: float = 70e9,
     traction_field: Any | None = None,
     traction_points_yz: np.ndarray | None = None,
-    n_elements_per_panel: NElements | None = None,
+    n_elements_per_panel: Any = None,
     target_element_length_m: float | None = None,
-    min_elements_per_panel: int = MIN_ELEMENTS_PER_PANEL,
+    min_elements_per_panel: int | None = None,
     section_strip_mesh: Any | None = None,
     L_x: float = 1.0,
     interface_constraint_mode: str = "shared",
@@ -127,8 +124,7 @@ def run_section_linear_static_from_resultants(
 ) -> LinearStaticCascadeResult:
     """Deprecated shim: construct → :meth:`~SectionLinearStaticRunner.execute` → cascade view.
 
-    Density kwargs build a :class:`SectionStripMesh` before the runner when
-    ``section_strip_mesh`` is not supplied.
+    Requires ``section_strip_mesh=`` (density is owned outside FE).
     """
     # Face-traction overlay is only combined with Channel A (equipollent).
     # Thinwall (default) does not stack matching aero shears.
@@ -154,8 +150,7 @@ def run_section_linear_static_from_resultants(
                 about_yz=origin,
             )
         sfv = shape_section_force_vector_from_panel_topology(R, panel_topology)
-    strip_mesh = _section_strip_mesh_for_shim(
-        panel_topology,
+    strip_mesh = _require_section_strip_mesh(
         section_strip_mesh=section_strip_mesh,
         n_elements_per_panel=n_elements_per_panel,
         target_element_length_m=target_element_length_m,
