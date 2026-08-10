@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
 
 StationSolverFn = Callable[..., Any]
 GlobalSolveFn = Callable[..., tuple[list[list[Any]], list[dict]]]

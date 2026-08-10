@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import scipy.sparse as sp
 
-from blade_structure_utilities.section_shell_model.processing.static.results.compute_primary import ShellPrimaryResultsOrchestrator
-from blade_structure_utilities.section_shell_model.simulation_runner.section_linear_static_runner import SectionLinearStaticRunner
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_primary import ShellPrimaryResultsOrchestrator
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import SectionLinearStaticRunner
 
 
 def _tiny_system():

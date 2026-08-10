@@ -4,7 +4,7 @@ Meshing, assembly spine, and periodic homogenisation are element-agnostic; they
 select a kernel from :mod:`.kernel` at the stiffness/resultant-recovery seam.
 
 Theory registries and station dispatch live in
-:mod:`blade_structure_utilities.section_shell_model.pre_processing.dispatch`.
+:mod:`blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.dispatch`.
 """
 
 from .kernel import (

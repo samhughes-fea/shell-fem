@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import (
     SectionVlasovResult,
     compute_section_vlasov,
 )

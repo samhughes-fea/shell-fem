@@ -6,7 +6,7 @@ Moved from ``api/fi_recovery.py`` (see PROCESSING_ARCHITECTURE_PROPOSAL.md,
 
 from __future__ import annotations
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
 
 _CLPT_RESULTANT_FIELDS: tuple[str, ...] = ("Nx", "Ny", "Nxy", "Mx", "My", "Mxy")
 

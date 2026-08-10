@@ -7,7 +7,7 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model._utils.jsonutil import to_jsonable, write_json
+from blade_structure_utilities.fem_utilities.section_shell_model._utils.jsonutil import to_jsonable, write_json
 
 
 def _median_panel_n_elements(mesh: Any) -> int:

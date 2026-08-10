@@ -6,7 +6,7 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import BeamSectionConstitutiveInput, ShellStationProvenance
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import BeamSectionConstitutiveInput, ShellStationProvenance
 
 
 def build_shell_constitutive_input(

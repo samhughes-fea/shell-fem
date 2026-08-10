@@ -1,9 +1,8 @@
 """Orchestration-facing station solve + Hashin FI workflow (simulation_runner API).
 
-Main track: linear-static through the full primary→…→quaternary cascade,
-including optional face traction on the contour-supported RHS.
-
-Saint-Venant ``K6`` is omitted on the linear-static path (deprecated).
+Main track: :class:`SectionLinearStaticRunner` construct → ``execute()`` →
+``get_results()`` (full P→S→T→Q container). Saint-Venant ``K6`` is omitted on
+the linear-static path (deprecated).
 """
 
 from __future__ import annotations
@@ -12,137 +11,77 @@ from typing import Any, Literal
 
 import numpy as np
 
-from blade_structure_utilities.section_contract.beam_resultant_vector import (
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
     BEAM_LOAD_AXIS_YZ,
     FRAME_SECTION_YZ,
     BeamResultantVector,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.station_analysis_types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.station_analysis_types import (
     SectionShellRecoveryBundle,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellSectionStationAnalysis,
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import (
-    PipelineBSection,
-    pipeline_b_section_from_shell_inputs,
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
+    ShellPanelTopology,
+    shell_panel_topology_from_shell_inputs,
 )
-from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_static import (
-    governing_fi_from_quaternary,
-    run_section_linear_static_from_resultants,
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticRunner,
 )
 
 FiTrack = Literal["linear_static"]
 
 
-def run_station_linear_static_hashin(
-    pb: PipelineBSection,
+def _require_section_strip_mesh(
     *,
-    resultants: BeamResultantVector | None = None,
-    N: float = 0.0,
-    Vy: float = 0.0,
-    Vz: float = 0.0,
-    My: float = 0.0,
-    Mz: float = 0.0,
-    T: float = 0.0,
-    about_yz: tuple[float, float] | None = None,
-    traction_field: Any | None = None,
-    traction_points_yz: np.ndarray | None = None,
-    shell_theory: ShellTheory = ShellTheory.FSDT,
+    section_strip_mesh: Any | None,
     n_elements_per_panel: int | None = None,
     target_element_length_m: float | None = None,
-    min_elements_per_panel: int = 2,
-    compute_section_deformation_1a: bool = False,
-) -> dict[str, Any]:
-    """Beam loads (± face traction) → linear-static cascade → governing Hashin."""
-    ne = int(n_elements_per_panel) if n_elements_per_panel is not None else 10
-    if resultants is None:
-        resultants = BeamResultantVector.from_named(
-            N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
-            frame=FRAME_SECTION_YZ,
-            about_yz=about_yz if about_yz is not None else BEAM_LOAD_AXIS_YZ,
+    min_elements_per_panel: int | None = None,
+) -> Any:
+    """Require a prebuilt mesh; reject density kwargs (owned outside FE)."""
+    if section_strip_mesh is None:
+        raise ValueError(
+            "section_strip_mesh is required; build it with "
+            "mesh_utilities.section_mesh.build_section_strip_mesh "
+            "(density is owned outside FE)."
         )
-    cascade = run_section_linear_static_from_resultants(
-        pb,
-        resultants=resultants,
-        traction_field=traction_field,
-        traction_points_yz=traction_points_yz,
-        n_elements_per_panel=ne,
-        target_element_length_m=target_element_length_m,
-        min_elements_per_panel=min_elements_per_panel,
-        shell_theory=shell_theory,
-        compute_section_deformation_1a=compute_section_deformation_1a,
-    )
-    max_fi, needs_review = governing_fi_from_quaternary(cascade.quaternary)
-    q = cascade.quaternary
-    hi = None if q.hashin_fi is None else q.hashin_fi.in_plane
-    panel_index = (
-        None
-        if cascade.runner.tertiary_results is None
-        else cascade.runner.tertiary_results.panel_index
-    )
-    fi_by_panel: list[float] = []
-    n_panels = len(cascade.assembly.panel_maps)
-    for pi in range(n_panels):
-        pmax = 0.0
-        if hi is not None and panel_index is not None:
-            for ri in range(hi.shape[0]):
-                if int(panel_index[ri]) != pi:
-                    continue
-                if hi[ri].size:
-                    pmax = max(pmax, float(np.nanmax(hi[ri])))
-        fi_by_panel.append(pmax)
-
-    return {
-        "cascade": cascade,
-        "quaternary": cascade.quaternary,
-        "runner": cascade.runner,
-        "assembly": cascade.assembly,
-        "max_fi_hashin": max_fi,
-        "needs_review": needs_review,
-        "fi_by_panel": fi_by_panel,
-        "governing": dict(cascade.quaternary.governing or {}),
-        "track": "linear_static",
-        "used_traction": bool(cascade.used_traction),
-    }
+    if (
+        n_elements_per_panel is not None
+        or target_element_length_m is not None
+        or min_elements_per_panel is not None
+    ):
+        raise ValueError(
+            "Density kwargs are not accepted on this shim; "
+            "pass a prebuilt section_strip_mesh= instead."
+        )
+    return section_strip_mesh
 
 
-def run_station_hashin(
-    pb: PipelineBSection,
-    *,
-    fi_track: FiTrack = "linear_static",
-    **kwargs: Any,
-) -> dict[str, Any]:
-    """Dispatch station Hashin FI (linear-static main track only)."""
-    if fi_track == "linear_static":
-        return run_station_linear_static_hashin(pb, **kwargs)
-    raise ValueError(
-        f"unknown fi_track={fi_track!r}; expected 'linear_static' "
-        "(Channel-A fi_track='periodic' has been removed)."
-    )
-
-
-def _bundle_from_linear_cascade(
-    pb: PipelineBSection,
-    cascade: Any,
+def _bundle_from_linear_static(
+    panel_topology: ShellPanelTopology,
+    static: SectionLinearStaticRunner,
 ) -> SectionShellRecoveryBundle:
-    """Recovery bundle from a linear cascade, with static-secondary panel rows.
+    """Recovery bundle from an executed station runner, with static-secondary panel rows.
 
     Thin-wall / Vlasov slots (``q_tot``, ``sig_p``, ``I_omega``, …) are left empty
     on purpose: the linear-static cascade does not populate Bredt thin-wall fields.
     Prefer ``all_panel_results``, ``panel_abd``, and ``y_e`` / ``z_e`` (zeros here
     unless a future helper fills elastic-centroid metadata).
     """
-    from blade_structure_utilities.section_shell_model.processing.static.results.compute_secondary.panel_row_nesting import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_secondary.panel_row_nesting import (
         nest_resultant_rows_by_panel,
     )
 
-    panels = list(pb.panels)
-    asm = cascade.assembly
+    panels = list(panel_topology.panels)
+    asm = static.assembly
+    if asm is None:
+        raise RuntimeError("executed runner missing assembly")
     nested: list[list[Any]] = [[] for _ in panels]
-    secondary = getattr(cascade.runner, "secondary_results", None)
+    secondary = static.secondary_results
     if secondary is not None and secondary.elemental_results is not None:
         rows = list(secondary.elemental_results.resultant_rows or [])
         nested = nest_resultant_rows_by_panel(rows, len(panels))
@@ -153,8 +92,8 @@ def _bundle_from_linear_cascade(
             break
     return SectionShellRecoveryBundle(
         panels=panels,
-        booms=getattr(pb, "booms", []),
-        webs_geom=getattr(pb, "webs_geom", []),
+        booms=getattr(panel_topology, "booms", []),
+        webs_geom=getattr(panel_topology, "webs_geom", []),
         q_tot=[],
         sig_p=[],
         sig_b=[],
@@ -179,8 +118,18 @@ def _bundle_from_linear_cascade(
         panel_thickness_m=np.asarray(asm.t_p, dtype=float),
         panel_G_eff=np.asarray(asm.g_p, dtype=float),
         panel_labels=list(asm.lab_p),
-        shell_midline_strips=tuple(getattr(getattr(pb, "shell_inputs", None), "midlines", ()) or ()),
+        shell_midline_strips=tuple(getattr(getattr(panel_topology, "shell_inputs", None), "midlines", ()) or ()),
     )
+
+
+def _bundle_from_linear_cascade(
+    panel_topology: ShellPanelTopology,
+    cascade: Any,
+) -> SectionShellRecoveryBundle:
+    """Backward-compatible alias: accept cascade view or executed runner."""
+    if isinstance(cascade, SectionLinearStaticRunner):
+        return _bundle_from_linear_static(panel_topology, cascade)
+    return _bundle_from_linear_static(panel_topology, cascade.runner)
 
 
 def build_fsdt_station_analysis(
@@ -196,7 +145,8 @@ def build_fsdt_station_analysis(
     T: float = 0.0,
     n_elements_per_panel: int | None = None,
     target_element_length_m: float | None = None,
-    min_elements_per_panel: int = 2,
+    min_elements_per_panel: int | None = None,
+    section_strip_mesh: Any | None = None,
     station_id: str = "station-0",
     provenance: ShellStationProvenance | None = None,
     fi_track: FiTrack = "linear_static",
@@ -205,8 +155,9 @@ def build_fsdt_station_analysis(
     """Main-track station analysis for recovery prepass (linear-static).
 
     Omits Saint-Venant ``K6`` on the constitutive handoff (deprecated).
+    Requires ``section_strip_mesh=`` (density is owned outside FE).
     """
-    from blade_structure_utilities.section_shell_model.interface.station_analysis_builder import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.interface.station_analysis_builder import (
         build_station_analysis_from_shell_bundle,
     )
 
@@ -216,28 +167,41 @@ def build_fsdt_station_analysis(
             "(Channel-A fi_track='periodic' has been removed)."
         )
 
-    pb = pipeline_b_section_from_shell_inputs(section_view, shell_inputs)
-    prov = provenance or ShellStationProvenance(
-        mesh_n_elements_per_panel=n_elements_per_panel,
-        mesh_element_length_frac=(
-            None if target_element_length_m is None else float(target_element_length_m)
-        ),
+    panel_topology = shell_panel_topology_from_shell_inputs(
+        shell_inputs, section=section_view
     )
-    out = run_station_linear_static_hashin(
-        pb,
-        N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
+    strip_mesh = _require_section_strip_mesh(
+        section_strip_mesh=section_strip_mesh,
         n_elements_per_panel=n_elements_per_panel,
         target_element_length_m=target_element_length_m,
         min_elements_per_panel=min_elements_per_panel,
     )
-    bundle = _bundle_from_linear_cascade(pb, out["cascade"])
+    prov = provenance or ShellStationProvenance()
+    resultants = BeamResultantVector.from_named(
+        N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
+        frame=FRAME_SECTION_YZ,
+        about_yz=BEAM_LOAD_AXIS_YZ,
+    )
+    from blade_structure_utilities.load_utilities.beam_to_shell_loads import (
+        shape_section_force_vector_from_panel_topology,
+    )
+
+    sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
+    static = SectionLinearStaticRunner(
+        panel_topology=panel_topology,
+        resultants=resultants,
+        section_strip_mesh=strip_mesh,
+        load_channel="thinwall",
+        section_force_vector=sfv,
+    ).execute()
+    bundle = _bundle_from_linear_static(panel_topology, static)
     if enable_buckling:
-        from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_buckling import (
+        from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_buckling import (
             run_section_linear_buckling_from_static,
         )
 
         buck = run_section_linear_buckling_from_static(
-            out["cascade"],
+            static,
             station_id=str(station_id),
             z_station=float(z_station),
             provenance=prov,
@@ -265,6 +229,4 @@ bundle_from_linear_cascade = _bundle_from_linear_cascade
 __all__ = [
     "build_fsdt_station_analysis",
     "bundle_from_linear_cascade",
-    "run_station_hashin",
-    "run_station_linear_static_hashin",
 ]

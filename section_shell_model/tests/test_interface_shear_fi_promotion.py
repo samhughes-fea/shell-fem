@@ -5,18 +5,18 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_materials.laminate import LaminateDefinition
-from blade_structure_utilities.section_materials.ply import OrthotropicPly
-from blade_structure_utilities.section_shell_model.processing.static.results.api.fi_recovery import (
+from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
+from blade_structure_utilities.material_utilities.orthotropic import OrthotropicPly
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api.fi_recovery import (
     compute_quaternary_fi_from_panel_rows,
     interlaminar_fi_from_row,
     interlaminar_fi_from_row_fsdt,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellPanelResultants,
     ShellTheory,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.compute_tertiary import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_tertiary import (
     CcxIpShearRecoveryOperator,
     FSDTInterfaceShearRecoveryOperator,
     HSDTQxShearRecoveryOperator,
@@ -76,7 +76,7 @@ def test_single_ply_uses_scalar_fallback():
 
 
 def test_untrusted_q_returns_untrusted_mode():
-    from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
         FieldProvenance,
         ProvenanceKind,
     )

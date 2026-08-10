@@ -19,24 +19,24 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_materials.failure_criteria import hashin_fi
-from blade_structure_utilities.section_materials.laminate import LaminateDefinition
-from blade_structure_utilities.section_materials.ply import OrthotropicPly
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
-from blade_structure_utilities.section_shell_model.processing.static.results.compute_quaternary import (
+from blade_structure_utilities.material_utilities.failure import hashin_fi
+from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
+from blade_structure_utilities.material_utilities.orthotropic import OrthotropicPly
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_quaternary import (
     ShellQuaternaryResultsOrchestrator,
     interlaminar_fi_from_row as tier4_interlaminar_fi_from_row,
     max_hashin_fi_from_bundle as tier4_max_hashin_fi_from_bundle,
     select_governing_hashin_element as tier4_select_governing_hashin_element,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.compute_tertiary import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_tertiary import (
     ShellTertiaryResultsOrchestrator,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.containers.container_hopper import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.containers.container_hopper import (
     ShellSecondaryResultSet,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.containers.elemental_results import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.containers.elemental_results import (
     ShellElementalResults,
 )
 
@@ -126,6 +126,39 @@ def test_quaternary_orchestrator_hashin_matches_direct_evaluation():
             assert quaternary.hashin_fi.in_plane[ri, pi] == pytest.approx(expected)
 
 
+def test_quaternary_orchestrator_populates_hashin_mode_arrays():
+    from blade_structure_utilities.material_utilities.failure import hashin_fi_modes
+
+    lam = LaminateDefinition(plies=[(_ply(), 0.0), (_ply(), 0.0)])
+    rows = _rows(3)
+    tertiary, cache = _tertiary_for(lam, rows)
+    quaternary = ShellQuaternaryResultsOrchestrator(tertiary=tertiary, cache=cache).compute()
+    hi = quaternary.hashin_fi
+    assert hi is not None
+    assert hi.fi_ft is not None and hi.fi_fc is not None
+    assert hi.fi_mt is not None and hi.fi_mc is not None
+    assert hi.in_plane is not None
+
+    Xt = np.array([p.Xt for p, _ in lam.plies])
+    Xc = np.array([p.Xc for p, _ in lam.plies])
+    Yt = np.array([p.Yt for p, _ in lam.plies])
+    Yc = np.array([p.Yc for p, _ in lam.plies])
+    S12 = np.array([p.S12 for p, _ in lam.plies])
+    for ri in range(len(rows)):
+        for pi in range(len(lam.plies)):
+            sig3 = tertiary.ply_results.sig_ply_mat[ri, pi]
+            ft, fc, mt, mc = hashin_fi_modes(
+                sig3.reshape(1, 3),
+                Xt[pi : pi + 1], Xc[pi : pi + 1], Yt[pi : pi + 1], Yc[pi : pi + 1], S12[pi : pi + 1],
+            )
+            assert hi.fi_ft[ri, pi] == pytest.approx(float(ft[0]))
+            assert hi.fi_fc[ri, pi] == pytest.approx(float(fc[0]))
+            assert hi.fi_mt[ri, pi] == pytest.approx(float(mt[0]))
+            assert hi.fi_mc[ri, pi] == pytest.approx(float(mc[0]))
+            env = max(float(ft[0]), float(fc[0]), float(mt[0]), float(mc[0]))
+            assert hi.in_plane[ri, pi] == pytest.approx(env)
+
+
 def test_quaternary_orchestrator_interlaminar_fi_positive_under_shear():
     lam = LaminateDefinition(plies=[(_ply(), 0.0)])
     rows = _rows(2)
@@ -144,22 +177,22 @@ def test_quaternary_orchestrator_interlaminar_fi_positive_under_shear():
 
 
 def test_governing_element_and_max_hashin_facades_are_reexported_from_tier4():
-    from blade_structure_utilities.section_shell_model.processing.static.results.api import fi_recovery
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api import fi_recovery
 
     assert fi_recovery.select_governing_hashin_element is tier4_select_governing_hashin_element
     assert fi_recovery.max_hashin_fi_from_bundle is tier4_max_hashin_fi_from_bundle
 
 
 def test_interlaminar_fi_from_row_facade_is_reexported_from_tier4():
-    from blade_structure_utilities.section_shell_model.processing.static.results.api import fi_recovery
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api import fi_recovery
 
     assert fi_recovery.interlaminar_fi_from_row is tier4_interlaminar_fi_from_row
 
 
 def test_von_mises_fi_from_row_facade_is_reexported_from_tier4_and_bit_identical():
-    from blade_structure_utilities.section_materials.failure_criteria import von_mises_plane_stress_fi
-    from blade_structure_utilities.section_shell_model.processing.static.results.api import fi_recovery
-    from blade_structure_utilities.section_shell_model.processing.static.results.compute_quaternary import (
+    from blade_structure_utilities.material_utilities.failure import von_mises_plane_stress_fi
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api import fi_recovery
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_quaternary import (
         von_mises_fi_from_row as tier4_von_mises_fi_from_row,
     )
 
@@ -174,7 +207,7 @@ def test_von_mises_fi_from_row_facade_is_reexported_from_tier4_and_bit_identical
 
 
 def test_batched_interlaminar_fi_matches_pre_fold_row_facade():
-    from blade_structure_utilities.section_shell_model.processing.static.results.compute_quaternary.compute_hashin_fi import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_quaternary.compute_hashin_fi import (
         batched_interlaminar_fi,
     )
 
@@ -193,7 +226,7 @@ def test_batched_interlaminar_fi_matches_pre_fold_row_facade():
 
 def test_quaternary_branches_hashin_vs_von_mises_by_panel_constitutive_kind():
     """Orthotropic panels get Hashin; isotropic panels get Von Mises and skip Hashin."""
-    from blade_structure_utilities.section_materials.failure_criteria import von_mises_plane_stress_fi
+    from blade_structure_utilities.material_utilities.failure import von_mises_plane_stress_fi
 
     lam_ortho = LaminateDefinition(plies=[(_ply(), 0.0), (_ply(), 0.0)])
     # Single isotropic-equivalent ply (E1=E2) used for CLT recovery on panel 1.

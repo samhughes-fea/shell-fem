@@ -6,17 +6,17 @@ from unittest.mock import patch
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import build_pipeline_b_section
-from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import assemble_global_shell
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import assemble_global_shell
 
 
 def test_assembly_calls_panel_abd_once_per_panel() -> None:
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    panels = pb.panels
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    panels = panel_topology.panels
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in panels]
     call_count = 0
     original = __import__(
-        "blade_structure_utilities.section_shell_model.pre_processing.constitutive.panel_abd",
+        "blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.constitutive.panel_abd",
         fromlist=["panel_abd_tuple_from_lam"],
     ).panel_abd_tuple_from_lam
 
@@ -26,7 +26,7 @@ def test_assembly_calls_panel_abd_once_per_panel() -> None:
         return original(lam)
 
     with patch(
-        "blade_structure_utilities.section_shell_model.pre_processing.element_library.formulation_factory.panel_abd_tuple_from_lam",
+        "blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.formulation_factory.panel_abd_tuple_from_lam",
         side_effect=_counting,
     ):
         assemble_global_shell(panels, zeros, zeros, n_elements_per_panel=4)

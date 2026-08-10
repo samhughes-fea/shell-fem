@@ -12,7 +12,7 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-from blade_structure_utilities.section_shell_model.processing.static.operations.solve_states import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.solve_states import (
     DisassembledShellResults,
     GlobalShellSystem,
     PrimaryShellResults,
@@ -26,7 +26,7 @@ from .compute_reaction_force import ComputeReactionForce
 from .compute_residual import ComputeResidual
 
 if TYPE_CHECKING:
-    from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
 
 
 class ShellPrimaryResultsOrchestrator:

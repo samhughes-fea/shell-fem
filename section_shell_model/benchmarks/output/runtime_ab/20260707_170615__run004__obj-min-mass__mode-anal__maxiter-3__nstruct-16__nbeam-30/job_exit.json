@@ -1,6 +1,0 @@
-{
-  "status": "completed",
-  "recorded_at_iso": "2026-07-07T17:07:57",
-  "total_wall_s": 101.65,
-  "runtime_json": "C:\\Users\\s1834431\\Projects\\fastblade\\blade_precompute\\section_shell_model\\benchmarks\\output\\runtime_ab\\20260707_170615__run004__obj-min-mass__mode-anal__maxiter-3__nstruct-16__nbeam-30\\runtime.json"
-}

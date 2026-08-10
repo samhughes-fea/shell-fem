@@ -9,7 +9,7 @@ import numpy as np
 
 def compute_elastic_centroid_from_panels(panels: list[Any]) -> tuple[float, float]:
     """A11-weighted elastic centroid (y_e, z_e) from panel laminates and geometry."""
-    from blade_structure_utilities.section_shell_model.pre_processing.constitutive.panel_abd import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.constitutive.panel_abd import (
         panel_abd_tuple_from_lam,
     )
 

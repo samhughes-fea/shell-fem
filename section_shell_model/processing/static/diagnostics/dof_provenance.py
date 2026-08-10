@@ -1,6 +1,6 @@
 """Opt-in DOF provenance dump tooling (``SHELL_DOF_PROVENANCE_DUMP``).
 
-Extracted from :class:`~blade_structure_utilities.section_shell_model.simulation_runner.section_linear_static_runner.SectionLinearStaticRunner`.
+Extracted from :class:`~blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner.SectionLinearStaticRunner`.
 Serializes the assembly/constraint/reduction/reconstruction index maps to a
 JSON file for offline inspection when ``SHELL_DOF_PROVENANCE_DUMP`` is set.
 """

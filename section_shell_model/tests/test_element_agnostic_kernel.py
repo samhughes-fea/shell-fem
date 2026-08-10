@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     FieldProvenance,
     ProvenanceKind,
     SectionShellRecoveryBundle,
@@ -14,14 +14,14 @@ from blade_structure_utilities.section_shell_model.pre_processing.containers.typ
     provenance_is_placeholder,
     provenance_is_trusted,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.kernel import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.kernel import (
     MITC4_KERNEL,
     resolve_kernel,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.constitutive.panel_abd import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.constitutive.panel_abd import (
     collect_panel_abd_stack,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.operations.assemble_geometric import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.operations.assemble_geometric import (
     assemble_panel_geometric_stiffness,
 )
 
@@ -79,7 +79,7 @@ def test_section_shell_recovery_bundle_field_aliases():
 
 def test_kernel_recovery_matches_legacy_mitc4_path():
     """Kernel recover_resultants / recover_shear match direct mitc4 helpers for one element."""
-    from blade_structure_utilities.section_shell_model.pre_processing.element_library.mitc4.element import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.mitc4.element import (
         mitc4_resultants,
         mitc4_shear_resultants,
     )

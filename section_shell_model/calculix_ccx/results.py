@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import FieldProvenance, ProvenanceKind, ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import FieldProvenance, ProvenanceKind, ShellPanelResultants
 from .mesh import CcxSectionMesh
 
 

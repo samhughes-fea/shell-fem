@@ -4,7 +4,7 @@ Contract tests for the ShellMidlineStrip → ShellMeshInputs → MITC4 mesh pipe
 Verifies the public handoff contract established in PR1:
 
   build_shell_mesh_inputs(section, ...) → ShellMeshInputs
-  build_section_v2(shell_inputs)        → panels (ordered skin → caps → webs)
+  bind_shell_panels(shell_inputs)    → panels (ordered skin → caps → webs)
   build_section_strip_mesh(shell_inputs, ...)   → SectionStripMesh
 
 Key invariants checked:
@@ -13,7 +13,7 @@ Key invariants checked:
       exactly one strip via label = f"{kind}:{label}".
   A5  panels are emitted in skin → caps → webs order, and panel.nodes
       equals the corresponding strip's midline_b (as produced by
-      build_section_v2).
+      bind_shell_panels).
   A6  Same contract holds with a non-zero twist angle.
 """
 
@@ -38,29 +38,29 @@ _LAYOUT_KEYS = ["2D-F", "2D-CN", "1A-CN", "3C-F", "5D-CN"]
 
 @pytest.fixture(scope="session")
 def airfoil():
-    from blade_structure_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 
     return AirfoilSDF.from_naca("0012", n_points=100, chord=1.0)
 
 
 def _build_pipeline(airfoil, layout_key: str, twist_rad: float = 0.0):
     """Build all pipeline objects for one layout / twist combination."""
-    from blade_structure_utilities.section_geometry.api.factory import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.topology import build_section_v2
+    from blade_structure_utilities.material_utilities.adapters import bind_shell_panels
 
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=twist_rad)
     shell_inputs = build_shell_mesh_inputs(
         section, twist_rad=twist_rad, layout_key=layout_key, n_cap_samples=40
     )
-    panels, _, _, _ = build_section_v2(shell_inputs)
+    panels, _, _, _ = bind_shell_panels(shell_inputs)
     mesh = build_section_strip_mesh(shell_inputs, n_elements_per_panel=4, endpoint_tol=1e-6)
     return shell_inputs, panels, mesh
 
@@ -104,7 +104,7 @@ def test_panel_ordering_skin_caps_webs(airfoil, layout_key):
     """Panels must be emitted in skin → caps → webs order."""
     shell_inputs, panels, _ = _build_pipeline(airfoil, layout_key)
 
-    # Reconstruct expected order from midlines (same logic as build_section_v2).
+    # Reconstruct expected order from midlines (same logic as bind_shell_panels).
     skin_ms = [m for m in shell_inputs.midlines if m.kind == "skin"]
     cap_ms = [m for m in shell_inputs.midlines if m.kind == "cap"]
     web_ms = [m for m in shell_inputs.midlines if m.kind == "web"]
@@ -117,7 +117,7 @@ def test_panel_ordering_skin_caps_webs(airfoil, layout_key):
         assert panel.label == expected_label, (
             f"{layout_key}: panels[{i}].label={panel.label!r} "
             f"!= expected {expected_label!r}. "
-            f"Check build_section_v2 ordering: skin → caps → webs."
+            f"Check bind_shell_panels ordering: skin → caps → webs."
         )
 
 
@@ -154,7 +154,7 @@ def test_panel_nodes_match_ordered_midline_b(airfoil, layout_key):
 def test_raw_midline_order_differs_from_panel_order(airfoil, layout_key):
     """For layouts with caps+webs, midlines[i] must NOT equal panels[i] for web/cap rows.
 
-    This test documents the ordering invariant: build_section_v2 reorders
+    This test documents the ordering invariant: bind_shell_panels reorders
     to skin→caps→webs, so raw midlines[i] cannot be paired directly with panels[i]
     for any layout that has both caps and webs.
     """
@@ -232,12 +232,12 @@ def test_mitc4_mesh_panel_count(airfoil, layout_key):
 
 def test_target_element_length_m_coarser_on_short_webs_than_skin(airfoil):
     """Distance-based sizing: short webs get fewer elements than long skin strips."""
-    from blade_structure_utilities.section_geometry.api.factory import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
 
@@ -263,12 +263,12 @@ def test_target_element_length_m_coarser_on_short_webs_than_skin(airfoil):
 
 def test_target_element_length_m_overridden_by_explicit_uniform_count(airfoil):
     """Uniform ``n_elements_per_panel`` other than 10 overrides ``target_element_length_m``."""
-    from blade_structure_utilities.section_geometry.api.factory import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
 
@@ -299,12 +299,12 @@ def test_target_element_length_m_overridden_by_explicit_uniform_count(airfoil):
 @pytest.mark.parametrize("layout_key", ["2D-F", "2D-CN"])
 def test_web_junction_clusters_are_multi_member_after_skin_split(airfoil, layout_key):
     """Skin split + snapped web ends: web-related endpoint clusters are not isolated."""
-    from blade_structure_utilities.section_geometry.api.factory import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
 
@@ -325,14 +325,14 @@ def test_web_junction_clusters_are_multi_member_after_skin_split(airfoil, layout
 @pytest.mark.parametrize("layout_key", ["2D-F", "2D-CN"])
 def test_cap_endpoints_preserve_exported_positions(airfoil, layout_key):
     """Web-centric rule: cap endpoints are not remapped to skin during split."""
-    from blade_structure_utilities.section_geometry.api.factory import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.section_geometry.interface.shell_midline_export import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import (
         build_shell_midline_strips,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
 
@@ -375,13 +375,13 @@ def _web_element_lengths(mesh) -> list[float]:
 
 
 def _build_uniform_density_mesh(layout_key: str, chord_m: float, *, h_target_m: float):
-    from blade_structure_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.sdf.airfoil import AirfoilSDF
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
         ENDPOINT_TOL_FRAC,
         build_section_strip_mesh,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
 
@@ -402,7 +402,7 @@ def _build_uniform_density_mesh(layout_key: str, chord_m: float, *, h_target_m: 
 @pytest.mark.parametrize("chord_m", [0.3, 1.6, 5.0])
 def test_uniform_density_strip_mesh(chord_m: float) -> None:
     """Flat panels keep ~h_target spacing; element count grows with chord."""
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import MIN_ELEMENTS_PER_PANEL
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import MIN_ELEMENTS_PER_PANEL
 
     layout_key = "2D-F"
     h_target = 0.012 * chord_m
@@ -428,9 +428,9 @@ def test_uniform_density_element_count_grows_with_chord() -> None:
 
 
 def test_fractional_strip_mesh_rejects_conflicting_sizing(airfoil) -> None:
-    from blade_structure_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
 
@@ -456,19 +456,19 @@ def test_fractional_strip_mesh_rejects_conflicting_sizing(airfoil) -> None:
 
 def test_solver_and_strip_mesh_agree_on_panel_element_counts(airfoil) -> None:
     """Diagnostic strip mesh and MITC4 solver must share effective_n_elements_spec."""
-    from blade_structure_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
         MIN_ELEMENTS_PER_PANEL,
         TARGET_ELEMENT_LENGTH_FRAC,
         build_section_strip_mesh,
     )
-    from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
         assemble_global_shell,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         build_shell_mesh_inputs,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.topology import build_section_v2
+    from blade_structure_utilities.material_utilities.adapters import bind_shell_panels
 
     layout_key = "2D-F"
     chord_m = 1.656
@@ -483,7 +483,7 @@ def test_solver_and_strip_mesh_agree_on_panel_element_counts(airfoil) -> None:
         target_element_length_m=h_local,
         min_elements_per_panel=MIN_ELEMENTS_PER_PANEL,
     )
-    panels, _, _, _ = build_section_v2(shell_inputs)
+    panels, _, _, _ = bind_shell_panels(shell_inputs)
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in panels]
     _K, _f, _nm, panel_maps, *_rest = assemble_global_shell(
         panels,

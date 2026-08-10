@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,7 @@ def compare_path_resultants(
     strengths: dict[str, float] | None = None,
 ) -> PathCompareStats:
     """Compare two recovery bundles on one panel (relative L2 per field)."""
-    from blade_structure_utilities.section_shell_model.processing.static.results.api.fi_recovery import max_hashin_fi_from_bundle
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api.fi_recovery import max_hashin_fi_from_bundle
 
     rows_b, rows_c = _matched_element_rows(bundle_b, bundle_c, panel_index)
     rel: dict[str, float] = {}

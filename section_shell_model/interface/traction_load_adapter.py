@@ -1,31 +1,17 @@
 """Map station load fields to exclusive beam vs face-traction shell loads.
 
-Production path: :func:`run_section_linear_static_from_load_field`.
+Production path: shape resultants / traction via the helpers below, then
+:class:`~blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner.SectionLinearStaticRunner`.
 """
 from __future__ import annotations
 
 import warnings
-from typing import Mapping
+from typing import Any, Mapping
 
 import numpy as np
 
-from blade_structure_utilities.section_contract.beam_resultant_vector import (
-    BEAM_LOAD_AXIS_YZ,
-    FRAME_SECTION_YZ,
-    BeamResultantVector,
-)
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
-    ShellTheory,
-)
-from blade_structure_utilities.section_shell_model.pre_processing.loading.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types import (
     SectionStationLoadField,
-)
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import (
-    PipelineBSection,
-)
-from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_static import (
-    LinearStaticCascadeResult,
-    run_section_linear_static_from_resultants,
 )
 
 
@@ -162,61 +148,10 @@ def load_field_for_dispatch(
     return station_load_fields[station_index]
 
 
-def run_section_linear_static_from_load_field(
-    pb: PipelineBSection,
-    *,
-    load_field: SectionStationLoadField,
-    n_elements_per_panel: int = 10,
-    target_element_length_m: float | None = None,
-    min_elements_per_panel: int = 2,
-    L_x: float = 1.0,
-    interface_constraint_mode: str = "shared",
-    bc_mode: str = "contour_support",
-    shell_theory: ShellTheory = ShellTheory.FSDT,
-    prefer_traction_integration: bool = False,
-    about_yz: tuple[float, float] | None = None,
-    compute_section_deformation_1a: bool = False,
-) -> LinearStaticCascadeResult:
-    """Apply a ``SectionStationLoadField`` on the linear-static cascade.
-
-    Exclusive Channel A/B provenance matches
-    :func:`section_resultants_from_load_field`: usable traction zeros beam
-    shears and overlays face loads; otherwise distributed ``q`` enters Channel A
-    only.
-    """
-    N, Vy, Vz, My, Mz, T = beam_resultants_from_load_field(
-        load_field,
-        prefer_traction_integration=prefer_traction_integration,
-    )
-    traction_points = traction_points_from_load_field(load_field)
-    traction_field = load_field.traction_field if traction_points is not None else None
-    origin = about_yz if about_yz is not None else BEAM_LOAD_AXIS_YZ
-    resultants = BeamResultantVector.from_named(
-        N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
-        frame=FRAME_SECTION_YZ,
-        about_yz=origin,
-    )
-    return run_section_linear_static_from_resultants(
-        pb,
-        resultants=resultants,
-        traction_field=traction_field,
-        traction_points_yz=traction_points,
-        n_elements_per_panel=n_elements_per_panel,
-        target_element_length_m=target_element_length_m,
-        min_elements_per_panel=min_elements_per_panel,
-        L_x=L_x,
-        interface_constraint_mode=interface_constraint_mode,
-        bc_mode=bc_mode,
-        shell_theory=shell_theory,
-        compute_section_deformation_1a=compute_section_deformation_1a,
-    )
-
-
 __all__ = [
     "beam_resultants_from_load_field",
     "load_field_for_dispatch",
     "resolve_shell_station_resultants",
-    "run_section_linear_static_from_load_field",
     "section_resultants_from_load_field",
     "traction_points_from_load_field",
 ]

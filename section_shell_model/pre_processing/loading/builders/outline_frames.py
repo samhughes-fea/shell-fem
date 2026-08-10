@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.point_to_surftraction.geometry import SectionOutlineGeometry
-from blade_structure_utilities.point_to_surftraction.tractions import TractionField
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.geometry import SectionOutlineGeometry
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import TractionField
 
 
 def bframe_to_sframe_rotation(twist_rad: float) -> NDArray[np.float64]:

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     ShellForceObject,
     ShellStiffnessObject,
 )

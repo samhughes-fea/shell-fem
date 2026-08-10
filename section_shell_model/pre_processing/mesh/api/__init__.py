@@ -1,17 +1,17 @@
-"""Mesh API: Pipeline B section geometry builders."""
+"""Mesh API: shell panel topology section geometry builders."""
 
-from .pipeline_b import (
-    PipelineBSection,
-    TaperedPipelineBSection,
-    build_pipeline_b_section,
-    build_tapered_pipeline_b_section,
-    pipeline_b_section_from_shell_inputs,
+from .shell_panel_topology import (
+    ShellPanelTopology,
+    TaperedShellPanelTopology,
+    build_shell_panel_topology,
+    build_tapered_shell_panel_topology,
+    shell_panel_topology_from_shell_inputs,
 )
 
 __all__ = [
-    "PipelineBSection",
-    "TaperedPipelineBSection",
-    "build_pipeline_b_section",
-    "pipeline_b_section_from_shell_inputs",
-    "build_tapered_pipeline_b_section",
+    "ShellPanelTopology",
+    "TaperedShellPanelTopology",
+    "build_shell_panel_topology",
+    "shell_panel_topology_from_shell_inputs",
+    "build_tapered_shell_panel_topology",
 ]

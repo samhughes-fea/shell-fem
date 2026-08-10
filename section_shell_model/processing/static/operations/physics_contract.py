@@ -2,7 +2,7 @@
 
 Production is linear static: formulations supply constant ``K`` / ``f`` in the
 global DOF basis consumed by
-:class:`~blade_structure_utilities.section_shell_model.processing.static.operations.periodic.periodic_reduced_bvp.contour-supported linear-static BVP`.
+:class:`~blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.periodic.periodic_reduced_bvp.contour-supported linear-static BVP`.
 
 ``ResidualTangentPhysics`` is a **reserved contract** (not a scheduled milestone).
 ``ShellAnalysisRegime.NONLINEAR`` stays empty; do not wire a Newton runner unless

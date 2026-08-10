@@ -22,7 +22,7 @@ def von_mises_fi(
     Thin wrapper over ``materials.failure_criteria.von_mises_plane_stress_fi`` — no
     numerics change, only the call site moves here per the tier-4 criterion contract.
     """
-    from blade_structure_utilities.section_materials.failure_criteria import von_mises_plane_stress_fi
+    from blade_structure_utilities.material_utilities.failure import von_mises_plane_stress_fi
 
     return von_mises_plane_stress_fi(
         np.asarray(sigma_iso, dtype=float), np.asarray(sigma_allow, dtype=float)

@@ -7,7 +7,7 @@ from typing import Callable
 import numpy as np
 import scipy.sparse as sp
 
-from blade_structure_utilities.section_shell_model.processing.static.operations.solve_states import ConstrainedShellSystem, GlobalShellSystem, ReducedShellSystem
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.solve_states import ConstrainedShellSystem, GlobalShellSystem, ReducedShellSystem
 from ..results.containers.map_results import ShellMapEntry
 
 KrrModifier = Callable[[sp.csc_matrix, np.ndarray, sp.csr_matrix], tuple[sp.csc_matrix, np.ndarray]]

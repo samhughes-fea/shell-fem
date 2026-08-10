@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
 
 
 @dataclass
@@ -42,12 +42,12 @@ def solve_station_clpt_shell(
     Solve CLPT for ``[N; M] = [[A,B],[B,D]] [eps0; kappa]`` and Hashin envelope FI.
 
     Ply stresses from CLPT recovery are passed to
-    :func:`blade_structure_utilities.section_materials.failure_criteria.hashin_fi` with per-ply
+    :func:`blade_structure_utilities.material_utilities.failure.hashin_fi` with per-ply
     strength arrays when scalars are broadcast.
     """
-    from blade_structure_utilities.section_materials.clpt_recovery import clpt_recovery_from_laminate
-    from blade_structure_utilities.section_materials.failure_criteria import hashin_fi
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition, laminate_definition_from_legacy
+    from blade_structure_utilities.material_utilities.laminate import clpt_recovery_from_laminate
+    from blade_structure_utilities.material_utilities.failure import hashin_fi
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition, laminate_definition_from_legacy
 
     N_vec = resultants.to_N_vec()
     M_vec = resultants.to_M_vec()

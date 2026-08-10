@@ -11,24 +11,24 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_materials.laminate import LaminateDefinition
-from blade_structure_utilities.section_materials.clpt_recovery import ply_mid_stresses_laminate
-from blade_structure_utilities.section_materials.ply import OrthotropicPly
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
-from blade_structure_utilities.section_shell_model.processing.static.results.api.fi_recovery import (
+from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
+from blade_structure_utilities.material_utilities.laminate import ply_mid_stresses_laminate
+from blade_structure_utilities.material_utilities.orthotropic import OrthotropicPly
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api.fi_recovery import (
     hashin_fi_per_ply_from_rows_batch,
     clpt_inputs_trusted as api_clpt_inputs_trusted,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.compute_tertiary import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_tertiary import (
     ShellTertiaryResultsOrchestrator,
     batched_clt_strains,
     clpt_inputs_trusted,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.containers.container_hopper import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.containers.container_hopper import (
     ShellSecondaryResultSet,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.containers.elemental_results import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.containers.elemental_results import (
     ShellElementalResults,
 )
 
@@ -89,7 +89,7 @@ def test_batched_clt_strains_matches_direct_abd_solve():
 
 
 def test_batched_clt_strains_respects_provenance_gate():
-    from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
         FieldProvenance,
         ProvenanceKind,
     )
@@ -153,7 +153,7 @@ def test_tertiary_orchestrator_groups_rows_by_panel_index():
 def test_hashin_fi_per_ply_from_rows_batch_unchanged_after_clt_extraction():
     """Facade regression: fi_out/needs_review reproduce a from-scratch reference
     computation (independent of the refactored implementation) for off-axis plies."""
-    from blade_structure_utilities.section_materials.failure_criteria import hashin_fi
+    from blade_structure_utilities.material_utilities.failure import hashin_fi
 
     lam = _lam(30.0)
     plies = []

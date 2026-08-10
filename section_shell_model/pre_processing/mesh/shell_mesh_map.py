@@ -8,8 +8,15 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from .mesh_topology import NElements, cluster_points, panel_endpoints
-from .strip_discretise import discretise_strip
+from blade_structure_utilities.mesh_utilities.section_mesh.discretise import (
+    cap_required_stations_from_panels,
+    discretise_strip,
+)
+from blade_structure_utilities.mesh_utilities.section_mesh.mesh_topology import (
+    NElements,
+    cluster_points,
+    panel_endpoints,
+)
 
 
 def resolve_n_elements(spec: NElements, pi: int, default: int = 10) -> int:
@@ -32,6 +39,13 @@ def effective_n_elements_spec(
     default_n: int = 10,
     min_n: int = 1,
 ) -> NElements:
+    """Resolve per-panel element counts.
+
+    Production default is **length-based**: callers should pass
+    ``target_element_length_m`` from ``TARGET_ELEMENT_LENGTH_FRAC * chord_m``
+    with ``n_elements_per_panel=None``. An explicit integral count (other than
+    the legacy sentinel ``default_n``) overrides the length policy.
+    """
     if (
         target_element_length_m is None
         or not np.isfinite(target_element_length_m)
@@ -129,6 +143,7 @@ def build_panel_mesh_maps(
 ) -> tuple[list[PanelGlobalMap], list[tuple[int, str, np.ndarray]]]:
     panel_maps: list[PanelGlobalMap] = []
     endpoints: list[tuple[int, str, np.ndarray]] = []
+    required_per_panel = cap_required_stations_from_panels(panels)
     for pi, p in enumerate(panels):
         s_panel = np.asarray(p.s, dtype=float)
         if len(s_panel) < 2:
@@ -140,6 +155,7 @@ def build_panel_mesh_maps(
             resolve_n_elements(n_elem_spec, pi),
             panel_label=str(getattr(p, "label", "") or ""),
             nodes_yz=nodes_yz,
+            required_s=required_per_panel[pi],
         )
         n_local_nodes = 2 * len(s_nodes)
         panel_maps.append(

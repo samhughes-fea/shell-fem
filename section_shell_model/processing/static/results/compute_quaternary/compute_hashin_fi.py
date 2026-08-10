@@ -18,7 +18,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
 from ..compute_tertiary.provenance import interlaminar_inputs_trusted
 
 
@@ -79,33 +79,83 @@ def ply_hashin_fi(
     Yc: NDArray[np.float64],
     S12: NDArray[np.float64],
 ) -> tuple[NDArray[np.float64], NDArray[np.bool_]]:
-    """Per-row, per-ply Hashin FI from ply-resolved stress ``(n_rows, n_ply, 3)``.
+    """Per-row, per-ply Hashin envelope FI from ply-resolved stress ``(n_rows, n_ply, 3)``.
 
     ``sig_ply`` may be laminate-frame or material-frame stress depending on the
     caller's ply-stress recovery step; this function only evaluates the criterion
     per ply, matching ``materials.failure_criteria.hashin_fi`` element-by-element
     (row, ply) to reproduce the historical batched-loop ordering.
     """
-    from blade_structure_utilities.section_materials.failure_criteria import hashin_fi
+    modes, needs_review = ply_hashin_fi_modes(
+        sig_ply, trusted_mask, Xt=Xt, Xc=Xc, Yt=Yt, Yc=Yc, S12=S12,
+    )
+    fi_ft, fi_fc, fi_mt, fi_mc = modes
+    fi_out = np.maximum(np.maximum(fi_ft, fi_fc), np.maximum(fi_mt, fi_mc))
+    return fi_out, needs_review
+
+
+def ply_hashin_fi_modes(
+    sig_ply: NDArray[np.float64],
+    trusted_mask: NDArray[np.bool_],
+    *,
+    Xt: NDArray[np.float64],
+    Xc: NDArray[np.float64],
+    Yt: NDArray[np.float64],
+    Yc: NDArray[np.float64],
+    S12: NDArray[np.float64],
+) -> tuple[
+    tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]],
+    NDArray[np.bool_],
+]:
+    """Per-row, per-ply Hashin mode FIs from ply-resolved stress ``(n_rows, n_ply, 3)``.
+
+    Returns ``((fi_ft, fi_fc, fi_mt, fi_mc), needs_review)`` where each mode array
+    is ``(n_rows, n_ply)``.
+
+    Vectorised over both rows and plies in one call: ``hashin_fi_modes`` already
+    broadcasts over any leading shape via ``sigma_mat[..., 0]``, so evaluating it
+    once on the full ``(n_rows, n_ply, 3)`` batch (with ``Xt``/``Xc``/``Yt``/``Yc``/
+    ``S12`` as ``(n_ply,)`` arrays broadcasting against the ``(n_rows, n_ply)``
+    output) reproduces the old row-by-row/ply-by-ply Python loop exactly, without
+    the O(n_rows * n_ply) call overhead -- the loop form only got away with that
+    overhead while every laminate was a single degenerate ply; real multi-ply
+    stacks (skin/spar now tens to ~80 plies) make it the dominant per-trial cost.
+    """
+    from blade_structure_utilities.material_utilities.failure import hashin_fi_modes
 
     n_rows, n_ply_arr, _ = sig_ply.shape
     n_ply = min(n_ply_arr, len(Xt))
-    fi_out = np.zeros((n_rows, max(n_ply_arr, 1)), dtype=float)
-    needs_review = ~np.asarray(trusted_mask, dtype=bool)
-    for ri in np.flatnonzero(trusted_mask):
-        for pi in range(n_ply):
-            sig3 = np.asarray(sig_ply[ri, pi], dtype=float).ravel()[:3]
-            fi_out[ri, pi] = float(
-                hashin_fi(
-                    sig3.reshape(1, 3),
-                    Xt[pi : pi + 1],
-                    Xc[pi : pi + 1],
-                    Yt[pi : pi + 1],
-                    Yc[pi : pi + 1],
-                    S12[pi : pi + 1],
-                )[0]
-            )
-    return fi_out, needs_review
+    out_cols = max(n_ply_arr, 1)
+    fi_ft = np.zeros((n_rows, out_cols), dtype=float)
+    fi_fc = np.zeros((n_rows, out_cols), dtype=float)
+    fi_mt = np.zeros((n_rows, out_cols), dtype=float)
+    fi_mc = np.zeros((n_rows, out_cols), dtype=float)
+    trusted = np.asarray(trusted_mask, dtype=bool)
+    needs_review = ~trusted
+
+    if n_rows > 0 and n_ply > 0:
+        # Zero out untrusted rows' stress before evaluating so the criterion
+        # never sees (possibly garbage/NaN) untrusted stress -- matches the old
+        # loop's "skip untrusted rows entirely" behaviour exactly.
+        sig_safe = np.where(
+            trusted[:, None, None],
+            np.asarray(sig_ply[:, :n_ply, :], dtype=float),
+            0.0,
+        )
+        ft, fc, mt, mc = hashin_fi_modes(
+            sig_safe,
+            Xt[:n_ply],
+            Xc[:n_ply],
+            Yt[:n_ply],
+            Yc[:n_ply],
+            S12[:n_ply],
+        )
+        row_mask = trusted[:, None]
+        fi_ft[:, :n_ply] = np.where(row_mask, ft, 0.0)
+        fi_fc[:, :n_ply] = np.where(row_mask, fc, 0.0)
+        fi_mt[:, :n_ply] = np.where(row_mask, mt, 0.0)
+        fi_mc[:, :n_ply] = np.where(row_mask, mc, 0.0)
+    return (fi_ft, fi_fc, fi_mt, fi_mc), needs_review
 
 
 def interlaminar_fi_from_row(
@@ -253,5 +303,6 @@ __all__ = [
     "interlaminar_fi_from_row",
     "interlaminar_fi_from_row_fsdt",
     "ply_hashin_fi",
+    "ply_hashin_fi_modes",
     "ply_strength_vectors_from_lam",
 ]

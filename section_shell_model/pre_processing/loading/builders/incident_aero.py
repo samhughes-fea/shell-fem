@@ -6,7 +6,7 @@ import math
 
 from ..containers.types import SectionLoadsJobConfig
 from ..containers.types import IncidentAeroSpec, StationAeroContext
-from blade_structure_utilities.point_to_surftraction.xfoil.xfoil_adapter import XfoilRunConfig
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.xfoil.xfoil_adapter import XfoilRunConfig
 
 
 def derive_incident_aero(

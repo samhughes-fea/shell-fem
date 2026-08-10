@@ -8,44 +8,44 @@ from typing import Any, Literal, Sequence
 import numpy as np
 import scipy.sparse as sp
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.buckling_types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.buckling_types import (
     ShellPanelBucklingInput,
     ShellStationBucklingBundle,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     ShellFormulationCache,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellPanelResultants,
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import (
     PanelGlobalMap,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.operations.assemble_geometric import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.operations.assemble_geometric import (
     assemble_section_geometric_stiffness,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.operations.eigen_states import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.operations.eigen_states import (
     BucklingEigenSolveState,
     PanelPrestressState,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.operations.solve_eigen import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.operations.solve_eigen import (
     prestress_map_from_nested_resultants,
     solve_panel_linear_buckling_eigen,
     solve_section_linear_buckling_eigen,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.compute_primary import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.compute_primary import (
     ShellBucklingPrimaryResultsOrchestrator,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.compute_secondary import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.compute_secondary import (
     ShellBucklingSecondaryResultsOrchestrator,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.containers import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.containers import (
     ShellBucklingPrimaryResultSet,
     ShellBucklingSecondaryResultSet,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.fold_station_bundle import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.fold_station_bundle import (
     fold_station_buckling_bundle,
 )
 
@@ -326,10 +326,10 @@ class SectionLinearBucklingRunner:
         if self.eigen_track == "section" and self.panel_inputs and self.eigen_states:
             # Station-bundle contract requires assessment labels == panel_inputs.
             # Broadcast section λ onto one assessment per prestress panel.
-            from blade_structure_utilities.section_shell_model.pre_processing.containers.buckling_types import (
+            from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.buckling_types import (
                 PanelBucklingResult,
             )
-            from blade_structure_utilities.section_shell_model.processing.buckling.results.compute_secondary.secondary_results_orchestrator import (
+            from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.compute_secondary.secondary_results_orchestrator import (
                 assessment_from_panel_buckling_result,
             )
 

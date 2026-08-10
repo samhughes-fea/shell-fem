@@ -5,27 +5,27 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import build_pipeline_b_section
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
     _NDOF_NODE,
     _PanelGlobalMap,
     _dof,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.strip_discretise import (
+from blade_structure_utilities.mesh_utilities.section_mesh.discretise import (
     discretise_strip,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.formulation_factory import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.formulation_factory import (
     build_formulation_cache,
 )
-from blade_structure_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
     SectionLinearStaticRunner,
 )
 
 
 def _cache_and_bc(*, return_panel_maps: bool = False):
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    panels = pb.panels
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    panels = panel_topology.panels
     nx = [np.linspace(0.0, 1000.0, len(np.asarray(p.s, dtype=float))) for p in panels]
     nxy = [np.zeros_like(n) for n in nx]
 

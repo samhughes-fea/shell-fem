@@ -6,15 +6,15 @@ from typing import Sequence
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.buckling_types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.buckling_types import (
     ShellPanelBucklingAssessment,
     ShellPanelBucklingInput,
     ShellStationBucklingBundle,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellStationProvenance,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.containers import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.containers import (
     ShellBucklingSecondaryResultSet,
 )
 

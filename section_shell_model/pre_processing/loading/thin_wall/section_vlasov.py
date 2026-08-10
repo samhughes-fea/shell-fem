@@ -39,7 +39,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
     omega_vertices_open_chain,
     open_outline_from_airfoil,
     shear_center_outer_skin_loop,
@@ -80,7 +80,7 @@ def compute_section_vlasov(
     Parameters
     ----------
     airfoil   : (N, 2) array [y, z]
-    panels    : Panel objects (``pre_processing.containers.panel_types.Panel``)
+    panels    : MaterialZone objects (``material_utilities.adapters.MaterialZone``)
     B         : bimoment [N·m²]
     dB_dx     : rate of bimoment along span [N·m]
     webs_geom : list of (upper_pt, lower_pt) tuples for spar webs; if provided,

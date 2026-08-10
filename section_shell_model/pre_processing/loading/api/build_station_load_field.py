@@ -13,7 +13,7 @@ from ..containers.types import (
 from ..builders.station_load_builder import (
     build_station_load_field as _build_station_load_field,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import ShellMeshInputs
+from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import ShellMeshInputs
 
 
 def build_station_load_field(
@@ -25,7 +25,7 @@ def build_station_load_field(
     cache_dir: Path | None = None,
     station_id: str | None = None,
 ) -> SectionStationLoadField:
-    """Construct a :class:`~blade_structure_utilities.section_shell_model.pre_processing.loading.containers.types.SectionStationLoadField`."""
+    """Construct a :class:`~blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types.SectionStationLoadField`."""
     return _build_station_load_field(
         shell_inputs,
         distributed=distributed,

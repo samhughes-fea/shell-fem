@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from blade_structure_utilities.section_shell_model.processing.static.operations.solve_states import ConstrainedShellSystem
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.solve_states import ConstrainedShellSystem
 from ..results.containers.map_results import ShellMapEntry
 
 

@@ -1,7 +1,7 @@
 """
 Thin-wall NACA 4-digit profile helpers (LE→TE upper/lower stack).
 
-``blade_structure_utilities.sdf.naca`` produces an outer TE→LE / LE→TE polygon and is
+``blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca`` produces an outer TE→LE / LE→TE polygon and is
 not interchangeable with the equal-row thin-wall contract used by sectorial
 warping and station airfoil builders.
 """

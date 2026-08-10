@@ -15,10 +15,10 @@ from typing import Any, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     ShellFormulationCache,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
 from ..compute_tertiary.recovery_operators import (
     FSDTInterfaceShearRecoveryOperator,
     TransverseShearRecoveryProtocol,

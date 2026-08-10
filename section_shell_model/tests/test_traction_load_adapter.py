@@ -8,20 +8,30 @@ from typing import Any
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.interface.traction_load_adapter import (
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+    BEAM_LOAD_AXIS_YZ,
+    FRAME_SECTION_YZ,
+    BeamResultantVector,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.interface.traction_load_adapter import (
     load_field_for_dispatch,
     resolve_shell_station_resultants,
-    run_section_linear_static_from_load_field,
     section_resultants_from_load_field,
     traction_points_from_load_field,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.loading.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
+    LinearStaticCascadeResult,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticRunner,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types import (
     DistributedStationLoadSpec,
     IncidentAeroSpec,
     LoadFieldProvenance,
     SectionStationLoadField,
 )
-from blade_structure_utilities.point_to_surftraction.tractions import TractionField
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import TractionField
 
 
 def _incident() -> IncidentAeroSpec:
@@ -174,19 +184,19 @@ def test_resolve_missing_load_data_raises() -> None:
 
 
 def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, SectionStationLoadField]:
-    """Build a Pipeline-B section + load field whose traction points match skin pairs."""
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.traction_face_load import (
+    """Build a shell panel topology section + load field whose traction points match skin pairs."""
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.traction_face_load import (
         _skin_node_pairs,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import (
-        build_pipeline_b_section,
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
+        build_shell_panel_topology,
     )
-    from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
         assemble_global_shell,
     )
 
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    panels = pb.panels
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    panels = panel_topology.panels
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in panels]
     _K, _f, node_meta, _pm, *_rest = assemble_global_shell(
         panels, zeros, zeros, n_elements_per_panel=6,
@@ -225,17 +235,39 @@ def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, Section
             direct_scalar_override=True,
         ),
     )
-    return pb, lf
+    return panel_topology, lf
 
 
 def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
     """Production load-field path: zero shears + quaternary FI on linear cascade."""
-    pb, lf = _load_field_aligned_to_skin_mesh(m_x=12.0)
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
+    panel_topology, lf = _load_field_aligned_to_skin_mesh(m_x=12.0)
     N, Vy, Vz, My, Mz, T = section_resultants_from_load_field(lf)
     assert Vy == 0.0 and Vz == 0.0 and T == 12.0
 
-    cascade = run_section_linear_static_from_load_field(
-        pb, load_field=lf, n_elements_per_panel=6, min_elements_per_panel=2,
+    traction_points = traction_points_from_load_field(lf)
+    traction_field = lf.traction_field if traction_points is not None else None
+    resultants = BeamResultantVector.from_named(
+        N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
+        frame=FRAME_SECTION_YZ,
+        about_yz=BEAM_LOAD_AXIS_YZ,
+    )
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            resultants=resultants,
+            traction_field=traction_field,
+            traction_points_yz=traction_points,
+            section_strip_mesh=build_section_strip_mesh(
+                panel_topology.shell_inputs,
+                n_elements_per_panel=6,
+                min_elements_per_panel=2,
+            ),
+            load_channel="equipollent",
+        ).execute()
     )
     assert cascade.used_traction is True
     assert cascade.quaternary is not None

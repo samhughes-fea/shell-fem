@@ -4,39 +4,53 @@ from __future__ import annotations
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.buckling_types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.buckling_types import (
     PanelBucklingResult,
     ShellPanelBucklingInput,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellTheory,
     ShellStationProvenance,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import (
-    build_pipeline_b_section,
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
+    build_shell_panel_topology,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.operations.solve_eigen import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.operations.solve_eigen import (
     solve_panel_linear_buckling_eigen,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.compute_secondary import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.compute_secondary import (
     ShellBucklingSecondaryResultsOrchestrator,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.containers import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.containers import (
     ShellBucklingPrimaryResultSet,
 )
-from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_buckling import (
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_buckling import (
     nested_resultants_from_static_cascade,
     run_section_linear_buckling_from_static,
 )
-from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_static import (
-    run_section_linear_static_from_resultants,
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
+    LinearStaticCascadeResult,
 )
-from blade_structure_utilities.section_shell_model.simulation_runner.api.station_recovery import (
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (
     build_fsdt_station_analysis,
 )
-from blade_structure_utilities.section_shell_model.simulation_runner.section_linear_buckling_runner import (
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_buckling_runner import (
     SectionLinearBucklingRunner,
 )
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticRunner,
+)
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+    build_section_strip_mesh,
+)
+
+
+def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 3):
+    return build_section_strip_mesh(
+        panel_topology.shell_inputs,
+        n_elements_per_panel=n_elements_per_panel,
+        min_elements_per_panel=2,
+    )
 
 
 def _isotropic_abd(*, E: float = 70e9, nu: float = 0.3, t: float = 0.005) -> np.ndarray:
@@ -157,27 +171,28 @@ def test_solve_eigen_skips_missing_abd() -> None:
     assert state.n_modes_found == 0
 
 
-def test_nested_resultants_from_static_cascade_panel_alignment() -> None:
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        pb,
-        My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+def _static_cascade_my(panel_topology, *, My: float = 1.0e3):
+    return LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            My=My,
+            section_strip_mesh=_strip_mesh(panel_topology),
+            load_channel="equipollent",
+        ).execute()
     )
+
+
+def test_nested_resultants_from_static_cascade_panel_alignment() -> None:
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    cascade = _static_cascade_my(panel_topology)
     nested = nested_resultants_from_static_cascade(cascade)
     assert len(nested) == len(cascade.assembly.panel_maps)
     assert any(len(panel_rows or []) > 0 for panel_rows in nested)
 
 
 def test_buckling_from_static_cascade_fold() -> None:
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        pb,
-        My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
-    )
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    cascade = _static_cascade_my(panel_topology)
     buck = run_section_linear_buckling_from_static(
         cascade,
         station_id="buck-test",
@@ -199,13 +214,8 @@ def test_buckling_from_static_cascade_fold() -> None:
 
 
 def test_buckling_panel_track_still_available() -> None:
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        pb,
-        My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
-    )
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    cascade = _static_cascade_my(panel_topology)
     buck = run_section_linear_buckling_from_static(
         cascade,
         station_id="buck-panel",
@@ -218,14 +228,13 @@ def test_buckling_panel_track_still_available() -> None:
 
 
 def test_enable_buckling_attaches_to_station_analysis() -> None:
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
     analysis = build_fsdt_station_analysis(
-        pb.section,
-        pb.shell_inputs,
+        panel_topology.section,
+        panel_topology.shell_inputs,
         z_station=0.35,
         My=1.0e3,
-        n_elements_per_panel=3,
-        min_elements_per_panel=2,
+        section_strip_mesh=_strip_mesh(panel_topology),
         station_id="buck-attach",
         enable_buckling=True,
     )

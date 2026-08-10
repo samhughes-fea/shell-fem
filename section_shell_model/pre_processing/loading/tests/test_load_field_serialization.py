@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.loading.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types import (
     DistributedStationLoadSpec,
     IncidentAeroSpec,
     LoadFieldProvenance,
     SectionStationLoadField,
 )
-from blade_structure_utilities.point_to_surftraction.tractions import TractionField
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import TractionField
 
 
 def _example_load_field() -> SectionStationLoadField:

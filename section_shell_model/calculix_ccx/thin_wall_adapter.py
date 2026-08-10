@@ -18,9 +18,9 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.mesh_topology import NElements
-from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import SectionVlasovResult
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.mesh_utilities.section_mesh.mesh_topology import NElements
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import SectionVlasovResult
 from .solve import solve_global_coupled_ccx
 
 
@@ -44,7 +44,7 @@ def ccx_global_coupled_solve_from_thin_wall(
     job_name: str = "section",
 ) -> tuple[list[list[ShellPanelResultants]], list[dict], ShellPanelResultants | None, SectionVlasovResult]:
     """External ccx solve from thin-wall recovery outputs."""
-    from blade_structure_utilities.section_shell_model.calculix_ccx.thin_wall_loads import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.thin_wall_loads import (
         prepare_thin_wall_panel_loads,
     )
 

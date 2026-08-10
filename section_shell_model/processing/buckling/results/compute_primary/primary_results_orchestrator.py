@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.buckling_types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.buckling_types import (
     PanelBucklingResult,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.operations.eigen_states import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.operations.eigen_states import (
     BucklingEigenSolveState,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.containers import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.containers import (
     ShellBucklingPrimaryResultSet,
 )
 

@@ -8,15 +8,15 @@ from typing import Any, Iterator
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     PanelConstitutiveKind,
     ShellFormulationCache,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellTheory,
     resolve_shell_theory_capability,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.constitutive.panel_abd import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.constitutive.panel_abd import (
     panel_abd_tuple_from_lam,
 )
 from ..mesh.shell_mesh_map import PanelGlobalMap
@@ -27,6 +27,12 @@ from .mitc4.mitc4_quad4_element import (
     Mitc4Quad4Element,
 )
 from .shell_element_base import ShellElementBase
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.diagnostics.solve_phase_timing import (
+    PHASE_ELEMENT_FORCE_VECTORS,
+    PHASE_ELEMENT_STIFFNESS_MATRICES,
+    PhaseCollector,
+    _NULL_PHASE_COLLECTOR,
+)
 
 
 def _panel_kappa_nodes(nodes_yz: NDArray[np.float64], s_panel_full: NDArray[np.float64], s_nodes: NDArray[np.float64]) -> NDArray[np.float64] | None:
@@ -209,7 +215,7 @@ def _panel_load_totals_from_forces(
 
 
 def _panel_abd_stacks(panel_maps: list[PanelGlobalMap], panels: list[Any]) -> list[tuple]:
-    from blade_structure_utilities.section_materials.ply import IsotropicMaterial
+    from blade_structure_utilities.material_utilities.isotropic import IsotropicMaterial
 
     stacks: list[tuple] = []
     for pi, pm in enumerate(panel_maps):
@@ -239,11 +245,11 @@ def _panel_laminates(panel_maps: list[PanelGlobalMap], panels: list[Any]) -> lis
     (CLT ply recovery, failure indices) can resolve ``cache.panel_laminates[panel_index]``
     without a laminate side argument.
     """
-    from blade_structure_utilities.section_materials.laminate import (
+    from blade_structure_utilities.material_utilities.laminate import (
         LaminateDefinition,
         laminate_definition_from_legacy,
     )
-    from blade_structure_utilities.section_materials.ply import IsotropicMaterial
+    from blade_structure_utilities.material_utilities.isotropic import IsotropicMaterial
 
     laminates: list[Any] = []
     for pi, pm in enumerate(panel_maps):
@@ -265,8 +271,8 @@ def _panel_laminates(panel_maps: list[PanelGlobalMap], panels: list[Any]) -> lis
 
 def _isotropic_to_laminate_definition(mat: Any, panel: Any) -> Any:
     """Single-ply isotropic-equivalent ``LaminateDefinition`` for CLT recovery."""
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition
-    from blade_structure_utilities.section_materials.ply import OrthotropicPly
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
+    from blade_structure_utilities.material_utilities.orthotropic import OrthotropicPly
 
     t = float(getattr(panel, "t", 0.0) or 0.0)
     if t <= 0.0:
@@ -299,8 +305,16 @@ def _panel_constitutive_metadata(
     panel_maps: list[PanelGlobalMap],
     panels: list[Any],
 ) -> tuple[list[PanelConstitutiveKind], list[float]]:
-    """Per-panel isotropic/orthotropic kind and Von Mises allowable [Pa]."""
-    from blade_structure_utilities.section_materials.ply import IsotropicMaterial
+    """Per-panel isotropic/orthotropic kind and Von Mises allowable [Pa].
+
+    Two ways a panel can be classified isotropic: a bare
+    ``material_utilities.isotropic.IsotropicMaterial`` (never constructed in
+    production today -- kept for compatibility, not relied upon), or a
+    ``PanelLaminateAdapter`` built by
+    ``materials_adapter._isotropic_ply`` and marked ``is_isotropic_source``
+    (the actual production path). Either way routes to von Mises FI.
+    """
+    from blade_structure_utilities.material_utilities.isotropic import IsotropicMaterial
 
     kinds: list[PanelConstitutiveKind] = []
     allows: list[float] = []
@@ -310,9 +324,12 @@ def _panel_constitutive_metadata(
             allows.append(float("nan"))
             continue
         lam = panels[pi].lam
-        if isinstance(lam, IsotropicMaterial):
+        if isinstance(lam, IsotropicMaterial) or getattr(lam, "is_isotropic_source", False):
             kinds.append("isotropic")
-            allows.append(float(lam.sigma_allow))
+            sigma_allow = getattr(lam, "sigma_allow", None)
+            if sigma_allow is None:
+                sigma_allow = getattr(lam, "sigma_allow_pa", None)
+            allows.append(float(sigma_allow) if sigma_allow is not None else float("nan"))
             continue
         kinds.append("orthotropic")
         allows.append(float("nan"))
@@ -345,6 +362,7 @@ def build_formulation_cache(
     shell_theory: ShellTheory = ShellTheory.FSDT,
     L_x: float = 1.0,
     panels_outboard: list[Any] | None = None,
+    phase_collector: PhaseCollector | None = None,
 ) -> ShellFormulationCache:
     factory = resolve_element_factory(shell_theory)
     panel_abd_stacks = _panel_abd_stacks(panel_maps, panels)
@@ -352,18 +370,25 @@ def build_formulation_cache(
     panel_constitutive_kind, panel_sigma_allow_pa = _panel_constitutive_metadata(
         panel_maps, panels
     )
-    stiff, force = [], []
-    for elem in factory.iter_elements(
-        panel_maps,
-        panels,
-        Nx_panels,
-        Nxy_panels,
-        L_x=L_x,
-        panels_outboard=panels_outboard,
-        panel_abd_stacks=panel_abd_stacks,
-    ):
-        stiff.append(elem.element_stiffness_matrix())
-        force.append(elem.element_force_vector())
+    # Materialised (not a single-pass generator) so stiffness and force build
+    # each get their own aggregated phase timing, one start/end pair per
+    # build_formulation_cache call rather than per element.
+    elements = list(
+        factory.iter_elements(
+            panel_maps,
+            panels,
+            Nx_panels,
+            Nxy_panels,
+            L_x=L_x,
+            panels_outboard=panels_outboard,
+            panel_abd_stacks=panel_abd_stacks,
+        )
+    )
+    collector = phase_collector if phase_collector is not None else _NULL_PHASE_COLLECTOR
+    with collector.phase(PHASE_ELEMENT_STIFFNESS_MATRICES):
+        stiff = [elem.element_stiffness_matrix() for elem in elements]
+    with collector.phase(PHASE_ELEMENT_FORCE_VECTORS):
+        force = [elem.element_force_vector() for elem in elements]
     cache = ShellFormulationCache(
         stiffness_objects=stiff,
         force_objects=force,

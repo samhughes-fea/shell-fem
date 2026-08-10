@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
-from blade_structure_utilities.section_shell_model.processing.static.operations.solve_states import DisassembledShellResults, GlobalShellSystem, ReconstructedShellField
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.solve_states import DisassembledShellResults, GlobalShellSystem, ReconstructedShellField
 
 
 class DisassembleGlobalShellField:

@@ -7,7 +7,7 @@ from typing import Any, Sequence
 import numpy as np
 
 from ..pre_processing.constitutive.panel_abd import panel_abd_tuple_from_lam
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     BeamSectionConstitutiveInput,
     ShellStationBucklingBundle,
     ShellRecoveryMaterialPoint,
@@ -26,8 +26,8 @@ def extract_shell_laminate_recovery_data(
 ) -> ShellRecoverySectionPointSet:
     """Extract shell-owned laminate recovery data from MITC4/thin-wall panel objects."""
 
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition, _Q_bar_single
-    from blade_structure_utilities.section_materials.ply import plane_stress_Q
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition, _Q_bar_single
+    from blade_structure_utilities.material_utilities.orthotropic import plane_stress_Q
     from ..pre_processing.constitutive.panel_abd import panel_abd_tuple_from_lam
 
     composite_labels: list[str] = []

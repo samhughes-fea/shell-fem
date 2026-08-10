@@ -13,7 +13,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..containers.types import SectionLoadsJobConfig
-from blade_structure_utilities.section_geometry.interface.shell_strip_topology import concat_skin_ring_vertices
+from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_strip_topology import concat_skin_ring_vertices
 from ..containers.types import (
     DistributedStationLoadSpec,
     LoadFieldProvenance,
@@ -28,17 +28,17 @@ from .outline_frames import (
     bframe_outline_to_sframe_chord,
     xfoil_te_arc_offset,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import ShellMeshInputs
-from blade_structure_utilities.point_to_surftraction.distributions import CfDistribution, CpDistribution
-from blade_structure_utilities.point_to_surftraction.geometry import SectionOutlineGeometry
-from blade_structure_utilities.point_to_surftraction.integration import ForceResultantIntegrator
-from blade_structure_utilities.point_to_surftraction.matching import LoadMatcher
-from blade_structure_utilities.point_to_surftraction.tractions import (
+from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import ShellMeshInputs
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.distributions import CfDistribution, CpDistribution
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.geometry import SectionOutlineGeometry
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.integration import ForceResultantIntegrator
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.matching import LoadMatcher
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import (
     PressureTractionBuilder,
     ShearTractionBuilder,
     TractionField,
 )
-from blade_structure_utilities.point_to_surftraction.xfoil.xfoil_adapter import XfoilAdapter, XfoilRunResult
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.xfoil.xfoil_adapter import XfoilAdapter, XfoilRunResult
 
 _SYNTHETIC_AERO_ENV = "ADVANCED_BLADE_SECTION_LOADS_SYNTHETIC_AERO"
 _UNIFORM_CP = -1.0
@@ -136,7 +136,7 @@ def _try_xfoil_cache_hit(
     cp_path = sub / "cp_output.dat"
     if not cp_path.is_file():
         return None
-    from blade_structure_utilities.point_to_surftraction.xfoil.xfoil_io import (
+    from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.xfoil.xfoil_io import (
         parse_xfoil_cf_file,
         parse_xfoil_cp_file,
     )

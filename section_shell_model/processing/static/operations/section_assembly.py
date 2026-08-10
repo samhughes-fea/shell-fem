@@ -14,29 +14,30 @@ from typing import Any
 import numpy as np
 import scipy.sparse as sp
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     ShellFormulationCache,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.formulation_factory import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.formulation_factory import (
     build_formulation_cache,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import (
     GlobalNodeMeta,
     NElements,
     PanelGlobalMap,
     collect_global_node_meta,
 )
-from blade_structure_utilities.section_shell_model.processing.static.operations.assemble_global import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.assemble_global import (
     assemble_section_system,
     scatter_element_fe,
 )
 
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.connected_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.connected_panel_topology import (
     ConnectedPanelTopology,
     build_connected_panel_maps,
 )
 from ....pre_processing.constitutive.panel_abd import compact_panel_abd_from_stacks
+from ..diagnostics.solve_phase_timing import PhaseCollector, _NULL_PHASE_COLLECTOR
 
 
 @dataclass(frozen=True)
@@ -84,11 +85,15 @@ def assemble_section_from_panels(
     min_elements_per_panel: int = 2,
     interface_constraint_mode: str = "shared",
     shell_theory: ShellTheory = ShellTheory.FSDT,
+    phase_collector: PhaseCollector | None = None,
+    section_strip_mesh: Any | None = None,
 ) -> SectionAssemblyResult:
     """Thin assembly path: topology → formulation cache → scatter-add K/f.
 
     Used by production periodic K6 caching and by ``assemble_global_shell``.
     Does not apply contour clamps, MPCs, or resultant recovery.
+
+    Pass ``section_strip_mesh`` to skip remesh (mesh-worker ownership of density).
     """
     topology = build_connected_panel_maps(
         panels,
@@ -97,6 +102,7 @@ def assemble_section_from_panels(
         endpoint_tol=endpoint_tol,
         min_elements_per_panel=min_elements_per_panel,
         interface_constraint_mode=interface_constraint_mode,
+        section_strip_mesh=section_strip_mesh,
     )
     cache = build_formulation_cache(
         topology.panel_maps,
@@ -106,6 +112,7 @@ def assemble_section_from_panels(
         shell_theory=shell_theory,
         L_x=L_x,
         panels_outboard=panels_outboard,
+        phase_collector=phase_collector if phase_collector is not None else _NULL_PHASE_COLLECTOR,
     )
     n_gdof = topology.next_global_node * int(cache.n_dof_node)
     K_global, f_global, _diag = assemble_section_system(cache, n_gdof)

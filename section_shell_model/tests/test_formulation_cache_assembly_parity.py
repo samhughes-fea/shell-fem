@@ -5,21 +5,21 @@ from __future__ import annotations
 import numpy as np
 import scipy.sparse as sp
 
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import build_pipeline_b_section
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.formulation_factory import build_formulation_cache
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.mitc4.element import mitc4_stiffness
-from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.formulation_factory import build_formulation_cache
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.mitc4.element import mitc4_stiffness
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
     _NDOF_NODE,
     _PanelGlobalMap,
     _coo_triplets_from_ke,
     _dof,
     panel_abd_tuple_from_lam,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.strip_discretise import (
+from blade_structure_utilities.mesh_utilities.section_mesh.discretise import (
     discretise_strip,
 )
-from blade_structure_utilities.section_shell_model.processing.static.operations.section_assembly import assemble_section_system
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.section_assembly import assemble_section_system
 
 
 def _legacy_assemble(panel_maps, panels, nx, nxy, *, L_x=1.0, n_gdof: int):
@@ -95,8 +95,8 @@ def _legacy_assemble(panel_maps, panels, nx, nxy, *, L_x=1.0, n_gdof: int):
 
 
 def test_formulation_cache_matches_legacy_inline_assembly():
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    panels = pb.panels
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    panels = panel_topology.panels
     nx = [np.linspace(0, 1000, len(np.asarray(p.s, dtype=float))) for p in panels]
     nxy = [np.zeros_like(n) for n in nx]
 

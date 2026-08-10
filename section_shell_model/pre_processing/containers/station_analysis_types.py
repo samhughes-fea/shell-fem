@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
+from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
 
 from .buckling_types import ShellStationBucklingBundle
 from .recovery_types import ShellPanelResultants, ShellRecoverySectionPointSet
@@ -20,7 +20,7 @@ from .station_types import (
 )
 
 if TYPE_CHECKING:
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import SectionVlasovResult
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import SectionVlasovResult
 
 @dataclass(frozen=True)
 class ThinWallResult:

@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
 from .provenance import clpt_inputs_trusted
 
 
@@ -33,7 +33,7 @@ def batched_clt_strains(
     trusted_mask
         ``(n_rows,)`` bool — rows that entered the batched solve.
     """
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
 
     n_rows = len(rows)
     eps0 = np.zeros((n_rows, 3), dtype=np.float64)

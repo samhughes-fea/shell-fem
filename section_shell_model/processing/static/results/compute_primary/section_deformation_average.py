@@ -13,12 +13,12 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_contract.beam_resultant_vector import BEAM_LOAD_AXIS_YZ
-from blade_structure_utilities.section_shell_model.pre_processing.loading.traction_face_load import (
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import BEAM_LOAD_AXIS_YZ
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.traction_face_load import (
     _skin_node_pairs,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import normal_2d
-from blade_structure_utilities.section_shell_model.processing.static.operations.connected_assembly_core import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import normal_2d
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.connected_assembly_core import (
     BETA_S,
     BETA_X,
     BETA_ZET,

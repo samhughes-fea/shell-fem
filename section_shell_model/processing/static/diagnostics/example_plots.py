@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
     open_outline_from_airfoil,
 )
 
@@ -245,7 +245,7 @@ def save_thin_wall_stress_figures(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    from blade_structure_utilities.section_shell_model.processing.static.diagnostics.thin_wall_plots import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.diagnostics.thin_wall_plots import (
         plot_section,
     )
 
@@ -309,7 +309,7 @@ def save_clpt_ply_figure(
     strengths: dict[str, float] | None = None,
 ) -> Path:
     """Ply σ, ε, Hashin envelope FI at one station (package CLT helper; savefig dpi=150)."""
-    from blade_structure_utilities.section_shell_model.processing.static.diagnostics.thin_wall_plots import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.diagnostics.thin_wall_plots import (
         plot_clpt_laminate_stress_fi,
     )
 

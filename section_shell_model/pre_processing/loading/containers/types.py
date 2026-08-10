@@ -8,7 +8,7 @@ from typing import Any, Mapping
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.point_to_surftraction.tractions import TractionField
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import TractionField
 
 
 @dataclass(frozen=True)

@@ -6,7 +6,7 @@ and buckling callers do not depend on Channel-A / Saint-Venant packages.
 
 from __future__ import annotations
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellPanelResultants,
 )
 

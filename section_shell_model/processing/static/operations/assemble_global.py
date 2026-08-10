@@ -9,12 +9,12 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     AssemblyDiagnostics,
     ShellFormulationCache,
 )
-from blade_structure_utilities.section_shell_model.processing.static.operations.solve_states import GlobalShellSystem
-from blade_structure_utilities.section_shell_model.processing.static.results.containers.map_results import ShellMapEntry
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.solve_states import GlobalShellSystem
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.containers.map_results import ShellMapEntry
 
 
 def _validate_element_contribution(

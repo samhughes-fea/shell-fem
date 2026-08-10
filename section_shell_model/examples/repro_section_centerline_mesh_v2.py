@@ -14,7 +14,7 @@ intersections).
 
 Also exercises the explicit geometry-export path via
 ``build_shell_midline_strips`` (from
-``blade_structure_utilities.section_geometry.interface.shell_midline_export``) and
+``blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export``) and
 asserts that non-skin strips match ``ShellMeshInputs`` (skin may be split into
 ``seg*`` sub-strips at web/cap junctions; web/cap polylines may be snapped).
 
@@ -36,8 +36,8 @@ Each figure is a **2×2** equal-aspect B-frame taxonomy layout
    continuous discretised contour + nodes; ``tab20`` per panel (same label→colour
    map as strips); no junction rings / Class C rays.
 4. **Elements** — full strip mesh (element edges + nodes + junctions) from
-   ``build_section_strip_mesh(..., target_element_length_m=…)``
-   (~1.2 % of section ``chord_m``, minimum 15 mm). Each FE contour **element**
+   ``build_section_strip_mesh(..., target_element_length_frac=TARGET_ELEMENT_LENGTH_FRAC)``
+   (production default ≈ 1.2 % of section ``chord_m``). Each FE contour **element**
    gets its own colour (no per-element legend — too many). **Cyan quivers**
    show the Class C **ray** direction (perpendicular to skin-ring tangent,
    sign toward cap centroid) at skin vertices inside each cap's AABB, matching
@@ -62,7 +62,7 @@ Also writes ``taxonomy_coverage.json`` in the same output directory (expected
 **XYZ** set vs what was rendered, and ``excluded_invalid_xyz``).
 
 Optional CLI: pass layout keys to render a subset, e.g.
-``python -m blade_structure_utilities.section_shell_model.examples.repro_section_centerline_mesh_v2 0A 0B 2D-F 2A-CN``.
+``python -m blade_structure_utilities.fem_utilities.section_shell_model.examples.repro_section_centerline_mesh_v2 0A 0B 2D-F 2A-CN``.
 """
 
 from __future__ import annotations
@@ -74,14 +74,14 @@ from typing import Any
 
 def _all_layout_keys() -> tuple[str, ...]:
     """All registered layout keys: ``0A``, ``0B``, and all multicell ``XY-Z`` keys."""
-    from blade_structure_utilities.section_geometry.core.system_layout import SYSTEM_TYPE_KEYS
+    from blade_structure_utilities.geometry_utilities.section_geometry.core.system_layout import SYSTEM_TYPE_KEYS
 
     return SYSTEM_TYPE_KEYS
 
 
 def _target_element_length_demo_m(chord_m: float) -> float:
     """~uniform physical spacing for MITC4 demo (metres), scaled from chord."""
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
         TARGET_ELEMENT_LENGTH_FRAC,
         target_element_length_m_from_chord,
     )
@@ -98,7 +98,7 @@ def _smoke_geo_export_vs_shell_inputs(
     """``build_shell_mesh_inputs`` may split skin and snap web/cap ends to the skin midline.
 
     Cap strips may additionally run
-    :func:`~blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section._resample_cap_interiors_from_skin_rays`,
+    :func:`~blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs._resample_cap_interiors_from_skin_rays`,
     which replaces interior vertices (different ``N`` than ``n_cap_samples``) while
     keeping endpoints; those caps are only checked for endpoint agreement here.
     """
@@ -161,21 +161,21 @@ def _run_single_layout(
 ) -> None:
     import numpy as np
 
-    from blade_structure_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
-    from blade_structure_utilities.section_geometry.api.factory import (
+    from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.section_geometry.interface.shell_midline_export import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import (
         build_shell_midline_strips,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.section_strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
         ENDPOINT_TOL_FRAC,
         TARGET_ELEMENT_LENGTH_FRAC,
         build_section_strip_mesh,
         target_element_length_m_from_chord,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_inputs_from_section import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
         ShellMeshInputs,
         build_shell_mesh_inputs,
     )
@@ -210,7 +210,7 @@ def _run_single_layout(
 
     fig_path = out_dir / f"section_mesh_{layout_key}_i000.png"
 
-    from blade_structure_utilities.section_shell_model.vis import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.vis import (
         save_section_centerline_mesh_figure,
         taxonomy_plot_caption,
     )
@@ -243,8 +243,8 @@ def main() -> None:
 
     import numpy as np
 
-    from blade_structure_utilities.section_geometry.api.factory import resolve_system_type
-    from blade_structure_utilities.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import resolve_system_type
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 
     chord_m = 1.655959896
     twist_deg = 34.110405083

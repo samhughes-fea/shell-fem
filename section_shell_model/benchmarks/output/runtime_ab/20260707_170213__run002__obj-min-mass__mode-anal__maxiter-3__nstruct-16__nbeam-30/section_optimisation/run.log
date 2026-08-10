@@ -1,4 +1,0 @@
-2026-07-07T16:03:55.492Z INFO  [section_optimisation] logger.init {"dump_level":"summary","station_subdir":null}
-2026-07-07T16:03:55.492Z INFO  [section_optimisation] stage.start {"stage":"SectionOptimisationStage"}
-2026-07-07T16:03:56.718Z INFO  [section_optimisation] stage.error {"stage":"SectionOptimisationStage","status":"error","error":"module 'numpy' has no attribute 'trapz'"}
-2026-07-07T16:03:56.720Z INFO  [section_optimisation] logger.close {}

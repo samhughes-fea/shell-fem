@@ -138,7 +138,7 @@ class ShellPanelResultants:
     """
     Laminate mid-surface shell resultants [N/m] and moments [N·m/m] in strip axes.
 
-    Convention (matches :func:`blade_structure_utilities.section_materials.clpt_recovery.membrane_resultants_from_shell_stress`):
+    Convention (matches :func:`blade_structure_utilities.material_utilities.laminate.membrane_resultants_from_shell_stress`):
     index 0 = x (span / beam axis), 1 = y (contour / tangent in section plane), 2 = in-plane shear xy.
 
     Production paths populate the full membrane/bending set from shell kinematics

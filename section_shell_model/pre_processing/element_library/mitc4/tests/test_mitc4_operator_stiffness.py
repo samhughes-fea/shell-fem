@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.mitc4.element import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.mitc4.element import (
     _b_bending,
     _b_drilling,
     _b_membrane,
@@ -68,7 +68,7 @@ def _reference_mitc4_stiffness(
 
 
 def test_mitc4_stiffness_einsum_matches_legacy_gauss_loops() -> None:
-    from blade_structure_utilities.section_shell_model.pre_processing.element_library.mitc4 import element as mitc4_element
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.mitc4 import element as mitc4_element
 
     mitc4_element._KE_TEMPLATE_CACHE.clear()
     abd = np.eye(6) * 1e6

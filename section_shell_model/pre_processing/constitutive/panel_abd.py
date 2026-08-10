@@ -16,7 +16,7 @@ def panel_abd_tuple_from_lam(lam: Any) -> tuple[np.ndarray, float, float, float,
     elif callable(getattr(lam, "build_ABD", None)):
         ABD = np.asarray(lam.build_ABD(), dtype=np.float64).copy()
     else:
-        from blade_structure_utilities.section_materials.laminate import laminate_definition_from_legacy
+        from blade_structure_utilities.material_utilities.laminate import laminate_definition_from_legacy
 
         ld = laminate_definition_from_legacy(lam)
         if ld is None:

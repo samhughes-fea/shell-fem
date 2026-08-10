@@ -6,13 +6,13 @@ from pathlib import Path
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.loading.containers.types import SectionStationLoadField
-from blade_structure_utilities.section_shell_model.pre_processing.loading.builders.outline_frames import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types import SectionStationLoadField
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.builders.outline_frames import (
     bframe_outline_to_sframe_chord,
     rotate_traction_field,
 )
-from blade_structure_utilities.point_to_surftraction.geometry import SectionOutlineGeometry
-from blade_structure_utilities.point_to_surftraction.plotting import (
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.geometry import SectionOutlineGeometry
+from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.plotting import (
     RunningLoadDistributions,
     draw_magnitude_normal_offset_ribbon,
     draw_signed_normal_offset_ribbon,

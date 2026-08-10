@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import NElements
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import NElements
 from .mesh import build_ccx_section_mesh
 from .results import map_ccx_stresses_to_panel_resultants, parse_ccx_dat_stresses
 from .section_export import write_section_inp

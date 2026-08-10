@@ -12,7 +12,7 @@ from typing import Any, Protocol
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ProvenanceKind,
     ShellTheory,
     require_shell_theory_supports,

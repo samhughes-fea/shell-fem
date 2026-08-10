@@ -6,11 +6,11 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.buckling_types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.buckling_types import (
     PanelBucklingResult,
     ShellPanelBucklingAssessment,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.results.containers import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.results.containers import (
     ShellBucklingPrimaryResultSet,
     ShellBucklingSecondaryResultSet,
 )
@@ -42,7 +42,7 @@ def assessment_from_panel_buckling_result(
         panel_index=int(raw_result.panel_index),
         station_index=int(station_index),
         load_multiplier_min=load_multiplier_min,
-        load_multipliers=lambdas,
+        load_multipliers=finite,
         n_modes_found=int(raw_result.n_modes_found),
         is_compressive=bool(raw_result.is_compressive),
         buckling_index=buckling_index,

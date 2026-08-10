@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import FieldProvenance, ShellPanelResultants, provenance_is_trusted
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import FieldProvenance, ShellPanelResultants, provenance_is_trusted
 from ..compute_tertiary.local_clpt_shell import default_skin_strengths_pa, solve_station_clpt_shell
 
 # Provenance gating moved to tier 3 (see PROCESSING_ARCHITECTURE_PROPOSAL.md); re-exported
@@ -53,9 +53,9 @@ def hashin_fi_per_ply_from_rows_batch(
     ``fi_out``/``needs_review`` bit-for-bit (see PROCESSING_ARCHITECTURE_PROPOSAL.md
     non-goals: no numerics changes).
     """
-    from blade_structure_utilities.section_materials.failure_criteria import hashin_fi
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition
-    from blade_structure_utilities.section_materials.clpt_recovery import ply_mid_stresses_laminate
+    from blade_structure_utilities.material_utilities.failure import hashin_fi
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
+    from blade_structure_utilities.material_utilities.laminate import ply_mid_stresses_laminate
 
     from ..compute_tertiary.compute_clt_strains import batched_clt_strains
 
@@ -100,8 +100,8 @@ def hashin_fi_per_ply_from_row(
     plies: list,
 ) -> tuple[np.ndarray, bool]:
     """Per-ply Hashin envelope via CLPT recovery + ``materials.hashin_fi``."""
-    from blade_structure_utilities.section_materials.failure_criteria import hashin_fi
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition
+    from blade_structure_utilities.material_utilities.failure import hashin_fi
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
 
     if not isinstance(lam, LaminateDefinition) or not lam.plies:
         return np.zeros(0, dtype=float), True
@@ -146,7 +146,7 @@ def hashin_fi_from_row(
     """
     if not clpt_inputs_trusted(row):
         return 0.0, True
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition, laminate_definition_from_legacy
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition, laminate_definition_from_legacy
 
     ld = lam if isinstance(lam, LaminateDefinition) else laminate_definition_from_legacy(lam, plies=plies)
     if ld is None:

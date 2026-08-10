@@ -40,7 +40,7 @@ def _file_imports(path: Path) -> list[str]:
 
 
 def _normalize(mod: str) -> str:
-    return mod.replace("blade_structure_utilities.section_shell_model.", "")
+    return mod.replace("blade_structure_utilities.fem_utilities.section_shell_model.", "")
 
 
 def _check_no_kernel_imports(root: Path, label: str) -> None:

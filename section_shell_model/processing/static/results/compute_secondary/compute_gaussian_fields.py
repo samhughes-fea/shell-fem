@@ -6,10 +6,10 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     ShellFormulationCache,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.kernel import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.kernel import (
     MITC4_KERNEL,
     resolve_kernel,
 )

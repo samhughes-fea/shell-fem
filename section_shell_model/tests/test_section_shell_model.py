@@ -5,56 +5,68 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.processing.static.results.compute_tertiary.local_clpt_shell import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_tertiary.local_clpt_shell import (
     default_skin_strengths_pa,
     solve_station_clpt_shell,
 )
-from blade_structure_utilities.section_shell_model.processing.static.diagnostics.equilibrium_checks import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.diagnostics.equilibrium_checks import (
     build_load_reaction_audit,
     check_cluster_equilibrium,
     check_panel_equilibrium,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
 
 
-def _pipeline_b_vlasov_fixture(naca_code: str, web_x_positions: list[float]):
-    """Package Pipeline-B panels + multicell airfoil for Vlasov oracle tests."""
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import build_pipeline_b_section
-    from blade_structure_utilities.section_shell_model.io.job_outputs import (
+def _panel_topology_vlasov_fixture(naca_code: str, web_x_positions: list[float]):
+    """Package shell panel topology panels + multicell airfoil for Vlasov oracle tests."""
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_model.io.job_outputs import (
         airfoil_polygon_to_multicell_airfoil,
     )
 
-    pb = build_pipeline_b_section(naca_code, web_x_positions, chord_m=1.0)
-    raw = np.asarray(pb.section.airfoil.vertices, dtype=np.float64)[:, :2]
+    panel_topology = build_shell_panel_topology(naca_code, web_x_positions, chord_m=1.0)
+    raw = np.asarray(panel_topology.section.airfoil.vertices, dtype=np.float64)[:, :2]
     air = airfoil_polygon_to_multicell_airfoil(raw, n_each=48)
-    return air, pb.panels, pb.webs_geom
+    return air, panel_topology.panels, panel_topology.webs_geom
 
 
 def test_hashin_fi_matches_direct_clpt_pipeline():
     """solve_station_clpt_shell matches materials CLPT recovery + Hashin FI."""
-    from blade_structure_utilities.section_materials.clpt_recovery import clpt_recovery_from_laminate
-    from blade_structure_utilities.section_materials.failure_criteria import hashin_fi
-    from blade_structure_utilities.section_materials.laminate import laminate_definition_from_legacy
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import build_pipeline_b_section
-    from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_static import (
-        run_section_linear_static_from_resultants,
+    from blade_structure_utilities.material_utilities.laminate import clpt_recovery_from_laminate
+    from blade_structure_utilities.material_utilities.failure import hashin_fi
+    from blade_structure_utilities.material_utilities.laminate import laminate_definition_from_legacy
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
+        LinearStaticCascadeResult,
     )
-    from blade_structure_utilities.section_shell_model.simulation_runner.api.station_recovery import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (
         bundle_from_linear_cascade,
     )
-
-    pb = build_pipeline_b_section("0012", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        pb,
-        N=1.0,
-        Vy=1.0,
-        Vz=1.0,
-        My=1.0,
-        Mz=1.0,
-        T=0.0,
-        n_elements_per_panel=4,
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+        SectionLinearStaticRunner,
     )
-    bundle = bundle_from_linear_cascade(pb, cascade)
+
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
+    panel_topology = build_shell_panel_topology("0012", [0.35], chord_m=1.0)
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            N=1.0,
+            Vy=1.0,
+            Vz=1.0,
+            My=1.0,
+            Mz=1.0,
+            T=0.0,
+            section_strip_mesh=build_section_strip_mesh(
+                panel_topology.shell_inputs, n_elements_per_panel=4
+            ),
+            load_channel="equipollent",
+        ).execute()
+    )
+    bundle = bundle_from_linear_cascade(panel_topology, cascade)
     ref = bundle.reference_resultants
     assert ref is not None
     plies = bundle.panels[0].lam.build_plies()
@@ -97,7 +109,7 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
 
 def test_hashin_fi_golden_pure_shear_envelope():
     """Known τ12 in material axes → (τ/S)² (all four Hashin mode FIs match)."""
-    from blade_structure_utilities.section_materials.failure_criteria import hashin_fi
+    from blade_structure_utilities.material_utilities.failure import hashin_fi
 
     S12 = 45.0e6
     sigma = np.array([0.0, 0.0, 0.5 * S12])
@@ -114,12 +126,12 @@ def test_hashin_fi_golden_pure_shear_envelope():
 
 def test_six_series_airfoil_converted_for_multicell_geometry() -> None:
     """Spanwise six-series polygon must be resampled to [upper; lower] LE→TE."""
-    from blade_structure_utilities.sdf.naca import airfoil_vertices_from_spanwise
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca import airfoil_vertices_from_spanwise
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
         open_outline_from_airfoil,
         polygon_area_signed,
     )
-    from blade_structure_utilities.section_shell_model.io.job_outputs import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.io.job_outputs import (
         airfoil_polygon_to_multicell_airfoil,
         build_airfoil_for_station,
     )
@@ -147,7 +159,7 @@ def test_six_series_airfoil_converted_for_multicell_geometry() -> None:
 
 def test_mitc4_stiffness_shape_and_symmetry():
     """20×20 stiffness must be symmetric and positive semi-definite (after BCs)."""
-    from blade_structure_utilities.section_shell_model.pre_processing.element_library.mitc4.element import mitc4_stiffness  # noqa: E402
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.mitc4.element import mitc4_stiffness  # noqa: E402
 
     E, nu, t = 70e9, 0.33, 0.005
     G = E / (2 * (1 + nu))
@@ -173,7 +185,7 @@ def test_mitc4_stiffness_shape_and_symmetry():
 
 
 def test_mitc4_edge_resultants_uniform_membrane_matches_centroid():
-    from blade_structure_utilities.section_shell_model.pre_processing.element_library.mitc4.element import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.mitc4.element import (
         mitc4_edge_resultants,
         mitc4_resultants,
     )
@@ -200,7 +212,7 @@ def test_mitc4_edge_resultants_uniform_membrane_matches_centroid():
 
 
 def test_mitc4_edge_shear_traction_integrated_uniform_field():
-    from blade_structure_utilities.section_shell_model.pre_processing.element_library.mitc4.element import mitc4_edge_shear_traction_integrated
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.mitc4.element import mitc4_edge_shear_traction_integrated
 
     E, nu, t = 70e9, 0.33, 0.005
     A_val = E * t / (1 - nu**2)
@@ -222,9 +234,9 @@ def test_mitc4_edge_shear_traction_integrated_uniform_field():
 
 def test_vlasov_shear_centre_finite():
     """compute_section_vlasov returns finite shear centre and positive I_omega_E."""
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
 
-    air, panels, webs_geom = _pipeline_b_vlasov_fixture("0012", [0.35])
+    air, panels, webs_geom = _panel_topology_vlasov_fixture("0012", [0.35])
     vlasov = compute_section_vlasov(
         air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom)
     )
@@ -236,9 +248,9 @@ def test_vlasov_shear_centre_finite():
 
 def test_vlasov_zero_bimoment_gives_zero_stress():
     """With B=0, warping normal stress must be identically zero."""
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
 
-    air, panels, webs_geom = _pipeline_b_vlasov_fixture("0012", [0.35])
+    air, panels, webs_geom = _panel_topology_vlasov_fixture("0012", [0.35])
     vlasov = compute_section_vlasov(
         air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom)
     )
@@ -252,27 +264,39 @@ def test_vlasov_zero_bimoment_gives_zero_stress():
 
 def test_mitc4_integration_no_placeholders():
     """Linear-static MITC4 solve: all resultant provenance must be MITC4 or DERIVED."""
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import build_pipeline_b_section  # noqa: E402
-    from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_static import (  # noqa: E402
-        run_section_linear_static_from_resultants,
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology  # noqa: E402
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (  # noqa: E402
+        LinearStaticCascadeResult,
     )
-    from blade_structure_utilities.section_shell_model.simulation_runner.api.station_recovery import (  # noqa: E402
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (  # noqa: E402
         bundle_from_linear_cascade,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ProvenanceKind  # noqa: E402
-
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        pb,
-        N=1.0,
-        Vy=1.0,
-        Vz=1.0,
-        My=1.0,
-        Mz=1.0,
-        T=1.0,
-        n_elements_per_panel=6,
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (  # noqa: E402
+        SectionLinearStaticRunner,
     )
-    bundle = bundle_from_linear_cascade(pb, cascade)
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ProvenanceKind  # noqa: E402
+
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            N=1.0,
+            Vy=1.0,
+            Vz=1.0,
+            My=1.0,
+            Mz=1.0,
+            T=1.0,
+            section_strip_mesh=build_section_strip_mesh(
+                panel_topology.shell_inputs, n_elements_per_panel=6
+            ),
+            load_channel="equipollent",
+        ).execute()
+    )
+    bundle = bundle_from_linear_cascade(panel_topology, cascade)
     assert bundle.reference_resultants is not None
     ref = bundle.reference_resultants
     placeholder_fields = [
@@ -294,9 +318,9 @@ def test_vlasov_nonzero_bimoment_activates_stress():
     B=0   → sigma_omega zero everywhere.
     Scaling: sigma_omega scales linearly with B.
     """
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
 
-    air, panels, webs_geom = _pipeline_b_vlasov_fixture("2412", [0.35])
+    air, panels, webs_geom = _panel_topology_vlasov_fixture("2412", [0.35])
 
     vlasov_0 = compute_section_vlasov(
         air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom)
@@ -322,9 +346,9 @@ def test_vlasov_nonzero_bimoment_activates_stress():
 
 def test_vlasov_nonzero_dBdx_activates_warping_shear():
     """dB_dx=1e3 with B=0 → q_omega non-zero on at least one skin panel."""
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
 
-    air, panels, webs_geom = _pipeline_b_vlasov_fixture("2412", [0.35])
+    air, panels, webs_geom = _panel_topology_vlasov_fixture("2412", [0.35])
 
     vlasov = compute_section_vlasov(
         air, panels, B=0.0, dB_dx=1e3, webs_geom=list(webs_geom)
@@ -363,7 +387,7 @@ def _box_airfoil(n: int = 6, width: float = 1.0, height: float = 0.5) -> np.ndar
 
 def test_vlasov_batho_single_cell_box():
     """Rectangular single-cell box: n_cells==1, I_omega_E>0, omega_hat_v non-trivial."""
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
 
     airfoil_box = _box_airfoil(n=10, width=1.0, height=0.5)
     E, t = 70e9, 2e-3
@@ -385,7 +409,7 @@ def test_vlasov_batho_single_cell_box():
 
 def test_vlasov_batho_two_cell():
     """Two-cell box (mid web at x=0.5): n_cells==2 and I_omega_E differs from single-cell."""
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
 
     airfoil_box = _box_airfoil(n=10, width=1.0, height=0.5)
     E, t = 70e9, 2e-3
@@ -518,26 +542,38 @@ def test_equilibrium_tiered_thresholds_skin_skin_vs_skin_web():
     assert checks_skin_web[0]["reaction_pass_nx"]
 
 def test_linear_static_returns_active_transverse_shear_fields():
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import build_pipeline_b_section
-    from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_static import (
-        run_section_linear_static_from_resultants,
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
+        LinearStaticCascadeResult,
     )
-    from blade_structure_utilities.section_shell_model.simulation_runner.api.station_recovery import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.station_recovery import (
         bundle_from_linear_cascade,
     )
-
-    pb = build_pipeline_b_section("2412", [0.25, 0.60], chord_m=1.0)
-    cascade = run_section_linear_static_from_resultants(
-        pb,
-        N=1.3e4,
-        Vy=5e4,
-        Vz=8.3e5,
-        My=5.5e6,
-        Mz=3.3e5,
-        T=2.5e4,
-        n_elements_per_panel=2,
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+        SectionLinearStaticRunner,
     )
-    bundle = bundle_from_linear_cascade(pb, cascade)
+
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
+    panel_topology = build_shell_panel_topology("2412", [0.25, 0.60], chord_m=1.0)
+    cascade = LinearStaticCascadeResult.from_executed_runner(
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
+            N=1.3e4,
+            Vy=5e4,
+            Vz=8.3e5,
+            My=5.5e6,
+            Mz=3.3e5,
+            T=2.5e4,
+            section_strip_mesh=build_section_strip_mesh(
+                panel_topology.shell_inputs, n_elements_per_panel=2
+            ),
+            load_channel="equipollent",
+        ).execute()
+    )
+    bundle = bundle_from_linear_cascade(panel_topology, cascade)
     all_panel = bundle.all_panel_results or []
     non_empty = [panel for panel in all_panel if panel]
     assert non_empty, "expected at least one non-empty MITC4 panel result set"
@@ -882,7 +918,7 @@ def test_transformed_basis_rotation_identity_for_collinear_panels():
       u_s_s = 1*u_s_m + 0*w_m,  w_s = 0*u_s_m + 1*w_m.
     Verify this directly from _build_basis_transform_constraints.
     """
-    from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
         _build_basis_transform_constraints, _PanelGlobalMap, _dof,
         _U_S, _W, _BETA_S, _U_X, _BETA_X,
     )
@@ -938,7 +974,7 @@ def test_cluster_basis_constraints_rigid_translation_mapping():
     For a 90-deg junction, slave u_s and w should include cross terms from the
     cluster reference basis (non-zero coupling coefficients).
     """
-    from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
         _build_cluster_basis_constraints, _PanelGlobalMap, _dof, _U_S, _W
     )
 
@@ -977,7 +1013,7 @@ def test_cluster_basis_constraints_rigid_translation_mapping():
 
 
 def test_transformed_basis_cluster_rotation_basis_is_rank6():
-    from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
         _build_cluster_basis_constraints, _PanelGlobalMap, _dof, _BETA_S
     )
 
@@ -1047,7 +1083,7 @@ def test_cluster_and_pair_share_topology():
     number of multi-panel junctions: every cluster with len>=2 should correspond
     to at least one pair in the interface list.
     """
-    from blade_structure_utilities.section_shell_model.processing.static.diagnostics.equilibrium_checks import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.diagnostics.equilibrium_checks import (
         _build_geometric_interfaces,
         _build_endpoint_clusters_raw,
     )
@@ -1085,7 +1121,7 @@ def test_tiered_acceptance_applies_pair_only_to_two_way():
     cluster_size == 3, so they are excluded from 2-way-only secondary acceptance.
     Only 2-way junction pairs should have cluster_size == 2.
     """
-    from blade_structure_utilities.section_shell_model.processing.static.diagnostics.equilibrium_checks import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.diagnostics.equilibrium_checks import (
         _build_geometric_interfaces,
     )
     # Build a T-junction: p0:end, p1:start, p2:start all meet at (1,0).
@@ -1144,7 +1180,7 @@ def test_cluster_traction_equilibrium_cluster_frame():
     Synthetic 3-way T-junction with tractions satisfying equilibrium in the global
     frame: cluster-sum residuals must be near zero.
     """
-    from blade_structure_utilities.section_shell_model.processing.static.diagnostics.equilibrium_checks import check_cluster_equilibrium
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.diagnostics.equilibrium_checks import check_cluster_equilibrium
 
     # Build 3 synthetic panels meeting at (0, 0):
     # panel 0: horizontal skin, from (-1, 0) to (0, 0) — tangent (1, 0)

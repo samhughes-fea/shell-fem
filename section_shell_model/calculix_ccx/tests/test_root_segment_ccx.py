@@ -9,21 +9,21 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.calculix_ccx.results import (
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.results import (
     CcxElementStress,
     map_root_segment_stresses_to_resultants,
     parse_ccx_dat_node_reactions,
 )
-from blade_structure_utilities.section_shell_model.calculix_ccx.root_segment_export import (
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.root_segment_export import (
     outboard_cloads_from_resultants,
     run_root_segment_ccx,
     write_root_segment_inp,
 )
-from blade_structure_utilities.section_shell_model.calculix_ccx.root_segment_mesh import (
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.root_segment_mesh import (
     build_ccx_root_segment_mesh,
     estimate_root_diameter_m,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.constitutive.default_laminates import (
+from blade_structure_utilities.material_utilities.adapters.default_laminates import (
     WallLaminate,
 )
 

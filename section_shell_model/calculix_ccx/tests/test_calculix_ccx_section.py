@@ -9,13 +9,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ProvenanceKind, ShellTheory
-from blade_structure_utilities.section_shell_model.calculix_ccx.mesh import build_ccx_section_mesh
-from blade_structure_utilities.section_shell_model.pre_processing.dispatch.shell_solve_registry import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ProvenanceKind, ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.mesh import build_ccx_section_mesh
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.dispatch.shell_solve_registry import (
     BACKENDS,
     resolve_backend,
 )
-from blade_structure_utilities.section_shell_model.calculix_ccx.section_export import write_section_inp
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.section_export import write_section_inp
 
 
 class _Lam:
@@ -44,10 +44,10 @@ def _l_shaped_panels():
 
 def test_shell_theory_calculix_ccx_registered():
     """CCX is quarantined (Phase 6): BACKENDS only gains it after opt-in registration."""
-    from blade_structure_utilities.section_shell_model.calculix_ccx.register import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.register import (
         register_calculix_ccx_backend,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
         ShellAnalysisRegime,
         supported_shell_theories,
     )
@@ -86,7 +86,7 @@ def test_write_section_inp_l_shaped():
 @pytest.mark.ccx
 @pytest.mark.skipif(shutil.which("ccx") is None, reason="CalculiX ccx not on PATH")
 def test_ccx_l_junction_solves():
-    from blade_structure_utilities.section_shell_model.calculix_ccx.solve import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.solve import (
         solve_global_coupled_ccx,
     )
 

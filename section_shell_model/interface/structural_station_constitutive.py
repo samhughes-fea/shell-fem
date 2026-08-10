@@ -7,7 +7,7 @@ from typing import Sequence
 import numpy as np
 
 from .constitutive_adapter import build_shell_constitutive_input
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import BeamSectionConstitutiveInput, ShellStationProvenance
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import BeamSectionConstitutiveInput, ShellStationProvenance
 
 
 def build_structural_grid_shell_constitutive(

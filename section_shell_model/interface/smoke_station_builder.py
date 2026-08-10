@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from blade_structure_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
+from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
 
 from .constitutive_adapter import build_shell_constitutive_stack
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellRecoveryMaterialPoint,
     ShellRecoverySectionPointSet,
     ShellSectionStationAnalysis,

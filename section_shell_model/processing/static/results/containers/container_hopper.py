@@ -42,12 +42,23 @@ class ShellHashinFiResult:
     arrays are kept distinct (not flattened) so optimiser KS-aggregation call
     sites can read each mode explicitly. See PROCESSING_ARCHITECTURE_PROPOSAL.md
     Phase 6.
+
+    ``in_plane`` is the envelope max of the four in-plane modes (governing /
+    optimiser scalar). The four mode arrays are stored separately when computed.
     """
 
     in_plane: np.ndarray | None = None
-    """(n_elem, n_ply) fibre/matrix tension/compression Hashin modes."""
+    """(n_elem, n_ply) envelope max of fibre/matrix tension/compression modes."""
     interlaminar: np.ndarray | None = None
     """(n_elem,) transverse-shear/delamination mode."""
+    fi_ft: np.ndarray | None = None
+    """(n_elem, n_ply) fibre-tension Hashin mode."""
+    fi_fc: np.ndarray | None = None
+    """(n_elem, n_ply) fibre-compression Hashin mode."""
+    fi_mt: np.ndarray | None = None
+    """(n_elem, n_ply) matrix-tension Hashin mode."""
+    fi_mc: np.ndarray | None = None
+    """(n_elem, n_ply) matrix-compression Hashin mode."""
 
 
 @dataclass

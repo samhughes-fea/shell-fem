@@ -13,7 +13,7 @@ from typing import Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_contract.beam_resultant_vector import (
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
     SHELL_K6_MODE_ORDER,
     STRIP_OPTIM_ORDER,
 )

@@ -9,7 +9,7 @@ import pytest
 from blade_precompute.orchestration.precompute.containers import warn_nested_worker_oversubscription
 
 _bench = pytest.importorskip(
-    "blade_structure_utilities.section_shell_model.benchmarks.benchmark_section_solve_parallelism",
+    "blade_structure_utilities.fem_utilities.section_shell_model.benchmarks.benchmark_section_solve_parallelism",
     reason="benchmark_section_solve_parallelism module not present on this tree",
 )
 assess_deferred_perf_items = _bench.assess_deferred_perf_items

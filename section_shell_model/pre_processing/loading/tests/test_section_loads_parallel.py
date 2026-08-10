@@ -11,8 +11,8 @@ import pytest
 from blade_precompute.orchestration import PrecomputeOrchestrationContext
 from blade_precompute.orchestration.precompute.containers import PrecomputeInputs
 from blade_precompute.orchestration.precompute.stages_pkg.loads import section_loads_impl
-from blade_structure_utilities.section_geometry.core.system_layout import resolve_system_type
-from blade_structure_utilities.section_shell_model.pre_processing.loading.containers.types import SectionLoadsJobConfig
+from blade_structure_utilities.geometry_utilities.section_geometry.core.system_layout import resolve_system_type
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types import SectionLoadsJobConfig
 from blade_precompute.orchestration.component_materials import ComponentMaterialsMap
 
 
@@ -106,7 +106,7 @@ def test_section_loads_serial_parallel_parity(
 
 
 def test_section_station_load_field_pickle_roundtrip() -> None:
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.tests.test_load_field_serialization import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.tests.test_load_field_serialization import (
         _example_load_field,
     )
 

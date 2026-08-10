@@ -7,7 +7,7 @@ import pickle
 from pathlib import Path
 from typing import Any
 
-from blade_structure_utilities.section_shell_model._utils.jsonutil import write_json
+from blade_structure_utilities.fem_utilities.section_shell_model._utils.jsonutil import write_json
 
 PREPASS_MANIFEST_NAME = "prepass_station_analysis.json"
 PREPASS_PICKLE_NAME = "prepass_station_analysis.pkl"

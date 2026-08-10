@@ -1,4 +1,4 @@
-"""JSON serialization for :class:`~blade_structure_utilities.section_shell_model.pre_processing.loading.containers.types.SectionStationLoadField`."""
+"""JSON serialization for :class:`~blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types.SectionStationLoadField`."""
 
 from __future__ import annotations
 

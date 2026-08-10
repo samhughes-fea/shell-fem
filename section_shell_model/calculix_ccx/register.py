@@ -65,16 +65,16 @@ def register_calculix_ccx_backend() -> None:
     if _REGISTERED:
         return
 
-    from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
 
-    from blade_structure_utilities.section_shell_model.pre_processing.dispatch.station_theory_dispatch import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.dispatch.station_theory_dispatch import (
         register_station_solver,
     )
     from .station_dispatch_adapter import dispatch_ccx_station_solve
 
     register_station_solver(ShellTheory.CALCULIX_CCX, dispatch_ccx_station_solve)
 
-    from blade_structure_utilities.section_shell_model.pre_processing.dispatch.shell_solve_registry import register_backend
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.dispatch.shell_solve_registry import register_backend
 
     register_backend(ShellTheory.CALCULIX_CCX, _solve_ccx, label="external_calculix_ccx")
 

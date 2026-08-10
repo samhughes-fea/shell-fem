@@ -15,10 +15,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.calculix_ccx.orientation import (
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.orientation import (
     quad_coords_from_strip,
 )
-from blade_structure_utilities.section_shell_model.calculix_ccx.strip_export import (
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.strip_export import (
     export_rectangular_strip_inp,
     strip_coords_for_panel,
 )

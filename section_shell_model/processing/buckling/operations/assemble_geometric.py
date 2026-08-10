@@ -8,14 +8,14 @@ import numpy as np
 import scipy.sparse as sp
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     ShellFormulationCache,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.kernel import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.kernel import (
     resolve_kernel,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.shell_mesh_map import (
     PanelGlobalMap,
 )
 

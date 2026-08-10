@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import scipy.sparse.linalg as spla
 
-from blade_structure_utilities.section_shell_model.processing.static.operations.solve_states import ReducedShellSystem, SolvedReducedShellSystem
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.solve_states import ReducedShellSystem, SolvedReducedShellSystem
 
 
 class SolveReducedShellSystem:

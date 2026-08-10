@@ -10,9 +10,9 @@ from __future__ import annotations
 import numpy as np
 import scipy.sparse as sp
 
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import build_pipeline_b_section
-from blade_structure_utilities.section_shell_model.pre_processing.containers.fem_config import MITC4_DEFAULTS
-from blade_structure_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.fem_config import MITC4_DEFAULTS
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
     assemble_global_shell,
 )
 
@@ -20,8 +20,8 @@ _NDOF = MITC4_DEFAULTS.n_dof_node
 
 
 def _panels():
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    panels = pb.panels
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    panels = panel_topology.panels
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in panels]
     return panels, zeros
 

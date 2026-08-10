@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.calculix_ccx.results import (
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.results import (
     _frd_to_mesh_eid,
     _parse_frd_minus1_line,
     bending_moments_from_frd_ips,
@@ -95,7 +95,7 @@ def test_superpose_frd_stress_blocks_linear():
 
 
 def test_bending_moments_from_frd_ips_flat_plate():
-    from blade_structure_utilities.section_shell_model.calculix_ccx.results import CcxFrdIpStress
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.results import CcxFrdIpStress
 
     rows = [
         CcxFrdIpStress(1, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
@@ -109,7 +109,7 @@ def test_bending_moments_from_frd_ips_flat_plate():
 
 
 def test_bending_moments_from_frd_ips_contour_my():
-    from blade_structure_utilities.section_shell_model.calculix_ccx.results import CcxFrdIpStress
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.results import CcxFrdIpStress
 
     rows = [
         CcxFrdIpStress(1, 1, 0.0, 10e6, 0.0, 0.0, 0.0, 0.0),

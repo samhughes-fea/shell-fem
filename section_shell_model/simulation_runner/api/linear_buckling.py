@@ -7,26 +7,30 @@ from typing import Any, Literal, Sequence
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.buckling_types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.buckling_types import (
     ShellPanelBucklingInput,
     ShellStationBucklingBundle,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellPanelResultants,
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.compute_secondary.panel_row_nesting import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_secondary.panel_row_nesting import (
     nest_resultant_rows_by_panel,
 )
-from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_static import (
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.api.linear_static import (
     LinearStaticCascadeResult,
 )
-from blade_structure_utilities.section_shell_model.simulation_runner.section_linear_buckling_runner import (
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_buckling_runner import (
     EigenTrack,
     SectionLinearBucklingResult,
     SectionLinearBucklingRunner,
     panel_inputs_from_nested_resultants,
+)
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticResult,
+    SectionLinearStaticRunner,
 )
 
 
@@ -42,19 +46,31 @@ class LinearBucklingCascadeResult:
     eigen_track: EigenTrack = "section"
 
 
+def _static_view(
+    static: SectionLinearStaticRunner | LinearStaticCascadeResult,
+) -> tuple[SectionLinearStaticRunner, Any, SectionLinearStaticResult]:
+    """Normalize executed runner or transitional cascade view."""
+    if isinstance(static, SectionLinearStaticRunner):
+        if static.assembly is None:
+            raise RuntimeError("static runner missing assembly; call execute() first")
+        return static, static.assembly, static.get_results()
+    return static.runner, static.assembly, static.solve_result
+
+
 def nested_resultants_from_static_cascade(
-    cascade: LinearStaticCascadeResult,
+    static: SectionLinearStaticRunner | LinearStaticCascadeResult,
 ) -> list[list[ShellPanelResultants]]:
-    """Extract nested panel resultants from a static cascade secondary set."""
-    secondary = cascade.runner.secondary_results
+    """Extract nested panel resultants from an executed static runner / cascade."""
+    runner, asm, _ = _static_view(static)
+    secondary = runner.secondary_results
     if secondary is None or secondary.elemental_results is None:
-        return [[] for _ in cascade.assembly.panel_maps]
+        return [[] for _ in asm.panel_maps]
     rows = list(secondary.elemental_results.resultant_rows or [])
-    return nest_resultant_rows_by_panel(rows, len(cascade.assembly.panel_maps))
+    return nest_resultant_rows_by_panel(rows, len(asm.panel_maps))
 
 
 def run_section_linear_buckling_from_static(
-    cascade: LinearStaticCascadeResult,
+    static: SectionLinearStaticRunner | LinearStaticCascadeResult,
     *,
     station_id: str = "station-0",
     z_station: float = 0.0,
@@ -67,12 +83,15 @@ def run_section_linear_buckling_from_static(
 ) -> LinearBucklingCascadeResult:
     """Static secondary prestress → buckling runner P→S → station bundle.
 
+    ``static`` is an executed :class:`SectionLinearStaticRunner` (preferred) or a
+    transitional :class:`LinearStaticCascadeResult`.
+
     Default ``eigen_track=\"section\"`` solves the connected-section geometric-
     stiffness eigenproblem (reuse static ``K`` / ``T``). Pass
     ``eigen_track=\"panel\"`` for the legacy per-panel classical strip path.
     """
-    nested = nested_resultants_from_static_cascade(cascade)
-    asm = cascade.assembly
+    _runner, asm, solve_result = _static_view(static)
+    nested = nested_resultants_from_static_cascade(static)
     prov = provenance or ShellStationProvenance()
     abd_seq = None
     if getattr(asm, "abd_p", None) is not None:
@@ -103,7 +122,6 @@ def run_section_linear_buckling_from_static(
             panel_inputs, provenance=prov, eigen_track="panel"
         )
     else:
-        solve_result = cascade.solve_result
         if solve_result.T is None:
             raise RuntimeError("static cascade missing reduction transform T")
         if asm.cache is None:

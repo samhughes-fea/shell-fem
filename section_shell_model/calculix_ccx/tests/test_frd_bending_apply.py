@@ -6,12 +6,12 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.calculix_ccx.results import (
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.results import (
     CcxFrdIpStress,
     apply_frd_bending_to_panel_resultants,
     bending_moments_from_frd_ips,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     FieldProvenance,
     ProvenanceKind,
     ShellPanelResultants,

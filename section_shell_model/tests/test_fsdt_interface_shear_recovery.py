@@ -5,23 +5,23 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_materials.laminate import LaminateDefinition
-from blade_structure_utilities.section_materials.ply import OrthotropicPly
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
+from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
+from blade_structure_utilities.material_utilities.orthotropic import OrthotropicPly
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import (
     ShellFormulationCache,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellPanelResultants,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.compute_tertiary import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_tertiary import (
     FSDTInterfaceShearRecoveryOperator,
     ShellTertiaryResultsOrchestrator,
     fsdt_interface_shear_profile,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.containers.container_hopper import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.containers.container_hopper import (
     ShellSecondaryResultSet,
 )
-from blade_structure_utilities.section_shell_model.processing.static.results.containers.elemental_results import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.containers.elemental_results import (
     ShellElementalResults,
 )
 

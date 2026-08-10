@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
+from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
 
 from .shell_theory_capabilities import (
     ShellAnalysisRegime,

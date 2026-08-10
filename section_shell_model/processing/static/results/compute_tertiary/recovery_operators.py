@@ -14,11 +14,11 @@ from typing import Any, Protocol, runtime_checkable
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_materials.laminate import (
+from blade_structure_utilities.material_utilities.laminate import (
     Q_bar_transverse,
     default_transverse_shear_moduli,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellPanelResultants,
 )
 from .compute_clt_strains import batched_clt_strains
@@ -84,8 +84,17 @@ class TransverseShearRecoveryProtocol(Protocol):
         qy: float,
         lam: Any,
         thickness_m: float | None = None,
+        g13_ply: NDArray[np.float64] | None = None,
+        g23_ply: NDArray[np.float64] | None = None,
     ) -> NDArray[np.float64]:
-        """Return ``(n_ply+1, 2)`` = ``[tau_13, tau_23]`` at ply interfaces [Pa]."""
+        """Return ``(n_ply+1, 2)`` = ``[tau_13, tau_23]`` at ply interfaces [Pa].
+
+        ``g13_ply``/``g23_ply`` are an optional caller-supplied
+        :func:`_ply_transverse_g` result for this laminate -- every row in a
+        panel shares the same laminate, so a caller iterating many rows for one
+        panel should compute this once and pass it through rather than have
+        each row recompute it from scratch.
+        """
         ...
 
 
@@ -113,6 +122,16 @@ def parabolic_weight(z: float, h: float) -> float:
         return 0.0
     xi = 2.0 * float(z) / float(h)
     return max(0.0, 1.0 - xi * xi)
+
+
+def _int_parab(za: NDArray[np.float64], zb: NDArray[np.float64], h: float) -> NDArray[np.float64]:
+    """Analytic per-ply integral of the parabolic weight; vectorises over plies.
+
+    ``∫_{z_a}^{z_b} (1-(2z/h)^2) dz = (z_b-z_a) - (4/(3 h^2))(z_b^3 - z_a^3)`` —
+    pure elementwise arithmetic, so this works identically for scalar or array
+    ``za``/``zb`` (one call over all plies at once, not one call per ply).
+    """
+    return (zb - za) - (4.0 / (3.0 * h * h)) * (zb**3 - za**3)
 
 
 def fsdt_interface_shear_profile(
@@ -151,28 +170,22 @@ def fsdt_interface_shear_profile(
         g23 = np.asarray(g23_ply, dtype=np.float64).ravel()
 
     # Interface G: free surfaces use adjacent ply; interiors average neighbours.
-    g13_i = np.zeros(n_iface, dtype=np.float64)
-    g23_i = np.zeros(n_iface, dtype=np.float64)
-    g13_i[0] = g13[0]
-    g23_i[0] = g23[0]
-    g13_i[-1] = g13[-1]
-    g23_i[-1] = g23[-1]
-    for i in range(1, n_iface - 1):
-        g13_i[i] = 0.5 * (g13[i - 1] + g13[i])
-        g23_i[i] = 0.5 * (g23[i - 1] + g23[i])
+    # (Vectorised: g13_i[1:-1] is the elementwise average of adjacent plies —
+    # same values as the old per-interface Python loop, computed in one call.)
+    g13_i = np.empty(n_iface, dtype=np.float64)
+    g23_i = np.empty(n_iface, dtype=np.float64)
+    g13_i[0], g13_i[-1] = g13[0], g13[-1]
+    g23_i[0], g23_i[-1] = g23[0], g23[-1]
+    if n_iface > 2:
+        g13_i[1:-1] = 0.5 * (g13[:-1] + g13[1:])
+        g23_i[1:-1] = 0.5 * (g23[:-1] + g23[1:])
 
-    w = np.asarray([parabolic_weight(zi, h) for zi in z], dtype=np.float64)
-    # Integrate piecewise-constant G * parabola over each ply (Simpson on ends).
-    # Analytic ∫_{z_a}^{z_b} (1-(2z/h)^2) dz = (z_b-z_a) - (4/(3 h^2))(z_b^3 - z_a^3)
-    def _int_parab(za: float, zb: float) -> float:
-        return (zb - za) - (4.0 / (3.0 * h * h)) * (zb**3 - za**3)
-
-    norm13 = 0.0
-    norm23 = 0.0
-    for k in range(n_ply):
-        dz_int = _int_parab(float(z[k]), float(z[k + 1]))
-        norm13 += float(g13[k]) * dz_int
-        norm23 += float(g23[k]) * dz_int
+    w = np.clip(1.0 - (2.0 * z / h) ** 2, 0.0, None)
+    # Integrate piecewise-constant G * parabola over each ply, vectorised over
+    # all plies at once (was a per-ply Python accumulation loop).
+    dz_int = _int_parab(z[:-1], z[1:], h)
+    norm13 = float(np.sum(g13 * dz_int))
+    norm23 = float(np.sum(g23 * dz_int))
 
     if norm13 > 0.0:
         out[:, 0] = float(qx) * g13_i * w / norm13
@@ -196,6 +209,8 @@ class FSDTInterfaceShearRecoveryOperator:
         qy: float,
         lam: Any,
         thickness_m: float | None = None,
+        g13_ply: NDArray[np.float64] | None = None,
+        g23_ply: NDArray[np.float64] | None = None,
     ) -> NDArray[np.float64]:
         plies = getattr(lam, "plies", None) or []
         n_ply = len(plies)
@@ -205,14 +220,15 @@ class FSDTInterfaceShearRecoveryOperator:
         h = float(thickness_m) if thickness_m is not None and thickness_m > 0.0 else float(
             lam.total_thickness()
         )
-        g13, g23 = _ply_transverse_g(lam)
+        if g13_ply is None or g23_ply is None:
+            g13_ply, g23_ply = _ply_transverse_g(lam)
         return fsdt_interface_shear_profile(
             qx=float(qx),
             qy=float(qy),
             z_iface=z_iface,
             h=h,
-            g13_ply=g13,
-            g23_ply=g23,
+            g13_ply=g13_ply,
+            g23_ply=g23_ply,
         )
 
     def recover_row(
@@ -259,8 +275,10 @@ class HSDTQxShearRecoveryOperator:
         qy: float,
         lam: Any,
         thickness_m: float | None = None,
+        g13_ply: NDArray[np.float64] | None = None,
+        g23_ply: NDArray[np.float64] | None = None,
     ) -> NDArray[np.float64]:
-        del qx, qy, thickness_m
+        del qx, qy, thickness_m, g13_ply, g23_ply
         n_ply = len(getattr(lam, "plies", None) or [])
         if n_ply == 0:
             return np.zeros((0, 2), dtype=np.float64)

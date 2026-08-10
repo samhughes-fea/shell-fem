@@ -5,37 +5,51 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_contract.beam_resultant_vector import (
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
     BEAM_LOAD_AXIS_YZ,
     FRAME_SECTION_YZ,
     BeamResultantVector,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.loading.beam_resultants_to_nodal_load import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.beam_resultants_to_nodal_load import (
     beam_resultants_to_nodal_load,
     integrate_nodal_load_resultants,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import (
-    build_pipeline_b_section,
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
+    build_shell_panel_topology,
 )
-from blade_structure_utilities.section_shell_model.processing.static.operations.section_assembly import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.section_assembly import (
     assemble_section_from_panels,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.section_shell_model.simulation_runner.api.linear_static import (
-    governing_fi_from_quaternary,
-    run_section_linear_static_from_resultants,
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+    SectionLinearStaticRunner,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+    build_section_strip_mesh,
+)
+
+
+def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 4):
+    return build_section_strip_mesh(
+        panel_topology.shell_inputs,
+        n_elements_per_panel=n_elements_per_panel,
+    )
 
 
 def _asm_naca():
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
-    panels = pb.panels
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    panels = panel_topology.panels
     nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in panels]
     nxy = [np.zeros_like(a) for a in nx]
+    mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
     asm = assemble_section_from_panels(
-        panels, nx, nxy, n_elements_per_panel=4, shell_theory=ShellTheory.FSDT,
+        panels,
+        nx,
+        nxy,
+        section_strip_mesh=mesh,
+        shell_theory=ShellTheory.FSDT,
     )
-    return pb, asm
+    return panel_topology, asm
 
 
 @pytest.mark.parametrize(
@@ -66,36 +80,74 @@ def test_nodal_load_reconstructs_beam_resultants(named):
 
 
 def test_linear_static_cascade_reaches_quaternary():
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
     vec = BeamResultantVector.from_named(
         My=1e3, frame=FRAME_SECTION_YZ, about_yz=BEAM_LOAD_AXIS_YZ,
     )
-    out = run_section_linear_static_from_resultants(
-        pb,
+    static = SectionLinearStaticRunner(
+        panel_topology=panel_topology,
         resultants=vec,
-        n_elements_per_panel=4,
+        section_strip_mesh=_strip_mesh(panel_topology, n_elements_per_panel=4),
+        load_channel="equipollent",
         compute_section_deformation_1a=True,
-    )
-    assert out.quaternary is not None
-    assert out.runner.primary_results is not None
-    assert out.runner.secondary_results is not None
-    assert out.runner.tertiary_results is not None
-    fi, _nr = governing_fi_from_quaternary(out.quaternary)
+    ).execute()
+    results = static.get_results()
+    quaternary = results.quaternary_results
+    assert quaternary is not None
+    gov = quaternary.governing or {}
+    fi = float(gov.get("fi", 0.0) or 0.0)
     assert np.isfinite(fi)
-    diag = out.runner.primary_results.global_results.diagnostics
+    assert static.primary_results is not None
+    diag = static.primary_results.global_results.diagnostics
     assert "section_deformation_1a" in diag
-    avg = diag["section_deformation_1a"]
-    assert avg.n_pairs > 0
-    assert avg.mean_local_dof.shape == (6,)
+
+
+def test_torsion_about_shear_centre_opt_in_reconstructs_T():
+    """Pure T about sectorial SC reconstructs about that origin (opt-in path)."""
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.shear_centre_loading_axis import (
+        shear_centre_about_yz_from_panel_topology,
+    )
+
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    y_sc, z_sc = shear_centre_about_yz_from_panel_topology(panel_topology)
+    assert np.isfinite(y_sc) and np.isfinite(z_sc)
+
+    mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
+    static = SectionLinearStaticRunner(
+        panel_topology=panel_topology,
+        T=50.0,
+        torsion_about_shear_centre=True,
+        section_strip_mesh=mesh,
+        load_channel="equipollent",
+    ).execute()
+    assert static.resultants is not None
+    assert static.resultants.about_yz == pytest.approx((y_sc, z_sc), rel=0, abs=1e-9)
+    assert static.assembly is not None and static.f_nodal is not None
+    back = integrate_nodal_load_resultants(
+        static.assembly.node_meta,
+        static.f_nodal,
+        about_yz=static.resultants.about_yz,
+        ndof=int(static.assembly.cache.n_dof_node),
+    )
+    np.testing.assert_allclose(back.T, 50.0, rtol=1e-5, atol=1e-5)
+    # Default product path unchanged when flag is off
+    static_default = SectionLinearStaticRunner(
+        panel_topology=panel_topology,
+        T=50.0,
+        section_strip_mesh=mesh,
+        load_channel="equipollent",
+    ).execute()
+    assert static_default.resultants is not None
+    assert static_default.resultants.about_yz == BEAM_LOAD_AXIS_YZ
 
 
 def test_linear_static_from_resultants_rejects_non_fsdt() -> None:
-    pb = build_pipeline_b_section("2412", [0.35], chord_m=1.0)
+    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
     with pytest.raises(ValueError, match="FSDT"):
-        run_section_linear_static_from_resultants(
-            pb,
+        SectionLinearStaticRunner(
+            panel_topology=panel_topology,
             My=1.0e3,
-            n_elements_per_panel=3,
-            min_elements_per_panel=2,
+            section_strip_mesh=_strip_mesh(panel_topology, n_elements_per_panel=3),
+            load_channel="equipollent",
             shell_theory=ShellTheory.CALCULIX_CCX,
-        )
+        ).execute()

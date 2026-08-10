@@ -1,24 +1,19 @@
 """
-Section shell model: midline-to-strip mesh, linear-static FI cascade, CLPT handoff.
+FE kernel worker: element ``Ke``/``Fe`` → assemble / solve → cascade bin.
 
-Pure FE package with two runners: linear-static (main FI) and linear-buckling (P→S).
-Public strip meshing follows ``build_shell_mesh_inputs`` → ``build_section_v2`` →
-``build_section_strip_mesh``; see ``docs/SHELL_MODEL.md``.
+Use-case agnostic. Prefer::
+
+    bin = SectionLinearStaticRunner(...).execute().get_results()  # CascadeBin / P→S→T→Q
+
+**Target contract:** prebuilt mesh with constitutive data already assigned;
+this worker owns formulation, assembly, BCs, solve, and P→S→T→Q recovery.
+Strip meshing lives in ``mesh_utilities.section_mesh``. Constitutive bind
+lives in ``material_utilities.adapters`` (``bind_shell_panels``). Orchestration
+(sizing loops, rainflow, parallelism) lives in use-case packages.
 """
 
 from __future__ import annotations
 
-from .pre_processing.mesh.section_strip_mesh import (
-    SectionStripMesh,
-    StripJunctionCluster,
-    StripPanelMesh,
-    build_section_strip_mesh,
-)
-from .pre_processing.mesh.shell_inputs_from_section import (
-    ShellMeshInputs,
-    build_shell_mesh_inputs,
-)
-from .pre_processing.mesh.topology import build_section_v2
 from .pre_processing.containers.types import (
     BeamSectionConstitutiveInput,
     FieldProvenance,
@@ -39,10 +34,11 @@ from .pre_processing.containers.types import (
     supported_shell_theories,
     validate_shell_configuration,
 )
-from .simulation_runner.api.linear_static import run_section_linear_static_from_resultants
-from .simulation_runner.api.station_recovery import (
-    run_station_hashin,
-    run_station_linear_static_hashin,
+from .processing.static.results.containers.diagnostics_bin import DiagnosticsBin
+from .simulation_runner.section_linear_static_runner import (
+    CascadeBin,
+    SectionLinearStaticResult,
+    SectionLinearStaticRunner,
 )
 from .interface.recovery_point_set_builder import (
     build_shell_station_analysis_with_recovery_point_set,
@@ -62,13 +58,6 @@ from .processing.static.results.compute_tertiary.local_clpt_shell import (
 )
 
 __all__ = [
-    "build_section_strip_mesh",
-    "SectionStripMesh",
-    "StripJunctionCluster",
-    "StripPanelMesh",
-    "ShellMeshInputs",
-    "build_section_v2",
-    "build_shell_mesh_inputs",
     "BeamSectionConstitutiveInput",
     "FieldProvenance",
     "ProvenanceKind",
@@ -90,9 +79,10 @@ __all__ = [
     "build_shell_constitutive_input",
     "build_shell_constitutive_stack",
     "build_shell_constitutive_stack_from_legacy_section_properties",
-    "run_section_linear_static_from_resultants",
-    "run_station_hashin",
-    "run_station_linear_static_hashin",
+    "CascadeBin",
+    "DiagnosticsBin",
+    "SectionLinearStaticResult",
+    "SectionLinearStaticRunner",
     "build_shell_station_analysis_with_recovery_point_set",
     "extract_shell_laminate_recovery_data",
     "build_station_analysis_from_shell_bundle",

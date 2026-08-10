@@ -12,7 +12,7 @@ from typing import Any, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.thin_wall.sectorial_warping import (
     open_outline_from_airfoil,
 )
 
@@ -295,7 +295,7 @@ def _lam_to_mat_stress(sig_lam: NDArray[np.float64], theta_deg: float) -> NDArra
 
 
 def _lam_to_mat_strain(eps_lam: NDArray[np.float64], theta_deg: float) -> NDArray[np.float64]:
-    from blade_structure_utilities.section_materials.ply import rotation_matrix_theta
+    from blade_structure_utilities.material_utilities.orthotropic import rotation_matrix_theta
 
     return rotation_matrix_theta(float(theta_deg)) @ np.asarray(eps_lam, dtype=float).ravel()[:3]
 
@@ -314,20 +314,20 @@ def plot_clpt_laminate_stress_fi(
     """
     One skin station: thin-wall (σ_xx, q) → membrane CLPT → ply σ, ε, Hashin FI.
 
-    Uses ``blade_structure_utilities.section_materials`` CLT recovery (no vendor helper).
+    Uses ``blade_structure_utilities.material_utilities`` CLT recovery (no vendor helper).
     """
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    from blade_structure_utilities.section_materials.clpt_recovery import membrane_resultants_from_shell_stress
-    from blade_structure_utilities.section_materials.laminate import laminate_definition_from_legacy
-    from blade_structure_utilities.section_shell_model.processing.static.results.compute_tertiary.local_clpt_shell import (
+    from blade_structure_utilities.material_utilities.laminate import membrane_resultants_from_shell_stress
+    from blade_structure_utilities.material_utilities.laminate import laminate_definition_from_legacy
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.compute_tertiary.local_clpt_shell import (
         default_skin_strengths_pa,
         solve_station_clpt_shell,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
         ShellPanelResultants,
     )
 

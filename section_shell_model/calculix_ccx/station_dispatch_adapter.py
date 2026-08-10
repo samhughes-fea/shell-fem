@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from blade_structure_utilities.section_shell_model.pre_processing.dispatch.station_theory_dispatch import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.dispatch.station_theory_dispatch import (
         StationTheorySolveRequest,
         StationTheorySolveResult,
     )
@@ -31,7 +31,7 @@ def ccx_station_solve_from_thin_wall(request: "StationTheorySolveRequest") -> di
 
 
 def dispatch_ccx_station_solve(request: "StationTheorySolveRequest") -> "StationTheorySolveResult":
-    from blade_structure_utilities.section_shell_model.pre_processing.dispatch.station_theory_dispatch import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.dispatch.station_theory_dispatch import (
         StationTheorySolveResult,
     )
 

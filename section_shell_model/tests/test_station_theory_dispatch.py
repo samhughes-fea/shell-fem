@@ -13,18 +13,18 @@ from typing import Any
 import numpy as np
 import pytest
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers import (
     types as core_types,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     SHELL_THEORY_CAPABILITIES,
     ShellTheory,
     require_shell_theory_supports,
     resolve_shell_theory_capability,
     shell_theories_supporting,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.dispatch import station_theory_dispatch as std
-from blade_structure_utilities.section_shell_model.pre_processing.dispatch.station_theory_dispatch import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.dispatch import station_theory_dispatch as std
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.dispatch.station_theory_dispatch import (
     StationTheorySolveRequest,
     dispatch_station_theory,
 )
@@ -86,6 +86,10 @@ def test_require_shell_theory_supports_returns_capability() -> None:
 
 
 def test_dispatch_routes_fsdt_to_periodic_hashin(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh.build_section_strip_mesh",
+        lambda *a, **k: object(),
+    )
     monkeypatch.setattr(std, "fsdt_periodic_station_hashin", lambda *a, **k: {"solver": "fsdt"})
     res = dispatch_station_theory(_request(ShellTheory.FSDT))
     assert res.fsdt_periodic_extra == {"solver": "fsdt"}
@@ -93,36 +97,49 @@ def test_dispatch_routes_fsdt_to_periodic_hashin(monkeypatch) -> None:
 
 
 def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None:
-    """Usable load-field traction must use linear-static, never fi_track=periodic."""
-    from blade_structure_utilities.section_shell_model.pre_processing.loading.containers.types import (
+    """Usable load-field traction must use linear-static station runner execute()."""
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.loading.containers.types import (
         DistributedStationLoadSpec,
         IncidentAeroSpec,
         LoadFieldProvenance,
         SectionStationLoadField,
     )
-    from blade_structure_utilities.point_to_surftraction.tractions import TractionField
+    from blade_structure_utilities.load_utilities.beam_to_shell_loads.surface_traction.tractions import TractionField
 
     captured: dict[str, Any] = {}
 
-    def _fake_hashin(pb, **kwargs):
-        captured.update(kwargs)
-        return {
-            "max_fi_hashin": 0.1,
-            "needs_review": False,
-            "fi_by_panel": [0.1],
-            "governing": {"fi": 0.1},
-            "used_traction": True,
-            "track": "linear_static",
-        }
+    class _FakeResults:
+        quaternary_results = type(
+            "Q",
+            (),
+            {
+                "governing": {"fi": 0.1},
+                "needs_review": None,
+                "hashin_fi": None,
+            },
+        )()
+        tertiary_results = None
 
-    monkeypatch.setattr(
-        "blade_structure_utilities.section_shell_model.simulation_runner.api.station_recovery.run_station_hashin",
-        _fake_hashin,
-    )
-    monkeypatch.setattr(
-        "blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b.pipeline_b_section_from_shell_inputs",
-        lambda *_a, **_k: object(),
-    )
+    class _FakeAssembly:
+        panel_maps = [object()]
+
+    class _FakeRunner:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            self.used_traction = True
+            self.assembly = _FakeAssembly()
+
+        def execute(self):
+            return self
+
+        def get_results(self):
+            return _FakeResults()
+
+    import blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner as slsr
+    import blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology as spt
+
+    monkeypatch.setattr(slsr, "SectionLinearStaticRunner", _FakeRunner)
+    monkeypatch.setattr(spt, "shell_panel_topology_from_shell_inputs", lambda *_a, **_k: object())
 
     n_panels = 4
     outline = np.column_stack(
@@ -169,24 +186,21 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
         My=0.0,
         Mz=0.0,
         T=1.0,
-        n_elements_per_panel=4,
-        target_element_length_m=None,
-        min_elements_per_panel=2,
+        section_strip_mesh=object(),
         load_field=lf,
     )
     assert out["solver"] == "fsdt_linear_static_cascade"
     assert out["used_traction"] is True
-    assert captured.get("fi_track") == "linear_static"
     assert captured.get("traction_field") is not None
     assert captured.get("traction_points_yz") is not None
 
 
 def test_dispatch_routes_ccx_to_thin_wall(monkeypatch) -> None:
     """CCX is quarantined (Phase 6): dispatch only works after opt-in registration."""
-    from blade_structure_utilities.section_shell_model.calculix_ccx.register import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.register import (
         register_calculix_ccx_backend,
     )
-    from blade_structure_utilities.section_shell_model.calculix_ccx import station_dispatch_adapter
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx import station_dispatch_adapter
 
     register_calculix_ccx_backend()
     monkeypatch.setattr(station_dispatch_adapter, "ccx_station_solve_from_thin_wall", lambda req: {"solver": "ccx"})

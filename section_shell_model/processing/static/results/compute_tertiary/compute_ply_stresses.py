@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_materials.clpt_recovery import (
+from blade_structure_utilities.material_utilities.laminate import (
     ply_mid_strains_laminate,
     ply_mid_stresses_laminate,
     rotate_plies_to_material,

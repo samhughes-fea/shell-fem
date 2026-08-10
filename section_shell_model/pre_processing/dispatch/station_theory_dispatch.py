@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellTheory,
     require_shell_theory_supports,
 )
@@ -54,28 +54,48 @@ def fsdt_periodic_station_hashin(
     My: float,
     Mz: float,
     T: float,
-    n_elements_per_panel: int | None,
-    target_element_length_m: float | None,
-    min_elements_per_panel: int,
+    section_strip_mesh: Any,
     load_field: Any | None = None,
+    n_elements_per_panel: int | None = None,
+    target_element_length_m: float | None = None,
+    min_elements_per_panel: int | None = None,
 ) -> dict[str, Any]:
     """Linear-static FSDT cascade + Hashin FI summary for orchestration JSON.
 
     Usable face traction is applied on the contour-supported linear-static RHS
     (same free set as beam loads). Beam-only stations use the cascade without
-    Channel B overlay.
+    Channel B overlay. Requires ``section_strip_mesh=`` (density is owned
+    outside FE; dispatch builds the mesh once before calling this helper).
     """
-    from blade_structure_utilities.section_shell_model.interface.traction_load_adapter import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.interface.traction_load_adapter import (
         traction_points_from_load_field,
     )
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.api.pipeline_b import (
-        pipeline_b_section_from_shell_inputs,
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
+        shell_panel_topology_from_shell_inputs,
     )
-    from blade_structure_utilities.section_shell_model.simulation_runner.api.station_recovery import (
-        run_station_hashin,
+    from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (
+        SectionLinearStaticRunner,
     )
 
-    pb = pipeline_b_section_from_shell_inputs(section_view, shell_inputs)
+    if section_strip_mesh is None:
+        raise ValueError(
+            "section_strip_mesh is required; build it with "
+            "mesh_utilities.section_mesh.build_section_strip_mesh "
+            "(density is owned outside FE)."
+        )
+    if (
+        n_elements_per_panel is not None
+        or target_element_length_m is not None
+        or min_elements_per_panel is not None
+    ):
+        raise ValueError(
+            "Density kwargs are not accepted on fsdt_periodic_station_hashin; "
+            "pass a prebuilt section_strip_mesh= instead."
+        )
+
+    panel_topology = shell_panel_topology_from_shell_inputs(
+        shell_inputs, section=section_view
+    )
     traction_field = None
     traction_points = None
     used_traction = False
@@ -85,9 +105,31 @@ def fsdt_periodic_station_hashin(
             traction_field = load_field.traction_field
             used_traction = True
 
-    out = run_station_hashin(
-        pb,
-        fi_track="linear_static",
+    # Default Channel C (thinwall). When usable face traction is present, use
+    # Channel B alone (do not stack tip-integrated V with matching face traction).
+    load_channel = "surface_traction" if used_traction else "thinwall"
+    sfv = None
+    if load_channel == "thinwall":
+        from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+            BEAM_LOAD_AXIS_YZ,
+            BeamResultantVector,
+            FRAME_SECTION_YZ,
+        )
+        from blade_structure_utilities.load_utilities.beam_to_shell_loads import (
+            shape_section_force_vector,
+        )
+
+        resultants = BeamResultantVector.from_named(
+            N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
+            frame=FRAME_SECTION_YZ,
+            about_yz=BEAM_LOAD_AXIS_YZ,
+        )
+        sfv = shape_section_force_vector(
+            resultants, getattr(shell_inputs, "midlines", None)
+        )
+    strip_mesh = section_strip_mesh
+    static = SectionLinearStaticRunner(
+        panel_topology=panel_topology,
         N=N,
         Vy=Vy,
         Vz=Vz,
@@ -96,22 +138,57 @@ def fsdt_periodic_station_hashin(
         T=T,
         traction_field=traction_field,
         traction_points_yz=traction_points,
-        n_elements_per_panel=n_elements_per_panel,
-        target_element_length_m=target_element_length_m,
-        min_elements_per_panel=min_elements_per_panel,
+        section_strip_mesh=strip_mesh,
+        load_channel=load_channel,
+        section_force_vector=sfv,
+    ).execute()
+    results = static.get_results()
+    quaternary = results.quaternary_results
+    if quaternary is None:
+        raise RuntimeError("execute() did not populate quaternary_results")
+    gov = quaternary.governing or {}
+    max_fi = float(gov.get("fi", 0.0) or 0.0)
+    nr = quaternary.needs_review
+    needs_review = bool(np.any(nr)) if nr is not None else False
+    hi = None if quaternary.hashin_fi is None else quaternary.hashin_fi.in_plane
+    panel_index = (
+        None if results.tertiary_results is None else results.tertiary_results.panel_index
     )
+    assert static.assembly is not None
+    fi_by_panel: list[float] = []
+    for pi in range(len(static.assembly.panel_maps)):
+        pmax = 0.0
+        if hi is not None and panel_index is not None:
+            for ri in range(hi.shape[0]):
+                if int(panel_index[ri]) != pi:
+                    continue
+                if hi[ri].size:
+                    pmax = max(pmax, float(np.nanmax(hi[ri])))
+        fi_by_panel.append(pmax)
     return {
         "solver": "fsdt_linear_static_cascade",
-        "used_traction": bool(used_traction or out.get("used_traction")),
-        "max_fi_hashin": float(out["max_fi_hashin"]),
-        "needs_review": bool(out["needs_review"]),
-        "fi_by_panel": [float(x) for x in out["fi_by_panel"]],
+        "used_traction": bool(used_traction or static.used_traction),
+        "max_fi_hashin": max_fi,
+        "needs_review": needs_review,
+        "fi_by_panel": [float(x) for x in fi_by_panel],
         "provenance_breakdown": {},
-        "governing_element": dict(out.get("governing") or {}),
+        "governing_element": dict(gov),
     }
 
 
 def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResult:
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import (
+        build_section_strip_mesh,
+    )
+
+    # Density ownership: build once at the dispatch boundary, then hand a mesh
+    # into the FE shim (no remesh / density kwargs on the solve path).
+    strip_mesh = build_section_strip_mesh(
+        request.shell_inputs,
+        n_elements_per_panel=request.n_elements_per_panel,
+        target_element_length_m=request.target_element_length_m,
+        min_elements_per_panel=request.min_elements_per_panel,
+    )
     return StationTheorySolveResult(
         fsdt_periodic_extra=fsdt_periodic_station_hashin(
             request.section_view,
@@ -122,9 +199,7 @@ def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResu
             My=request.My,
             Mz=request.Mz,
             T=request.T,
-            n_elements_per_panel=request.n_elements_per_panel,
-            target_element_length_m=request.target_element_length_m,
-            min_elements_per_panel=request.min_elements_per_panel,
+            section_strip_mesh=strip_mesh,
             load_field=request.load_field,
         )
     )

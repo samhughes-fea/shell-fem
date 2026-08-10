@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from blade_structure_utilities.section_shell_model.calculix_ccx.results import FrdCcxNodeIndex
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.results import FrdCcxNodeIndex
 
 
 def frd_bending_element_coverage(
@@ -13,7 +13,7 @@ def frd_bending_element_coverage(
     frd_index: FrdCcxNodeIndex | None = None,
 ) -> float:
     """Fraction of FRD stress entities mapped to mesh element ids."""
-    from blade_structure_utilities.section_shell_model.calculix_ccx.results import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.results import (
         _remap_frd_eids_to_mesh,
     )
 
@@ -43,7 +43,7 @@ def test_frd_element_map_coverage_with_3c_index():
 
 
 def test_list_unmapped_frd_entities():
-    from blade_structure_utilities.section_shell_model.calculix_ccx.results import list_unmapped_frd_entities
+    from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.results import list_unmapped_frd_entities
 
     unmapped = list_unmapped_frd_entities(
         {101: [], 99999: []},

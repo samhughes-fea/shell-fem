@@ -9,18 +9,18 @@ import scipy.linalg as la
 import scipy.sparse as sp
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.buckling_types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.buckling_types import (
     ShellPanelBucklingInput,
 )
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.section_shell_model.pre_processing.element_library.kernel import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellTheory
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.element_library.kernel import (
     StripElementKernel,
     resolve_kernel,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.operations.assemble_geometric import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.operations.assemble_geometric import (
     assemble_panel_geometric_stiffness,
 )
-from blade_structure_utilities.section_shell_model.processing.buckling.operations.eigen_states import (
+from blade_structure_utilities.fem_utilities.section_shell_model.processing.buckling.operations.eigen_states import (
     BucklingEigenSolveState,
     SectionBucklingSolveState,
 )

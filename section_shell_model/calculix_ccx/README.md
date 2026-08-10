@@ -20,7 +20,7 @@ this package at module load time. Callers who need CCX through the theory-dispat
 router must explicitly call:
 
 ```python
-from blade_structure_utilities.section_shell_model.calculix_ccx.register import (
+from blade_structure_utilities.fem_utilities.section_shell_model.calculix_ccx.register import (
     register_calculix_ccx_backend,
 )
 
@@ -72,7 +72,7 @@ registration) was deleted 2026-07-14.
 - `station_dispatch_adapter.py` — per-station dispatch adapter
   (`ccx_station_solve_from_thin_wall`, `dispatch_ccx_station_solve`); raises
   `NotImplementedError` for the former Channel-A thin-wall periodic CCX product
-  path. Pipeline B geometry remains available for validation helpers.
+  path. Shell panel topology geometry remains available for validation helpers.
 - `register.py` — `register_calculix_ccx_backend()`, the sole opt-in entry
   point for the three production dispatch maps.
 - `tests/` — CCX-marked suite (`test_calculix_ccx_*.py` / `test_ccx_*.py` /

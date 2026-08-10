@@ -5,6 +5,7 @@ from .beam_resultants_to_nodal_load import (
     beam_resultants_to_nodal_load,
     integrate_nodal_load_resultants,
 )
+from .section_force_vector_to_nodal_load import section_force_vector_to_nodal_load
 from .containers.types import (
     DistributedStationLoadSpec,
     IncidentAeroSpec,
@@ -24,4 +25,5 @@ __all__ = [
     "beam_resultants_to_nodal_load",
     "build_station_load_field",
     "integrate_nodal_load_resultants",
+    "section_force_vector_to_nodal_load",
 ]

@@ -113,18 +113,31 @@ def test_direct_section_stress_model_sys_path_shims_are_allowlisted() -> None:
     assert offenders == [], f"New section_stress_model sys.path shims: {offenders}"
 
 
-def test_topology_has_no_vendor_bootstrap() -> None:
-    """R12 complete: topology defaults are package-local (no vendor sys.path)."""
+def test_default_laminates_live_in_material_adapters() -> None:
+    """Demo wall laminates belong in material adapters (no FE topology shim)."""
+    # This test file lives under blade_structure_utilities/.../tests; repo root is
+    # parents[4] from here (tests → section_shell_model → fem_utilities →
+    # blade_structure_utilities → repo).
+    repo = Path(__file__).resolve().parents[4]
     path = (
-        _REPO
-        / "blade_precompute"
-        / "section_shell_model"
-        / "pre_processing"
-        / "mesh"
-        / "topology.py"
+        repo
+        / "blade_structure_utilities"
+        / "material_utilities"
+        / "adapters"
+        / "default_laminates.py"
     )
     text = path.read_text(encoding="utf-8")
     assert "multi_cell_blade_section" not in text
     assert "ensure_stress_model_lib_path" not in text
     assert "default_skin_web_cap_laminates" in text
-    assert "_default_laminates" in text
+    assert "WallLaminate" in text
+    fe_shim = (
+        repo
+        / "blade_structure_utilities"
+        / "fem_utilities"
+        / "section_shell_model"
+        / "pre_processing"
+        / "constitutive"
+        / "default_laminates.py"
+    )
+    assert not fe_shim.exists(), "FE default_laminates re-export should be removed"

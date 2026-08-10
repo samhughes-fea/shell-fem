@@ -12,13 +12,13 @@ import math
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
 from ..containers.container_hopper import ShellHashinFiResult, ShellQuaternaryResultSet, ShellTertiaryResultSet
 from .compute_hashin_fi import (
     batched_interlaminar_fi,
     interlaminar_allowable_from_lam,
     interlaminar_fi_from_interface_tau,
-    ply_hashin_fi,
+    ply_hashin_fi_modes,
     ply_strength_vectors_from_lam,
 )
 from .compute_von_mises_fi import von_mises_fi
@@ -64,7 +64,12 @@ class ShellQuaternaryResultsOrchestrator:
             if ply_results.trusted_mask is not None
             else np.ones(n_rows, dtype=bool)
         )
-        hashin_fi = np.zeros((n_rows, max(n_ply, 1)), dtype=float)
+        n_cols = max(n_ply, 1)
+        hashin_fi = np.zeros((n_rows, n_cols), dtype=float)
+        fi_ft = np.zeros((n_rows, n_cols), dtype=float)
+        fi_fc = np.zeros((n_rows, n_cols), dtype=float)
+        fi_mt = np.zeros((n_rows, n_cols), dtype=float)
+        fi_mc = np.zeros((n_rows, n_cols), dtype=float)
         von_mises = np.full(n_rows, np.nan, dtype=float)
         needs_review = ~np.asarray(trusted_mask, dtype=bool)
 
@@ -96,11 +101,18 @@ class ShellQuaternaryResultsOrchestrator:
                 needs_review[idxs] = True
                 continue
             Xt, Xc, Yt, Yc, S12 = ply_strength_vectors_from_lam(lam)
-            fi_p, nr_p = ply_hashin_fi(
+            modes, nr_p = ply_hashin_fi_modes(
                 ply_results.sig_ply_mat[idx_arr],
                 trusted_mask[idx_arr],
                 Xt=Xt, Xc=Xc, Yt=Yt, Yc=Yc, S12=S12,
             )
+            ft_p, fc_p, mt_p, mc_p = modes
+            n_mode_cols = ft_p.shape[1]
+            fi_ft[idx_arr, :n_mode_cols] = ft_p
+            fi_fc[idx_arr, :n_mode_cols] = fc_p
+            fi_mt[idx_arr, :n_mode_cols] = mt_p
+            fi_mc[idx_arr, :n_mode_cols] = mc_p
+            fi_p = np.maximum(np.maximum(ft_p, fc_p), np.maximum(mt_p, mc_p))
             hashin_fi[idx_arr, : fi_p.shape[1]] = fi_p
             needs_review[idx_arr] = needs_review[idx_arr] | nr_p
 
@@ -159,7 +171,14 @@ class ShellQuaternaryResultsOrchestrator:
             self.tertiary.element_index,
         )
         return ShellQuaternaryResultSet(
-            hashin_fi=ShellHashinFiResult(in_plane=hashin_fi, interlaminar=interlaminar_fi),
+            hashin_fi=ShellHashinFiResult(
+                in_plane=hashin_fi,
+                interlaminar=interlaminar_fi,
+                fi_ft=fi_ft,
+                fi_fc=fi_fc,
+                fi_mt=fi_mt,
+                fi_mc=fi_mc,
+            ),
             von_mises_fi=von_mises,
             governing=governing,
             needs_review=needs_review,

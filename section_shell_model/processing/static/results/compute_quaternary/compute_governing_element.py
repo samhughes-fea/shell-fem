@@ -20,8 +20,8 @@ def max_hashin_fi_from_bundle(
     strengths: dict[str, float] | None = None,
 ) -> tuple[float, bool]:
     """Governing in-plane Hashin FI over all trusted panel elements."""
-    from blade_structure_utilities.section_materials.laminate import laminate_definition_from_legacy
-    from blade_structure_utilities.section_shell_model.processing.static.results.api.fi_recovery import (
+    from blade_structure_utilities.material_utilities.laminate import laminate_definition_from_legacy
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api.fi_recovery import (
         default_skin_strengths_pa,
         hashin_fi_from_row,
     )
@@ -53,8 +53,8 @@ def select_governing_hashin_element(
     composite_labels: list[str] | None = None,
 ) -> dict[str, Any]:
     """Governing element over panels x elements x plies with provenance audit."""
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition
-    from blade_structure_utilities.section_shell_model.processing.static.results.api.fi_recovery import hashin_fi_per_ply_from_row
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api.fi_recovery import hashin_fi_per_ply_from_row
 
     best_fi = 0.0
     gov: dict[str, Any] = {

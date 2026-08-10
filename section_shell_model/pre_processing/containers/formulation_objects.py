@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
-    from blade_structure_utilities.section_materials.laminate import LaminateDefinition
+    from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
 
 PanelConstitutiveKind = Literal["isotropic", "orthotropic"]
 

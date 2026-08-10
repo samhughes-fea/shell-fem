@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from blade_structure_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.formulation_objects import ShellFormulationCache
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import ShellPanelResultants
 from ..containers.container_hopper import ShellSecondaryResultSet, ShellTertiaryResultSet
 from ..containers.ply_results import ShellPlyResults
 from .provenance import interlaminar_inputs_trusted
@@ -20,6 +20,7 @@ from .recovery_operators import (
     FSDTInterfaceShearRecoveryOperator,
     InPlaneLaminateRecoveryOperator,
     SHEAR_RECOVERY_MODE_FSDT_PARABOLIC,
+    _ply_transverse_g,
 )
 
 
@@ -87,6 +88,9 @@ class ShellTertiaryResultsOrchestrator:
             in_plane = self.in_plane_operator.recover_panel(panel_rows, lam)
             n_ply_max = max(n_ply_max, in_plane.n_ply)
             n_iface_max = max(n_iface_max, in_plane.n_ply + 1)
+            # Per-ply transverse G depends only on the laminate, which every row
+            # in this panel shares -- compute once per panel, not once per row.
+            g13_ply, g23_ply = _ply_transverse_g(lam)
             for local_i, global_i in enumerate(idxs):
                 if in_plane.trusted_mask[local_i]:
                     trusted_mask[global_i] = True
@@ -104,6 +108,8 @@ class ShellTertiaryResultsOrchestrator:
                     qy=float(row.Qy),
                     lam=lam,
                     thickness_m=float(row.thickness_m),
+                    g13_ply=g13_ply,
+                    g23_ply=g23_ply,
                 )
 
         eps_ply_mat = np.zeros((n_rows, n_ply_max, 3), dtype=np.float64)

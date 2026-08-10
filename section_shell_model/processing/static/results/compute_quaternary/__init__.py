@@ -15,6 +15,7 @@ from .compute_hashin_fi import (
     interlaminar_fi_from_row,
     interlaminar_fi_from_row_fsdt,
     ply_hashin_fi,
+    ply_hashin_fi_modes,
     ply_strength_vectors_from_lam,
 )
 from .compute_von_mises_fi import von_mises_fi, von_mises_fi_from_row
@@ -32,6 +33,7 @@ __all__ = [
     "max_hashin_fi_from_bundle",
     "max_interlaminar_fi_from_quaternary",
     "ply_hashin_fi",
+    "ply_hashin_fi_modes",
     "ply_strength_vectors_from_lam",
     "select_governing_hashin_element",
     "von_mises_fi",

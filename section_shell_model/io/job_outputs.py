@@ -13,8 +13,8 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.section_shell_model._utils.jsonutil import to_jsonable
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model._utils.jsonutil import to_jsonable
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellPanelBucklingAssessment,
     ShellPanelBucklingInput,
     ShellStationBucklingBundle,
@@ -35,7 +35,7 @@ def airfoil_polygon_to_multicell_airfoil(
     ``open_outline_from_airfoil`` expect ``[upper_LE→TE; lower_LE→TE]`` with
     **equal** row counts on identical chordwise stations.
     """
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.naca_profile import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.naca_profile import (
         chordwise_stations,
     )
 
@@ -108,9 +108,9 @@ def build_airfoil_for_station(
     n_points: int = 120,
 ) -> NDArray[np.float64]:
     """NACA polyline (metres chord) for shell recovery; respects ``naca_series`` (4/5/6)."""
-    from blade_structure_utilities.sdf.naca import airfoil_vertices_from_spanwise
+    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca import airfoil_vertices_from_spanwise
 
-    from blade_structure_utilities.section_shell_model.pre_processing.mesh.naca_profile import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.naca_profile import (
         naca_four_digit,
     )
 
@@ -217,7 +217,7 @@ def _serialize_mitc4_station_resultants(panel_resultants: list[Any] | None) -> l
 
 def _periodic_hashin_audit_json(bundle: Any, *, strengths: dict[str, float]) -> dict[str, Any]:
     """Provenance breakdown + governing Hashin element for job JSON."""
-    from blade_structure_utilities.section_shell_model.processing.static.results.api.fi_recovery import (
+    from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.results.api.fi_recovery import (
         max_hashin_fi_from_bundle,
         select_governing_hashin_element,
     )

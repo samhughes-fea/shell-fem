@@ -6,11 +6,11 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from blade_structure_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
+from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
 
 from .constitutive_adapter import build_shell_constitutive_input
 from .recovery_point_set_builder import build_shell_station_analysis_with_recovery_point_set
-from blade_structure_utilities.section_shell_model.pre_processing.containers.types import (
+from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.containers.types import (
     ShellPanelBucklingAssessment,
     ShellPanelBucklingInput,
     ShellPanelResultants,
@@ -55,7 +55,7 @@ def _assessment_from_raw_result(
         panel_index=int(getattr(raw_result, "panel_index", 0)),
         station_index=int(station_index),
         load_multiplier_min=load_multiplier_min,
-        load_multipliers=lambdas,
+        load_multipliers=finite,
         n_modes_found=int(getattr(raw_result, "n_modes_found", finite.size)),
         is_compressive=bool(getattr(raw_result, "is_compressive", False)),
         buckling_index=buckling_index,
