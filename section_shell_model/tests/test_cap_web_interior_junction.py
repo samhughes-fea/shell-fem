@@ -1,4 +1,4 @@
-"""Regression for web-centric cap–web T-junctions after ``build_shell_mesh_inputs``.
+"""Regression for web-centric cap–web T-junctions after shell mesh inputs.
 
 Cap/web shared nodes are driven by cap–web segment intersections on web
 midlines. Cap endpoint coincidence with web feet is *not* required by this
@@ -56,8 +56,8 @@ def test_discrete_caps_retain_web_intersections_without_webfoot_forcing(layout_k
     """Discrete caps (Y=C): cap strips still intersect webs without foot forcing."""
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     chord_m = 1.655959896
@@ -67,7 +67,7 @@ def test_discrete_caps_retain_web_intersections_without_webfoot_forcing(layout_k
     )
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=twist_rad)
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section,
         twist_rad=twist_rad,
         layout_key=layout_key,
@@ -81,13 +81,13 @@ def test_discrete_caps_retain_web_intersections_without_webfoot_forcing(layout_k
 @pytest.mark.parametrize("layout_key", ["2C-CN", "3D-F"])
 def test_interior_cap_vertex_on_web_after_mesh_inputs(airfoil, layout_key: str):
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section,
         twist_rad=0.0,
         layout_key=layout_key,

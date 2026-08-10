@@ -3,7 +3,7 @@ Contract tests for the ShellMidlineStrip → ShellMeshInputs → MITC4 mesh pipe
 
 Verifies the public handoff contract established in PR1:
 
-  build_shell_mesh_inputs(section, ...) → ShellMeshInputs
+  shell_mesh_inputs_from_section(section, ...) → ShellMeshInputs
   bind_shell_panels(shell_inputs)    → panels (ordered skin → caps → webs)
   build_section_strip_mesh(shell_inputs, ...)   → SectionStripMesh
 
@@ -50,14 +50,14 @@ def _build_pipeline(airfoil, layout_key: str, twist_rad: float = 0.0):
         resolve_system_type,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.material_utilities.adapters import bind_shell_panels
 
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=twist_rad)
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=twist_rad, layout_key=layout_key, n_cap_samples=40
     )
     panels, _, _, _ = bind_shell_panels(shell_inputs)
@@ -237,14 +237,14 @@ def test_target_element_length_m_coarser_on_short_webs_than_skin(airfoil):
         resolve_system_type,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     layout_key = "2D-F"
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_cap_samples=40
     )
     mesh = build_section_strip_mesh(
@@ -268,14 +268,14 @@ def test_target_element_length_m_overridden_by_explicit_uniform_count(airfoil):
         resolve_system_type,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     layout_key = "2D-F"
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_cap_samples=40
     )
     mesh = build_section_strip_mesh(
@@ -304,13 +304,13 @@ def test_web_junction_clusters_are_multi_member_after_skin_split(airfoil, layout
         resolve_system_type,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_cap_samples=40
     )
     mesh = build_section_strip_mesh(shell_inputs, n_elements_per_panel=6, endpoint_tol=1e-6)
@@ -324,7 +324,12 @@ def test_web_junction_clusters_are_multi_member_after_skin_split(airfoil, layout
 
 @pytest.mark.parametrize("layout_key", ["2D-F", "2D-CN"])
 def test_cap_endpoints_preserve_exported_positions(airfoil, layout_key):
-    """Web-centric rule: cap endpoints are not remapped to skin during split."""
+    """Web-centric rule: cap endpoints are not remapped to skin during split.
+
+    Mesh-input construction may reverse midline winding to enforce +x3 face
+    semantics (lower caps / webs); endpoint *positions* must still match the
+    geometry export as an unordered pair.
+    """
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
@@ -332,8 +337,8 @@ def test_cap_endpoints_preserve_exported_positions(airfoil, layout_key):
     from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import (
         build_shell_midline_strips,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     layout = resolve_system_type(layout_key)
@@ -346,7 +351,7 @@ def test_cap_endpoints_preserve_exported_positions(airfoil, layout_key):
         for s in strips_geo
         if s.kind == "cap"
     }
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_cap_samples=40
     )
     for m in shell_inputs.midlines:
@@ -354,8 +359,13 @@ def test_cap_endpoints_preserve_exported_positions(airfoil, layout_key):
             continue
         arr = np.asarray(m.midline_b, dtype=float)
         g0, g1 = cap_end_geo[m.label]
-        assert np.allclose(arr[0], g0, atol=1e-9, rtol=0.0), (layout_key, m.label, "start")
-        assert np.allclose(arr[-1], g1, atol=1e-9, rtol=0.0), (layout_key, m.label, "end")
+        same_order = np.allclose(arr[0], g0, atol=1e-9, rtol=0.0) and np.allclose(
+            arr[-1], g1, atol=1e-9, rtol=0.0
+        )
+        reversed_order = np.allclose(arr[0], g1, atol=1e-9, rtol=0.0) and np.allclose(
+            arr[-1], g0, atol=1e-9, rtol=0.0
+        )
+        assert same_order or reversed_order, (layout_key, m.label, arr[0], arr[-1], g0, g1)
 
 
 def _junction_valence_histogram(mesh) -> dict[int, int]:
@@ -381,14 +391,14 @@ def _build_uniform_density_mesh(layout_key: str, chord_m: float, *, h_target_m: 
         ENDPOINT_TOL_FRAC,
         build_section_strip_mesh,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     airfoil = AirfoilSDF.from_naca("0012", n_points=100, chord=chord_m)
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_cap_samples=40
     )
     mesh = build_section_strip_mesh(
@@ -430,14 +440,14 @@ def test_uniform_density_element_count_grows_with_chord() -> None:
 def test_fractional_strip_mesh_rejects_conflicting_sizing(airfoil) -> None:
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     layout_key = "2D-F"
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_cap_samples=40
     )
     with pytest.raises(ValueError, match="target_element_length"):
@@ -465,8 +475,8 @@ def test_solver_and_strip_mesh_agree_on_panel_element_counts(airfoil) -> None:
     from blade_structure_utilities.fem_utilities.section_shell_model.processing.static.operations.global_shell_assembly import (
         assemble_global_shell,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.material_utilities.adapters import bind_shell_panels
 
@@ -474,7 +484,7 @@ def test_solver_and_strip_mesh_agree_on_panel_element_counts(airfoil) -> None:
     chord_m = 1.656
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_cap_samples=40
     )
     h_local = TARGET_ELEMENT_LENGTH_FRAC * chord_m

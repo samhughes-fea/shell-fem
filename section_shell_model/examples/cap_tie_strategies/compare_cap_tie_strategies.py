@@ -41,9 +41,11 @@ from blade_structure_utilities.geometry_utilities.section_geometry.core.system_l
 from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import (  # noqa: E402
     AirfoilSDF,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+    shell_mesh_inputs_from_section,
+)
 from blade_structure_utilities.mesh_utilities.section_mesh import (  # noqa: E402
     build_section_strip_mesh,
-    build_shell_mesh_inputs,
 )
 
 # Root-like, midspan-like and tip-like sections: chord and twist both move.
@@ -85,7 +87,7 @@ def _build_mesh(layout_key: str, chord: float, twist_deg: float, t: dict[str, fl
         web_thickness=t["web"],
         cap_height=t["spar"],
     )
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section, twist_rad=twist_rad, layout_key=layout_key,
         n_web_samples=20, n_cap_samples=80,
     )

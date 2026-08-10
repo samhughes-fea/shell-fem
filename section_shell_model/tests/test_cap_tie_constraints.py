@@ -23,9 +23,11 @@ def assembled_5df():
         resolve_system_type,
     )
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
+    )
     from blade_structure_utilities.mesh_utilities.section_mesh import (
         build_section_strip_mesh,
-        build_shell_mesh_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.mesh.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
@@ -46,7 +48,7 @@ def assembled_5df():
         web_thickness=0.0015,
         cap_height=0.004,
     )
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section, twist_rad=twist, layout_key="5D-F", n_web_samples=20, n_cap_samples=80
     )
     mesh = build_section_strip_mesh(shell, target_element_length_frac=0.012, endpoint_tol=1e-6)

@@ -141,6 +141,14 @@ def build_panel_mesh_maps(
     panels: list[Any],
     n_elem_spec: NElements,
 ) -> tuple[list[PanelGlobalMap], list[tuple[int, str, np.ndarray]]]:
+    """Remesh panels via :func:`discretise_strip` (FE dual-mesher path).
+
+    .. deprecated::
+        Prefer passing a prebuilt ``SectionStripMesh`` into the linear-static /
+        connected-topology path (BL-005). This remesh helper remains for
+        CalculiX / loft consumers until that track lands; do not add new
+        production callers.
+    """
     panel_maps: list[PanelGlobalMap] = []
     endpoints: list[tuple[int, str, np.ndarray]] = []
     required_per_panel = cap_required_stations_from_panels(panels)

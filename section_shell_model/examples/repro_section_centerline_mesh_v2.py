@@ -1,6 +1,6 @@
 """
 Smoke repro: ``build_shell_midline_strips`` + ``ShellMidlineStrip``
-→ ``build_shell_mesh_inputs`` → ``build_section_strip_mesh``.
+→ ``shell_mesh_inputs_from_section`` → ``build_section_strip_mesh``.
 
 This example is **element-agnostic**: it only generates the section geometry and
 meshes the centerlines (``build_section_strip_mesh`` is an alias of the theory-agnostic
@@ -8,7 +8,7 @@ meshes the centerlines (``build_section_strip_mesh`` is an alias of the theory-a
 
 Verifies that ``build_section_strip_mesh`` produces a wire-compatible section centerline
 (strip) mesh from the per-subcomponent midlines (skin, webs, caps) emitted by
-``build_shell_mesh_inputs``, and that the resulting endpoint clustering
+``shell_mesh_inputs_from_section``, and that the resulting endpoint clustering
 correctly identifies the section's junctions (web/skin and cap/skin
 intersections).
 
@@ -95,10 +95,10 @@ def _smoke_geo_export_vs_shell_inputs(
     layout_key: str,
     np: Any,
 ) -> None:
-    """``build_shell_mesh_inputs`` may split skin and snap web/cap ends to the skin midline.
+    """``shell_mesh_inputs_from_section`` may split skin and snap web/cap ends to the skin midline.
 
     Cap strips may additionally run
-    :func:`~blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs._resample_cap_interiors_from_skin_rays`,
+    :func:`~blade_structure_utilities.mesh_utilities.section_geometry.interface.shell_strip_topology.resample_cap_interiors_from_skin_rays`,
     which replaces interior vertices (different ``N`` than ``n_cap_samples``) while
     keeping endpoints; those caps are only checked for endpoint agreement here.
     """
@@ -175,9 +175,9 @@ def _run_single_layout(
         build_section_strip_mesh,
         target_element_length_m_from_chord,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        ShellMeshInputs,
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import ShellMeshInputs
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     layout = resolve_system_type(layout_key)
@@ -187,7 +187,7 @@ def _run_single_layout(
     strips_geo = build_shell_midline_strips(
         section, twist_rad=twist_rad, n_web_samples=20, n_cap_samples=80
     )
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section=section,
         twist_rad=twist_rad,
         layout_key=layout_key,

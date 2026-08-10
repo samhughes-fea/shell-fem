@@ -11,6 +11,7 @@ topology geometry for all shell formulations.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Any
 
@@ -69,13 +70,21 @@ def build_shell_panel_topology(
 ) -> ShellPanelTopology:
     """Thin convenience: NACA + webs → midlines → strips-first mesh inputs → panels.
 
-    Prefer production callers that already have a geometry-worker result and use
-    :func:`shell_panel_topology_from_shell_inputs` with
-    :func:`shell_mesh_inputs_from_geometry_result`.
+    .. deprecated::
+        Prefer production callers that already have a geometry-worker result and
+        use :func:`shell_panel_topology_from_shell_inputs` with
+        :func:`shell_mesh_inputs_from_geometry_result`.
 
     ``retain_section`` keeps the live SDF section on the topology for viz only;
     the FE solve uses ``shell_inputs`` polylines.
     """
+    warnings.warn(
+        "build_shell_panel_topology is deprecated; build ShellMeshInputs via "
+        "shell_mesh_inputs_from_geometry_result and call "
+        "shell_panel_topology_from_shell_inputs.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     import numpy as np
 
     from blade_structure_utilities.geometry_utilities.section_geometry import AirfoilSDF

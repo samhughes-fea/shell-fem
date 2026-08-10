@@ -61,9 +61,11 @@ from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runn
 from blade_structure_utilities.load_utilities.beam_to_shell_loads.shape_external import (  # noqa: E402
     shape_section_force_vector,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+    shell_mesh_inputs_from_section,
+)
 from blade_structure_utilities.mesh_utilities.section_mesh import (  # noqa: E402
     build_section_strip_mesh,
-    build_shell_mesh_inputs,
 )
 
 SECTIONS = [("root", 0.241, 34.1), ("mid", 0.199, 5.4)]
@@ -89,7 +91,7 @@ def _build(layout_key: str, chord: float, twist_deg: float):
         web_thickness=THICKNESS_FRAC["web"] * chord,
         cap_height=THICKNESS_FRAC["spar"] * chord,
     )
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section, twist_rad=twist, layout_key=layout_key,
         n_web_samples=20, n_cap_samples=80,
     )

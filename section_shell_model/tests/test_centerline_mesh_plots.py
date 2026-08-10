@@ -13,7 +13,7 @@ import pytest
 from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
 from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
 from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import build_shell_mesh_inputs
+from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import shell_mesh_inputs_from_section
 from blade_structure_utilities.fem_utilities.section_shell_model.vis import save_section_centerline_mesh_figure
 
 
@@ -24,7 +24,7 @@ def layout_case():
     twist_rad = float(np.deg2rad(12.0))
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=twist_rad)
-    shell_inputs = build_shell_mesh_inputs(
+    shell_inputs = shell_mesh_inputs_from_section(
         section=section,
         twist_rad=twist_rad,
         layout_key=layout_key,

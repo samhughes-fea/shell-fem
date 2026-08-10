@@ -222,9 +222,11 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
     from blade_structure_utilities.material_utilities.adapters import (
         shell_panels_from_mesh_inputs,
     )
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
+    )
     from blade_structure_utilities.mesh_utilities.section_mesh import (
         build_section_strip_mesh,
-        build_shell_mesh_inputs,
     )
 
     print(f"\n=== FROZEN mesh (built once at t_spar={T_SPARS[0]*1e3:.0f} mm, "
@@ -236,13 +238,21 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
         af, resolve_system_type(LAYOUT), twist_angle_rad=0.0,
         skin_thickness=T_SKIN, web_thickness=T_WEB, cap_height=T_SPARS[0],
     )
-    shell_inputs = build_shell_mesh_inputs(section, twist_rad=0.0, layout_key=LAYOUT)
+    shell_inputs = shell_mesh_inputs_from_section(section, twist_rad=0.0, layout_key=LAYOUT)
     mesh = build_section_strip_mesh(shell_inputs, target_element_length_frac=0.012)
     n_nodes_ref = sum(int(pm.yz_nodes.shape[0]) for pm in mesh.panel_meshes)
 
     mats = {"skin": _Iso(), "spar": _Iso(), "web": _Iso()}
-    resultants = BeamResultantVector.from_named(My=LOADS["M_flapwise"],
-                                                Vz=LOADS["V_flapwise"])
+    from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+        blade_resultants_to_shell_channels,
+    )
+    _ch = blade_resultants_to_shell_channels(
+        M_flapwise=LOADS["M_flapwise"],
+        V_flapwise=LOADS["V_flapwise"],
+    )
+    resultants = BeamResultantVector.from_named(
+        My=_ch.My, Mz=_ch.Mz, Vy=_ch.Vy, Vz=_ch.Vz,
+    )
     hdr = (f"{'t_spar req':>10s} {'fi_spar':>9s} {'max_fi':>9s} "
            f"{'argmax panel':>22s} {'elem':>7s} {'ply':>9s} {'nodes':>6s}")
     print(hdr)

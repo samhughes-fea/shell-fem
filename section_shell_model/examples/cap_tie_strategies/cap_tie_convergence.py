@@ -44,9 +44,11 @@ from blade_structure_utilities.fem_utilities.section_shell_model.pre_processing.
 from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runner.section_linear_static_runner import (  # noqa: E402
     SectionLinearStaticRunner,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+    shell_mesh_inputs_from_section,
+)
 from blade_structure_utilities.mesh_utilities.section_mesh import (  # noqa: E402
     build_section_strip_mesh,
-    build_shell_mesh_inputs,
 )
 
 LAYOUT = "5D-F"
@@ -76,7 +78,7 @@ def _build(frac: float):
         web_thickness=THICKNESS["web"],
         cap_height=THICKNESS["spar"],
     )
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section, twist_rad=twist, layout_key=LAYOUT, n_web_samples=20, n_cap_samples=80
     )
     mesh = build_section_strip_mesh(shell, target_element_length_frac=frac, endpoint_tol=1e-6)

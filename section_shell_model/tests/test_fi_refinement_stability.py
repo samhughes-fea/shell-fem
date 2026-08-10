@@ -47,9 +47,11 @@ from blade_structure_utilities.fem_utilities.section_shell_model.simulation_runn
 from blade_structure_utilities.load_utilities.beam_to_shell_loads.shape_external import (
     shape_section_force_vector,
 )
+from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+    shell_mesh_inputs_from_section,
+)
 from blade_structure_utilities.mesh_utilities.section_mesh import (
     build_section_strip_mesh,
-    build_shell_mesh_inputs,
 )
 
 LAYOUT = "5D-F"
@@ -86,7 +88,7 @@ def _fi_by_kind(frac: float, cap_tie_mode: str) -> dict[str, float]:
         web_thickness=THICKNESS["web"],
         cap_height=THICKNESS["spar"],
     )
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section, twist_rad=twist, layout_key=LAYOUT, n_web_samples=20, n_cap_samples=80
     )
     mesh = build_section_strip_mesh(

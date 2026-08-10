@@ -7,6 +7,7 @@ assembly helpers. Global node assignment helpers live in
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Any
 
@@ -63,6 +64,12 @@ def build_connected_panel_maps(
 
     When ``section_strip_mesh`` is provided, skip ``discretise_strip`` and use
     each ``StripPanelMesh`` ``s_nodes`` / ``elements`` (mesh-worker ownership).
+
+    .. deprecated::
+        The ``section_strip_mesh is None`` remesh branch (``discretise_strip``)
+        is the FE dual-mesher path (BL-005). Linear-static production callers
+        must pass a prebuilt ``SectionStripMesh``; remesh remains only until
+        CalculiX / remaining consumers are migrated.
     """
     panel_maps: list[PanelGlobalMap] = []
     endpoints: list[tuple[int, str, np.ndarray]] = []
@@ -76,6 +83,12 @@ def build_connected_panel_maps(
             )
         n_elem_spec = None
     else:
+        warnings.warn(
+            "connected_panel_topology remesh path is deprecated (BL-005); "
+            "pass section_strip_mesh= from build_section_strip_mesh.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         n_elem_spec = effective_n_elements_spec(
             panels,
             n_elements_per_panel,

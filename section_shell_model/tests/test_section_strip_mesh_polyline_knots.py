@@ -50,8 +50,8 @@ def test_cap_mesh_nodes_intersect_web_midlines(layout_key: str):
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
 
     chord_m = 1.655959896
@@ -61,7 +61,7 @@ def test_cap_mesh_nodes_intersect_web_midlines(layout_key: str):
     )
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=twist_rad)
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section,
         twist_rad=twist_rad,
         layout_key=layout_key,
@@ -115,8 +115,8 @@ def test_mitc4_cap_nodes_pin_web_junctions_without_slivers(layout_key: str):
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.mesh_utilities.line_1d import LineMeshSpec
 
@@ -127,7 +127,7 @@ def test_mitc4_cap_nodes_pin_web_junctions_without_slivers(layout_key: str):
     )
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=twist_rad)
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section,
         twist_rad=twist_rad,
         layout_key=layout_key,
@@ -176,15 +176,15 @@ def test_1a_cn_skin_mesh_endpoints_match_panel_polyline(airfoil):
     """Skin strip MITC4 endpoints match underlying panel polyline ends (no drift)."""
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.mesh_utilities.section_mesh.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.shell_inputs import (
-        build_shell_mesh_inputs,
+    from blade_structure_utilities.mesh_utilities.section_mesh._section_to_shell_inputs import (
+        shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.material_utilities.adapters import bind_shell_panels
 
     layout_key = "1A-CN"
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
-    shell = build_shell_mesh_inputs(
+    shell = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_web_samples=20, n_cap_samples=40
     )
     panels, _, _, _ = bind_shell_panels(shell)
