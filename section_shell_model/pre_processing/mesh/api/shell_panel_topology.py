@@ -79,8 +79,8 @@ def build_shell_panel_topology(
     import numpy as np
 
     from blade_structure_utilities.geometry_utilities.section_geometry import AirfoilSDF
-    from blade_structure_utilities.geometry_utilities.section_geometry.engine.sections.section import (
-        BladeSectionGeometry,
+    from blade_structure_utilities.geometry_utilities.section_geometry.engine.sections import (
+        MultiCellSection,
     )
     from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import (
         build_shell_midline_strips,
@@ -107,7 +107,7 @@ def build_shell_panel_topology(
         section_kwargs["web_thickness"] = float(web_thickness)
     if cap_height is not None:
         section_kwargs["cap_height"] = float(cap_height)
-    section = BladeSectionGeometry.from_n_web(airfoil_sdf, **section_kwargs)
+    section = MultiCellSection(airfoil_sdf, **section_kwargs)
 
     raw = build_shell_midline_strips(
         section,
