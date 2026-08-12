@@ -22,7 +22,48 @@ Pinned by [`tests/test_section_frame_canon.py`](../tests/test_section_frame_cano
 
 | # | Site | Status |
 |---|------|--------|
-| 8 | `geometry_utilities/section_geometry/interface/shell_midline_export.build_shell_midline_strips` | **Blocking.** Emits `midline_b` via `rotate_chord_to_blade` — a bare rotation that leaves the array chordwise-first with its origin at the LE (the rotated-NACA adapter frame, as that function's own comment says), not canonical B. Both `tests/test_section_frame_canon.py::test_chord_spans_Y_and_thickness_spans_X` and the pre-existing `mesh_utilities/section_mesh/tests/test_section_plane_canon.py` fail on it. Fix is `chord_to_blade` (swap + pivot shift + rotation) plus the matching `leading_edge_b` / `trailing_edge_b` emit. Everything downstream in this package assumes canonical B. |
+| 8 | `shell_midline_export.build_shell_midline_strips` + `ShellMeshInputs` | **Blocking — two frames inside one DTO.** See below. |
 | 9 | `compute_tertiary/examples/plot_x3_recovery_demo.py` | Not converted to the plot contract. Its geometric heuristics (`cap_xy[:,0].min()/max()` as chordwise, `chord = te[0]-le[0]`, `argmin(xy[:,1])` for the lower cap) all assume the swapped frame and need re-deriving for canonical B. Demo only — no importers besides `run_all_result_demos.py`. |
 | 10 | Section-plane axis naming | `y`/`z` still name the section-plane axes throughout (`about_yz`, `nodes_yz`, `traction_points_yz`, `GlobalNodeMeta.yz`, `Iyz`, …): 522 occurrences over 47 files, plus shared DTO fields in `section_contract` and `mesh_utilities`. Canon names them \(X_B\) / \(Y_B\), with \(Z_B\) **spanwise** — so `z` for an in-plane axis collides with the canon spanwise axis. The arithmetic is self-consistent (`My = Σfx·dz` = edgewise, `Mz = -Σfx·dy` = flapwise, matching `blade_resultants_to_shell_channels`); this is a legibility defect, but it is the labelling that let #1 hide. `equilibrium_checks.py` also states the section plane is \((Y_B, Z_B)\), which is wrong on canon. |
 | 11 | `mesh_utilities/section_mesh/inputs/panel_x3_orientation.py` | Adjacent, out of this package: the cap fallback tests `n[1] > tol` for `surface == "upper"` and uses `ref = [0, 1]`, i.e. "+x3 toward the TE". Under canonical B an upper cap faces \(+X_B\) (column 0). Only fires when a section has no skin strip, but it decides FE `+x3`. |
+
+### Item 8 in detail — two frames inside one `ShellMeshInputs`
+
+The canon (`coordinate_frames/README.md`) fixes **B** as \(X_B\) flapwise, \(Y_B\)
+edgewise, \(Z_B\) spanwise, with \(+Y_B\) toward the trailing edge and the origin on
+the pivot chordline — so stored data satisfies \(Y_{LE} < 0 < Y_{TE}\). The LE only
+*appears* on the right because the plot inverts the horizontal axis; the data is
+never negated.
+
+`ShellMeshInputs` currently satisfies that for its endpoints and violates it for
+its strips. Measured on NACA 2412, chord 1.0, `2D-CN`, zero twist:
+
+| field | value | chord lies on |
+|---|---|---|
+| `leading_edge_b` | `(0.0000, -0.3330)` | col 1 — canonical B, \(-f_{pivot}c\) |
+| `trailing_edge_b` | `(-0.0000, +0.6667)` | col 1 — canonical B, \((1-f_{pivot})c\) |
+| `midline_b` | col0 extent `0.9880`, col1 extent `0.1185` | **col 0** — rotated-NACA, LE origin |
+
+The endpoints go through `chord_to_blade` (swap + pivot shift + rotation); the
+strips go through `rotate_chord_to_blade` (bare rotation). Mapping the LE exactly
+into the strip frame gives `(0, 0)` — an LE origin, confirming the strips carry
+the raw-NACA adapter frame under a `_b` name.
+
+**Consequence.** `panel_x3_orientation` orients webs by \(\hat n \cdot (\mathrm{LE} - m)\),
+so it takes a dot product between a strip-frame normal and a canonical-B LE. It
+is not flipping anything today — signs agree in every case checked — but it
+erodes the margin on a hard assert that fixes `FACE_OUTER` / `FACE_INNER` for CLT
+recovery:
+
+| case | alignment as shipped | alignment in one frame |
+|---|---|---|
+| `2D-CN` t=0.00, `web_0` | **+0.3999** | +0.9786 |
+| `2D-CN` t=0.20, `web_0` | +0.6599 | +0.9786 |
+| `1B-CN` t=0.12, `web_0` | +0.8596 | +0.9973 |
+
+Up to ~2.5× less margin against `AMBIGUOUS_ALIGNMENT_TOL`. A section whose mixed
+score lands near zero would orient its webs arbitrarily, and no within-frame test
+in these packages can see it.
+
+**Fix.** Emit strips with `chord_to_blade` so the whole DTO is canonical B. The
+LE/TE emit is already correct and needs no change.
