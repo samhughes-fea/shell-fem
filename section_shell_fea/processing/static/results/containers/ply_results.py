@@ -1,0 +1,66 @@
+"""Ply-resolution CLT recovery payload (tier 3 native output).
+
+Adds a "ply" resolution alongside assembled / elemental / nodal / gaussian.
+Frames (see ``geometry_utilities.coordinate_frames``):
+
+* **E** (element = laminate): mid-surface ``eps0`` / ``kappa``, interface ``tau_iface``
+* **M** (ply material): ``eps_ply_mat`` / ``sig_ply_mat`` after ``T_ply`` / ``T_ply_eps``
+
+Failure criteria consume **M** only. Isotropic panels have M ≡ E (``n_ply=1``).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+# Face axis on ``eps_ply_mat`` / ``sig_ply_mat``: 0=outer (x3+), 1=mid, 2=inner (x3-).
+# Blade-structure reading of outer/inner depends on panel kind (skin / spar / web);
+# see compute_tertiary/docs/README.md § "Panel face semantics".
+FACE_OUTER = 0
+FACE_MID = 1
+FACE_INNER = 2
+
+
+@dataclass
+class ShellPlyResults:
+    """Per-element CLT recovery: E mid-surface kinematics + M face stresses."""
+
+    eps0: np.ndarray | None = None
+    """(n_elem, 3) mid-surface strains in **E** ``[ε11, ε22, γ12]`` from ABD."""
+
+    kappa: np.ndarray | None = None
+    """(n_elem, 3) curvatures in **E** ``[κ11, κ22, κ12]`` from ABD."""
+
+    eps_ply_mat: np.ndarray | None = None
+    """(n_elem, n_ply, 3, 3) per-plate face strains in **M**
+    ``[ε11, ε22, γ12]`` at outer/mid/inner."""
+
+    sig_ply_mat: np.ndarray | None = None
+    """(n_elem, n_ply, 3, 3) per-plate face stresses in **M**
+    ``[σ11, σ22, τ12]`` at outer/mid/inner.
+
+    Face axis: ``0`` = outer (higher \\(x_3\\)), ``1`` = mid, ``2`` = inner (lower \\(x_3\\)).
+
+    Blade-structure aliases (when shell ``+x3`` follows the panel convention):
+    skin outer/inner = fluid/void; spar-cap outer/inner = skin/void;
+    web free surfaces = fore (LE side) / aft (TE side), not fluid/void.
+    """
+
+    trusted_mask: np.ndarray | None = None
+    """(n_elem,) bool — provenance-trusted rows that entered the CLT solve."""
+
+    tau_iface: np.ndarray | None = None
+    """(n_elem, n_iface, 2) interface ``[τ13, τ23]`` [Pa] in **E**; ``n_iface = n_ply + 1``.
+
+    Free surfaces are zero; interior values come from FSDT parabolic recovery
+    of laminate-frame \\(Q_1,Q_2\\). Untrusted interlaminar rows remain zero with
+    ``shear_trusted_mask`` false.
+    """
+
+    shear_trusted_mask: np.ndarray | None = None
+    """(n_elem,) bool — rows whose \\(Q_1,Q_2\\) (secondary ``Q1``/``Q2``) passed gating."""
+
+
+__all__ = ["FACE_INNER", "FACE_MID", "FACE_OUTER", "ShellPlyResults"]
