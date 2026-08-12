@@ -1,6 +1,6 @@
 """Unit tests for _panel_constitutive_metadata's isotropic/orthotropic FI-kind
 classification, including the is_isotropic_source marker path (the actual
-production route, via materials_adapter's PanelLaminateAdapter)
+production route, via section_bind ZoneLaminateAdapter)
 alongside the legacy bare-IsotropicMaterial isinstance path (never constructed
 in production, kept only for compatibility).
 """
@@ -27,7 +27,7 @@ class _FakePanel:
 
 @dataclass
 class _IsotropicSourceLam:
-    """Duck-types PanelLaminateAdapter's marker + yield strength."""
+    """Duck-types ZoneLaminateAdapter's marker + yield strength."""
     is_isotropic_source: bool = True
     sigma_y_pa: float = 3.0e8
     sigma_uts_pa: float = 4.0e8
