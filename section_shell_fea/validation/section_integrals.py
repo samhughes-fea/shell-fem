@@ -161,7 +161,7 @@ def section_sigma_field(bundle: Any, geom: list[list[ElementGeom]]) -> dict[str,
 
 def elastic_centroid(zones: list[Any]) -> tuple[float, float]:
     """A11-weighted elastic centroid (y_e, z_e) — reuse of the homogenisation helper."""
-    return compute_elastic_centroid_from_panels(panels)
+    return compute_elastic_centroid_from_panels(zones)
 
 
 def multistation_equilibrium_interlaminar(
@@ -193,9 +193,9 @@ def multistation_equilibrium_interlaminar(
         pb.shell_inputs, n_elements_per_panel=n_elements_per_panel
     )
     geom = section_element_geometry(
-        pb.panels, section_strip_mesh=strip_mesh
+        pb.zones, section_strip_mesh=strip_mesh
     )
-    t_wall = float(getattr(getattr(pb.panels[0], "lam", None), "t", 1e-3) or 1e-3)
+    t_wall = float(getattr(getattr(pb.zones[0], "lam", None), "t", 1e-3) or 1e-3)
     sig_prev = section_sigma_field(
         solver(pb, My=My0 - Vz * dz, section_strip_mesh=strip_mesh), geom
     )["sigma_11"]

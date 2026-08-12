@@ -38,7 +38,7 @@ def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 4):
 
 def _asm_naca():
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
-    zones = list(panel_topology.panels)
+    zones = list(panel_topology.zones)
     nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
     nxy = [np.zeros_like(a) for a in nx]
     mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)

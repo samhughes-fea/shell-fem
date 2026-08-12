@@ -369,7 +369,7 @@ class SectionLinearStaticRunner:
             traction_points_yz=self._traction_points_yz,
         )
 
-        zones = list(panel_topology.panels)
+        zones = list(panel_topology.zones)
         strip_mesh = self._section_strip_mesh
         if strip_mesh is None:
             raise ValueError(

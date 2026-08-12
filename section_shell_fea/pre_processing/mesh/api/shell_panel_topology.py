@@ -33,11 +33,21 @@ class ShellPanelTopology:
     """
 
     shell_inputs: ShellMeshInputs
-    panels: tuple[MaterialZone, ...]
+    zones: tuple[MaterialZone, ...]
     booms: tuple[Any, ...]
     webs_geom: tuple[Any, ...]
     n_cells: int
     section: SectionMidlineHost | None = None
+
+    @property
+    def panels(self) -> tuple[MaterialZone, ...]:
+        """Deprecated alias of :attr:`zones`."""
+        warnings.warn(
+            "ShellPanelTopology.panels is deprecated; use ShellPanelTopology.zones",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.zones
 
 
 @dataclass(frozen=True)
@@ -176,7 +186,7 @@ def shell_panel_topology_from_shell_inputs(
     )
     return ShellPanelTopology(
         shell_inputs=shell_inputs,
-        panels=tuple(zones),
+        zones=tuple(zones),
         booms=tuple(booms),
         webs_geom=tuple(webs_geom),
         n_cells=int(n_cells),
@@ -223,8 +233,8 @@ def build_tapered_shell_panel_topology(
         cap_lam=cap_lam,
     )
 
-    labels_in = [str(getattr(p, "label", "")) for p in panel_topology_in.panels]
-    labels_out = [str(getattr(p, "label", "")) for p in panel_topology_out.panels]
+    labels_in = [str(getattr(p, "label", "")) for p in panel_topology_in.zones]
+    labels_out = [str(getattr(p, "label", "")) for p in panel_topology_out.zones]
     if labels_in != labels_out:
         raise ValueError("Tapered shell panel topology sections must have identical panel labels and ordering")
 

@@ -76,7 +76,7 @@ def _bundle_from_linear_static(
         nest_resultant_rows_by_panel,
     )
 
-    zones = list(panel_topology.panels)
+    zones = list(panel_topology.zones)
     asm = static.assembly
     if asm is None:
         raise RuntimeError("executed runner missing assembly")

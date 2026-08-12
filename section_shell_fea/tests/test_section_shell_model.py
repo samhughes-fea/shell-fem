@@ -27,7 +27,7 @@ def _panel_topology_vlasov_fixture(naca_code: str, web_x_positions: list[float])
     panel_topology = build_shell_panel_topology(naca_code, web_x_positions, chord_m=1.0)
     raw = np.asarray(panel_topology.section.airfoil.vertices, dtype=np.float64)[:, :2]
     air = airfoil_polygon_to_multicell_airfoil(raw, n_each=48)
-    return air, panel_topology.panels, panel_topology.webs_geom
+    return air, panel_topology.zones, panel_topology.webs_geom
 
 
 def test_hashin_fi_matches_direct_clpt_pipeline():
@@ -76,8 +76,8 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
     bundle = bundle_from_linear_cascade(panel_topology, cascade)
     ref = bundle.reference_resultants
     assert ref is not None
-    plies = bundle.panels[0].lam.build_plies()
-    lam = laminate_definition_from_legacy(bundle.panels[0].lam, plies=plies)
+    plies = bundle.zones[0].lam.build_plies()
+    lam = laminate_definition_from_legacy(bundle.zones[0].lam, plies=plies)
     st = default_skin_strengths_pa()
 
     shell_res = solve_station_clpt_shell(

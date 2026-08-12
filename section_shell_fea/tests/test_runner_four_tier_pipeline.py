@@ -26,7 +26,7 @@ from blade_structure_utilities.mesh_utilities.section_mesh import build_section_
 
 def _cache_and_bc(*, return_panel_maps: bool = False):
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
-    zones = list(panel_topology.panels)
+    zones = list(panel_topology.zones)
     nx = [np.linspace(0.0, 1000.0, len(np.asarray(p.s, dtype=float))) for p in zones]
     nxy = [np.zeros_like(n) for n in nx]
 

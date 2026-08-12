@@ -197,7 +197,7 @@ def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, Section
     from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh
 
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
-    zones = list(panel_topology.panels)
+    zones = list(panel_topology.zones)
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
     mesh = build_section_strip_mesh(panel_topology.shell_inputs, n_elements_per_panel=6)
     _K, _f, node_meta, _pm, *_rest = assemble_global_shell(

@@ -39,7 +39,8 @@ Station (z_station)                    — analysis slice with spanwise depth
 Constitutive ownership is :class:`~blade_structure_utilities.material_utilities.section_bind.MaterialZone`
 (`Panel` remains a compatibility alias). Prefer `MaterialZone` over `LayupZone`
 (the latter excludes isotropic metals). Mesh/FE topology still uses “panel” in
-names such as `ShellPanelTopology.panels`, `PanelGlobalMap`, and `StripPanelMesh`
+names such as `ShellPanelTopology.zones` (constitutive list on the topology DTO),
+`PanelGlobalMap`, and `StripPanelMesh`
 (mesh units, not the constitutive type). Aerospace English often reserves “panel”
 for a buckling bay (`PanelBuckling*`); that sense is separate. Kind-level
 `skin_lam` / `cap_lam` / `web_lam` remains the default bind policy; per-strip

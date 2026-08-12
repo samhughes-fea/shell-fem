@@ -320,7 +320,7 @@ def build_capped_catalogue_fixture(
     strip = build_section_strip_mesh(
         shell, target_element_length_frac=target_element_length_frac, endpoint_tol=1e-6
     )
-    zones = list(shell_panel_topology_from_shell_inputs(shell).panels)
+    zones = list(shell_panel_topology_from_shell_inputs(shell).zones)
     nx, nxy = _synthetic_loads(zones)
     return zones, nx, nxy, strip, shell
 
@@ -361,7 +361,7 @@ def run_mitc4_kind_peaks_from_shell(
     )
     runner.execute()
     results = runner.get_results()
-    zones = list(topo.panels)
+    zones = list(topo.zones)
     n_panel = len(zones)
     res_lists: list[list[Any]] = [[] for _ in range(n_panel)]
     sec = results.secondary_results

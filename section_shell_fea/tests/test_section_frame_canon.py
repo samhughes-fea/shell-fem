@@ -50,7 +50,7 @@ _PKG = Path(__file__).resolve().parents[1]
 def panels_B():
     """Panel nodes as the FE solver sees them, for a twisted section."""
     pt = build_shell_panel_topology("2412", [0.35], chord_m=CHORD, twist_rad=0.15)
-    return [np.asarray(p.nodes, dtype=float) for p in pt.panels]
+    return [np.asarray(p.nodes, dtype=float) for p in pt.zones]
 
 
 class TestPanelArraysAreCanonicalB:
@@ -315,5 +315,5 @@ class TestSectionPlotContract:
     def test_stored_geometry_is_not_negated_for_display(self):
         """The LE-on-RHS flip is display-only; Y_LE stays negative in the data."""
         pt = build_shell_panel_topology("2412", [0.35], chord_m=CHORD, twist_rad=0.15)
-        pts = np.vstack([np.asarray(p.nodes, dtype=float) for p in pt.panels])
+        pts = np.vstack([np.asarray(p.nodes, dtype=float) for p in pt.zones])
         assert float(np.min(pts[:, 1])) < 0.0 < float(np.max(pts[:, 1]))

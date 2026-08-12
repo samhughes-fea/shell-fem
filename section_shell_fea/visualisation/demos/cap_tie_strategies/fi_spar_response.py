@@ -269,7 +269,7 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
             t_skin=T_SKIN, t_spar=t_spar, t_web=T_WEB,
         )
         topo = ShellPanelTopology(
-            shell_inputs=si_t, panels=list(zones), booms=list(booms),
+            shell_inputs=si_t, zones=list(zones), booms=list(booms),
             webs_geom=list(webs_geom), n_cells=int(n_cells), section=section,
         )
         runner = SectionLinearStaticRunner(

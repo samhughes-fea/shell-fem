@@ -49,7 +49,7 @@ def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 3):
 
 
 def _assemble(panel_topology, *, ne: int = 4):
-    zones = list(panel_topology.panels)
+    zones = list(panel_topology.zones)
     nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
     nxy = [np.zeros_like(a) for a in nx]
     return assemble_section_from_zones(

@@ -112,7 +112,7 @@ def run_ccx_cascade_at_frac(
     h_m = float(frac) * float(chord)
 
     topo = shell_panel_topology_from_shell_inputs(shell)
-    panels = list(topo.panels)
+    zones = list(topo.zones)
     resultants = BeamResultantVector.from_named(**load)
     sfv = shape_section_force_vector(resultants, shell.midlines, L_x=float(l_x))
     nx_panels, nxy_panels = sfv_to_nx_nxy(sfv, zones)
@@ -122,12 +122,12 @@ def run_ccx_cascade_at_frac(
     work.mkdir(parents=True, exist_ok=True)
 
     export = str(cap_tie_export or "tie")
-    results: list[list[Any]] = [[] for _ in panels]
+    results: list[list[Any]] = [[] for _ in zones]
     diag: list[dict] = []
     trust = False
     try:
         results, diag, _inp = solve_global_coupled_ccx(
-            panels,
+            zones,
             nx_panels,
             nxy_panels,
             section_strip_mesh=mesh,
@@ -144,7 +144,7 @@ def run_ccx_cascade_at_frac(
         if export == "tie" and str(cap_tie_mode) == "skin_offset":
             try:
                 results, diag, _inp = solve_global_coupled_ccx(
-                    panels,
+                    zones,
                     nx_panels,
                     nxy_panels,
                     section_strip_mesh=mesh,
@@ -159,13 +159,13 @@ def run_ccx_cascade_at_frac(
                 trust = True
             except Exception:
                 trust = False
-                results = [[] for _ in panels]
+                results = [[] for _ in zones]
         else:
             trust = False
-            results = [[] for _ in panels]
+            results = [[] for _ in zones]
 
     # Coverage: every panel that has strip elements should have mapped rows.
-    n_elem_res = _n_elem_by_kind(panels, results)
+    n_elem_res = _n_elem_by_kind(zones, results)
     if trust:
         for k in KINDS:
             if int(n_elem_mesh.get(k, 0) or 0) > 0 and int(n_elem_res.get(k, 0) or 0) == 0:
@@ -178,9 +178,9 @@ def run_ccx_cascade_at_frac(
                 trust = False
 
     labels = [str(getattr(p, "label", "")) for p in zones]
-    abs_nxy = _panel_resultant_arrays(panels, results, "N12")
-    abs_nx = _panel_resultant_arrays(panels, results, "N11")
-    abs_ny = _panel_resultant_arrays(panels, results, "N22")
+    abs_nxy = _panel_resultant_arrays(zones, results, "N12")
+    abs_nx = _panel_resultant_arrays(zones, results, "N11")
+    abs_ny = _panel_resultant_arrays(zones, results, "N22")
     peak_nxy, peak_nxy_int = _accumulate_kind_peaks(
         abs_nxy, labels=labels, band=ENDPOINT_BAND
     )

@@ -75,7 +75,11 @@ def _build_station_buckling_bundle(
 ) -> ShellStationBucklingBundle | None:
     all_panel_results = list(getattr(recovery_bundle, "all_panel_results", None) or [])
     all_panel_buckling = list(getattr(recovery_bundle, "panel_buckling_results", None) or [])
-    panels = list(getattr(recovery_bundle, "panels", None) or [])
+    zones = list(
+        getattr(recovery_bundle, "zones", None)
+        or getattr(recovery_bundle, "panels", None)
+        or []
+    )
     panel_abd = getattr(recovery_bundle, "panel_abd", None)
     panel_thickness = getattr(recovery_bundle, "panel_thickness_m", None)
     panel_labels = list(getattr(recovery_bundle, "panel_labels", None) or [])

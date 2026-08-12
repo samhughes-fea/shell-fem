@@ -22,7 +22,7 @@ _NDOF = MITC4_DEFAULTS.n_dof_node
 
 def _panels_and_mesh(*, n_elements_per_panel: int = 4):
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
-    zones = list(panel_topology.panels)
+    zones = list(panel_topology.zones)
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
     mesh = build_section_strip_mesh(
         panel_topology.shell_inputs, n_elements_per_panel=n_elements_per_panel
