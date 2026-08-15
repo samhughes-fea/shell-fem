@@ -12,7 +12,7 @@ This package implements the **handoff layer** between global/section thin-wall r
 |-------|---------|----------------|
 | Implicit solids (offsets, clips, capsule, unions) | `section_geometry` | SDF subcomponents (`OuterSkin`, `ShearWeb`, `SparCap`, …). |
 | Mid-surface locus as explicit polyline | `section_geometry` | `midline_polyline()` in chord frame; geometrically consistent with the SDF recipe (typically not level-set marching of `__call__`). |
-| Chord (S) → blade (B) rotation for shell export | `section_geometry.interface.shell_midline_export.rotate_chord_to_blade` | Used when building strips (see plan *Implementation pack*). |
+| Chord (S) → blade (B) for shell export | `coordinate_frames.chord_to_blade` (via `section_geometry.interface.shell_midline_export.build_shell_midline_strips`) | Swap + pitch pivot + twist; strips are canonical B. |
 | Neutral strip record (polyline + thickness + role) | `blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip` | `ShellMidlineStrip` — **no** `Panel`, laminates, or `n_elements`; FE-agnostic. |
 | Strip list from `MultiCellSection` | `section_geometry` worker / `shell_midline_export` | Prefer `build_section_geometry(..., outputs=("midlines",))` → topology-prepared strips; legacy `build_shell_midline_strips` still available. |
 | `ShellMeshInputs` + strip Q4 mesh | `mesh_utilities.section_mesh` | `shell_mesh_inputs_from_geometry_result` / `build_section_strip_mesh` — **default** `TARGET_ELEMENT_LENGTH_FRAC = 0.012`. Production passes `SectionStripMesh` into the runner (no remesh-on-execute). |
@@ -218,7 +218,7 @@ No changes to `mesh_utilities.section_mesh` handoff, adapter panel bind, or the 
 
 ## Interface constraint modes
 
-The global MITC4 assembly (`assemble_global_shell`) supports three modes
+The global MITC4 assembly (`assemble_global_shell`) supports four modes
 for enforcing displacement compatibility at panel junction clusters. Choose the mode
 via the `interface_constraint_mode` parameter on mesh / runner construction.
 
@@ -241,7 +241,7 @@ All five DOFs (UX, US, W, BETA_S, BETA_X) are shared as scalars.
 - **Boundary reactions**: `r_full` at the shared node includes contributions from all panels
   meeting there — cannot be split per-panel.
 
-### `shared_rotated` (hybrid: uses 6-DOF cluster basis)
+### `shared_rotated` (label alias of transformed_basis)
 
 Equivalent to `transformed_basis` internally: allocates cluster master nodes and applies
 6-DOF MPCs.  The label is stored in diagnostics to distinguish from an explicit
@@ -249,6 +249,33 @@ Equivalent to `transformed_basis` internally: allocates cluster master nodes and
 
 Use this when you want transformed-basis kinematics but prefer the `shared_rotated` label
 in output (e.g. to track which runs used the auto-corrected path).
+
+### `hybrid_collinear` (study-only; not production)
+
+Per-cluster mix using `cluster_is_collinear_flags`: **shared** nodes on collinear
+clusters; **cluster-basis MPCs** only on non-collinear clusters
+(`assign_global_nodes_hybrid_collinear` / `build_hybrid_collinear_supports`).
+
+- **Intent:** avoid Defect K at cusps without global TB on every junction.
+- **Status (2026-08):** measured on CI-watch residual `5D-CN` — skin `|N12|` /
+  mid-σ fine GCI **regressed** vs shared (17.9% → 29.1%). **Do not promote.**
+  Production default remains `shared`. See
+  [GCI_OUTLIER_DIAGNOSIS.md](GCI_OUTLIER_DIAGNOSIS.md).
+
+### `hybrid_kind_crossing` (study-only; not production)
+
+Narrower hybrid: **TB only** on clusters that are both **non-collinear** and
+**kind-crossing** (≥2 distinct `cap`/`web`/`skin` owners); all other junctions
+stay production **shared**. Caps remain `skin_offset`.
+(`assign_global_nodes_hybrid_kind_crossing`).
+
+- **Intent:** generalised joint kinematics for the CI watch cusp class without
+  global TB or collinear-gated hybrid.
+- **Status (2026-08):** CI watch scorecard
+  (`visualisation/output/gci_study_mitc4_hkc/`) — trust/mesh 5/5; membrane
+  magnitude **1/5** (`3D-CN` cleared; `4D-*`/`5D-*` still fail, several regress).
+  Phase B entry (40/40 magnitude) **not met** → **keep `shared`**; leave mode
+  study-only. See [GCI_OUTLIER_DIAGNOSIS.md](GCI_OUTLIER_DIAGNOSIS.md).
 
 ### `transformed_basis` (non-collinear-correct; not production default)
 
@@ -266,7 +293,8 @@ where `ts = ŝ·t_ref`, `tn = ŝ·n_ref`, `ns = n̂·t_ref`, `nn = n̂·n_ref`.
 - **Correct for**: arbitrary junction geometry including T-junctions and L-junctions.
 - **Boundary reactions**: per-panel contribution extracted from edge-integrated tractions
   (not from `r_full` at cluster node, which carries aggregate reaction).
-- **Primary metric**: `reaction_dNx_rel`, `reaction_dNxy_rel` < 0.10 (bounded, not machine-zero).
+- **Primary metric**: `reaction_dN11_rel`, `reaction_dN12_rel` < 0.10
+  (legacy aliases `reaction_dNx_rel` / `reaction_dNxy_rel` still emitted).
 - **Fatigue note:** some recovery paths may retry `transformed_basis` after a singular
   `shared` solve; that retry is consumer-side, not a product default.
 ---
@@ -277,8 +305,8 @@ where `ts = ŝ·t_ref`, `tn = ŝ·n_ref`, `ns = n̂·t_ref`, `nn = n̂·n_ref`.
 
 | Metric | Source | Description | Acceptance |
 |--------|--------|-------------|------------|
-| `reaction_dNx_rel` | `r_full` (or edge tractions) | Spanwise force balance at junction | ≤ 0.05 skin, 0.10 web |
-| `reaction_dNxy_rel` | same | Contour force balance at junction | ≤ 0.05 skin, 0.10 web |
+| `reaction_dN11_rel` | `r_full` (or edge tractions) | Spanwise force balance at junction | ≤ 0.05 skin, 0.10 web |
+| `reaction_dN12_rel` | same | Contour force balance at junction | ≤ 0.05 skin, 0.10 web |
 | `global_force_balance_rel_at_fixed` | `r_full` at fixed UX DOFs | Global UX Newton's 3rd law | < 1e-6 |
 
 ### Secondary (diagnostic / informational)
@@ -289,7 +317,7 @@ where `ts = ŝ·t_ref`, `tn = ŝ·n_ref`, `ns = n̂·t_ref`, `nn = n̂·n_ref`.
 | `dT_yz_rel` | Edge line-integration | Contour traction vector continuity | < 0.10 (2-way) |
 | `Tx_rel_cluster` | Cluster sum | N-way junction traction equilibrium | < 0.10 |
 | `T_yz_rel_cluster` | Cluster sum | N-way junction YZ traction balance | < 0.15 |
-| `resultant_dNx_rel` | Centroid resultant | Field N11 mismatch at boundary | informational |
+| `resultant_dN11_rel` | Centroid resultant | Field N11 mismatch at boundary | informational |
 
 The **cluster-sum metrics** (`Tx_rel_cluster`, `T_yz_rel_cluster`) are the authoritative
 N-way equilibrium check; pair-wise secondary residuals are only meaningful for 2-way junctions.
@@ -302,7 +330,7 @@ shear gradient grows near the junction as elements shrink, inflating the recover
 This is distinct from the primary reaction residuals which are governed by the MPC constraint
 quality.
 
-**Metric policy (2026-07-14):** primary `reaction_dNx_rel` / `reaction_dNxy_rel` (and
+**Metric policy (2026-07-14):** primary `reaction_dN11_rel` / `reaction_dN12_rel` (and
 cluster sums) are **authoritative** for acceptance. Secondary pair-wise residuals stay
 **informational** — Spike 1B parked the periodic `transformed_basis` K6 reformulation, so
 production FI remains on `shared` and Defect K is an accepted limitation there. Do not gate
@@ -315,6 +343,10 @@ Use `global_force_balance_rel_at_fixed` (< 1e-6 for a correctly solved assembly)
 ---
 
 ## Cascade mesh convergence (critical acceptance)
+
+Campaign findings, E-frame naming, residual interpretation, and
+**root-cause-first** follow-up (anti-masking) are documented in
+[NUMERICAL_STABILITY_AND_GCI.md](NUMERICAL_STABILITY_AND_GCI.md).
 
 **Critical indicator:** drift of M + P→S→T→Q dataclass scalars under increasing
 mesh density, with density owned by `section_mesh.build_section_strip_mesh`
@@ -341,9 +373,9 @@ untied `"none"` must diverge on **raw** cap S/Q).
 `cap_tie_mode="skin_offset"`, cap elemental maxima sit on tie-slave / endpoint-band
 elements and are **not** a fair mesh-independence CI gate (see
 `processing/static/diagnostics/cap_peak_sampling.py`). Raw and interior peaks are
-always written to ladder CSVs for monitoring. CI hard-gates skin/web peaks +
-`governing_fi`; study mode adds a last-two check on **cap interior** peaks
-(≤ 2.0), not the aspirational 1.25.
+always written to ladder CSVs for monitoring. CI hard-gates skin/web
+`peak_abs_n12` + `peak_mid_sig`; Hashin / `governing_fi` are study gates.
+Study mode adds a last-two check on **cap interior** peaks (≤ 2.0).
 
 ### Multi-key grid independence study
 
@@ -358,8 +390,14 @@ Gates (every rung `mesh_ok` + `cascade_trust_ok`):
 
 | Mode | Skin/web + governing | Cap kind-peaks |
 |------|----------------------|----------------|
-| `--gates ci` (default / pytest) | production ≤ 2.0; last-two ≤ 2.0 (`governing_fi` last-two only); fine-grid GCI ≤ **10%** on skin/web `peak_hashin` + `governing_fi` | informational (CSV only) |
-| `--gates study` | full ladder ≤ 2.0; last-two ≤ 1.25; fine-grid GCI ≤ **5%** on all skin/web kind peaks + `governing_fi` | interior last-two ≤ 2.0 (interior GCI reported, not gated) |
+| `--gates ci` (default / pytest) | production ≤ 2.0; last-two ≤ 2.0; fine-grid GCI ≤ **10%** on skin/web `peak_abs_n12` + `peak_mid_sig` only (CI freeze). Hashin / `governing_fi` study-reported | informational (CSV only) |
+| `--gates study` | full ladder ≤ 2.0; last-two ≤ 1.25; fine-grid GCI ≤ **5%** on skin/web N12 / mid-σ / Hashin + `governing_fi` | interior last-two ≤ 2.0 (interior GCI reported, not gated) |
+
+`|M11|`, `|M22|`, `|Q2|` (and near-null `|M12|`/`|Q1|`/`|τ13|`) are
+**study-reported in CSV only** — not CI and not study hard-gates. No consumer
+has required bending/shear CI; leave deferred (do not densify the global ladder
+to chase them). When a consumer appears, diagnose junction bending ownership
+first — see [NUMERICAL_STABILITY_AND_GCI.md](NUMERICAL_STABILITY_AND_GCI.md) §7.
 
 Non-monotonic / oscillatory triplets fail with detail `gci_non_monotonic` (a
 two-level \(F_s=3\), \(p=2\) estimate is still written to CSV for diagnostics).
@@ -438,11 +476,35 @@ Writes `visualisation/output/mesh_sweep_secondary.csv` via
 **Keep production `interface_constraint_mode="shared"`.** Promotion to
 `transformed_basis` requires equal-or-better tied S/T/Q mesh-density drift,
 primary equilibrium bands, and no rise in singular / `cascade_trust_ok=False`
-rate. Cap ties (`skin_offset`) remain incompatible with `transformed_basis`
-MPCs on skin endpoint masters (builder raises). Until that incompatibility is
-resolved and the harness shows a clear win on cascade drift, Defect K stays an
-accepted limitation on `shared` with primary junction metrics authoritative and
-secondary pair-wise traction residuals informational only.
+rate on the residual outlier set.
+
+**Compatibility (2026-08):** `skin_offset` + `transformed_basis` is now
+runnable. Cluster-frame MPCs attach in `assemble_section_from_zones`; cap ties
+expand skin masters through junction slaves and skip cap endpoints already
+owned by cluster constraints. Smoke:
+`tests/test_defect_k_mesh_sweep.py`.
+
+**Outlier dual-mode study** (`gci_defect_k_shared/` vs `gci_defect_k_tb/`,
+keys `4D-CN,5D-F,4D-F,3B-F,3B-CN,2D-F`, `--gates study`):
+
+| Layout | Hashin GCI shared→TB | gov GCI shared→TB |
+|--------|----------------------|-------------------|
+| 4D-CN | 0.64 → **0.13** | 0.12 → **0.08** |
+| 5D-F | 0.04 → **0.01** | 0.96 → **0.01** |
+| 4D-F | 0.05 → 0.09 | 0.03 → 0.05 |
+| 3B-F | 0.09 → **0.08** | 0.09 → **0.08** |
+| 3B-CN | 0.21 → **0.15** | 0.21 → **0.15** |
+| 2D-F | 0.03 → 0.08 | 0.002 → 0.08 |
+
+Trust OK on both modes for all six. `|N12|` GCI improves under TB on all six.
+Hashin/gov improve on **4/6** — not equal-or-better everywhere (**4D-F**,
+**2D-F** regress). Phase B2 promote bar not met → **keep `shared`**. Defect K
+remains an accepted limitation on production junctions; Hashin/`governing_fi`
+stay study gates. CI-watch `cap_peak_sampling` (2026-08) shows the five
+`|N12|`/mid-σ fails are still largely junction-owned, so a future local joint
+formulation is the physics path — **promote bar unchanged** until
+equal-or-better Hashin/gov on **all** residual keys (incl. `4D-F` / `2D-F`)
+without trust regression. No soft-contact / CZM.
 
 ---
 

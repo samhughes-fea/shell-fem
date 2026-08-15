@@ -139,7 +139,10 @@ junction traction residuals remain an **accepted limitation** (Defect K in
 ``transformed_basis`` periodic K6 — Measure via
 ``processing/static/diagnostics/defect_k_mesh_sweep.py``.
 Analytical ∂Tx/∂d from edge B-matrices stays research-only; do not reintroduce soft
-penalties on the production path.
+penalties on the production path. 2026-08 CI-watch follow-up: wider junction-band
+mesh densify failed; global TB clears 4/5 watch keys but regresses `5D-CN`;
+study-only `hybrid_collinear` also regresses `5D-CN` membrane GCI — soft
+relative-slip / cusp penalties remain out of scope (see GCI_OUTLIER_DIAGNOSIS).
 
 ## Periodic `transformed_basis` K6 (parked permanently) — historical
 

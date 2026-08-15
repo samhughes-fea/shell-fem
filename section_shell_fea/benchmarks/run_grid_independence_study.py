@@ -28,7 +28,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--keys",
         default="all",
-        help="all | smoke | fast | comma-separated layout keys (default: all)",
+        help=(
+            "all | smoke | watch | fast | comma-separated layout keys "
+            "(default: all; watch = CI_WATCH_KEYS membrane residual set)"
+        ),
     )
     parser.add_argument(
         "--out-dir",
@@ -48,8 +51,8 @@ def main(argv: list[str] | None = None) -> int:
         choices=("ci", "study"),
         default="ci",
         help=(
-            "ci: production-subladder drift≤2 + last-two≤2 + Hashin/gov GCI≤10%%; "
-            "study: full ladder≤2 + last-two≤1.25 + skin/web GCI≤5%%"
+            "ci: frozen N12+mid-σ production-subladder drift/GCI + mesh/trust; "
+            "study: stricter N12/mid-σ/Hashin + governing_fi (Hashin not CI)"
         ),
     )
     parser.add_argument(
@@ -68,8 +71,60 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Station z/L for Cotide loads (default: max |m_YB| on worst envelope)",
     )
+    parser.add_argument(
+        "--interface",
+        choices=(
+            "shared",
+            "transformed_basis",
+            "shared_rotated",
+            "hybrid_collinear",
+            "hybrid_kind_crossing",
+        ),
+        default="shared",
+        help=(
+            "Junction constraint mode (default: shared production; "
+            "hybrid_collinear = study-only shared collinear / TB non-collinear; "
+            "hybrid_kind_crossing = study-only TB on kind-crossing∩non-collinear)"
+        ),
+    )
+    parser.add_argument(
+        "--junction-band-elements",
+        type=int,
+        default=None,
+        help=(
+            "Override junction-band pin count near strip ends "
+            "(default: production JUNCTION_BAND_ELEMENTS)"
+        ),
+    )
+    parser.add_argument(
+        "--junction-band-step-over-h",
+        type=float,
+        default=None,
+        help=(
+            "Override junction-band pin spacing as a fraction of bulk h "
+            "(default: production JUNCTION_BAND_STEP_OVER_H)"
+        ),
+    )
+    parser.add_argument(
+        "--junction-band-labels",
+        default="",
+        help=(
+            "Comma-separated StripSourcePanel labels that receive study "
+            "junction-band overrides (others stay production 3 / 0.5); "
+            "e.g. skin:outer_skin:SS:bay_0"
+        ),
+    )
+    parser.add_argument(
+        "--junction-band-which",
+        choices=("both", "start", "end"),
+        default="both",
+        help="Which strip end(s) get denser pins on labeled panels (default: both)",
+    )
     args = parser.parse_args(argv)
 
+    labels = tuple(
+        x.strip() for x in str(args.junction_band_labels).split(",") if x.strip()
+    )
     _by_layout, summaries, failures = run_grid_independence_study(
         args.keys,
         out_dir=Path(args.out_dir),
@@ -78,10 +133,33 @@ def main(argv: list[str] | None = None) -> int:
         progress=not args.quiet,
         load_source="synthetic" if args.synthetic else "cotide",
         zL=args.zL,
+        interface_constraint_mode=args.interface,
+        junction_band_elements=args.junction_band_elements,
+        junction_band_step_over_h=args.junction_band_step_over_h,
+        junction_band_panel_labels=labels or None,
+        junction_band_which=args.junction_band_which,
     )
-    print(f"wrote {Path(args.out_dir) / 'gci_ladder.csv'}", flush=True)
-    print(f"wrote {Path(args.out_dir) / 'gci_summary.csv'}", flush=True)
-    print(f"wrote {Path(args.out_dir) / 'plots'}", flush=True)
+    out = Path(args.out_dir)
+    print(f"wrote {out / 'gci_ladder.csv'}", flush=True)
+    print(f"wrote {out / 'gci_summary.csv'}", flush=True)
+    print(f"wrote {out / 'plots'}", flush=True)
+    try:
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.stability_scorecard import (
+            write_stability_scorecard,
+        )
+
+        json_path, md_path, _card = write_stability_scorecard(
+            out / "gci_summary.csv", out_dir=out
+        )
+        print(f"wrote {json_path}", flush=True)
+        print(f"wrote {md_path}", flush=True)
+    except Exception as exc:  # noqa: BLE001 — scorecard must not abort the study
+        print(f"scorecard warning: {exc}", flush=True)
+    print(
+        "note: regenerate scorecard anytime with "
+        "benchmarks.run_stability_scorecard --study-dir <out>",
+        flush=True,
+    )
     print(f"layouts={len(summaries)} failures={len(failures)}", flush=True)
     for s in summaries:
         gov = s.governing_fi_last_two_drift

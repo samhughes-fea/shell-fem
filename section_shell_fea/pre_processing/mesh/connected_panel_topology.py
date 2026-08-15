@@ -21,6 +21,8 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
     assign_global_nodes_cluster_basis,
+    assign_global_nodes_hybrid_collinear,
+    assign_global_nodes_hybrid_kind_crossing,
     assign_global_nodes_independent,
     assign_global_nodes_shared,
 )
@@ -90,6 +92,24 @@ def build_connected_panel_maps(
 
     if interface_constraint_mode == "shared":
         next_global_node = assign_global_nodes_shared(panel_maps, clusters)
+    elif interface_constraint_mode == "hybrid_collinear":
+        basis = assign_global_nodes_hybrid_collinear(
+            panel_maps, clusters, cluster_is_collinear_flags
+        )
+        next_global_node = int(basis["next_node"])
+        cluster_layer_node = basis["cluster_layer_node"]  # type: ignore[assignment]
+        cluster_layer_rot_node = basis["cluster_layer_rot_node"]  # type: ignore[assignment]
+        endpoint_cluster_node = basis["endpoint_cluster_node"]  # type: ignore[assignment]
+        endpoint_cluster_rot_node = basis["endpoint_cluster_rot_node"]  # type: ignore[assignment]
+    elif interface_constraint_mode == "hybrid_kind_crossing":
+        basis = assign_global_nodes_hybrid_kind_crossing(
+            panel_maps, clusters, cluster_is_collinear_flags
+        )
+        next_global_node = int(basis["next_node"])
+        cluster_layer_node = basis["cluster_layer_node"]  # type: ignore[assignment]
+        cluster_layer_rot_node = basis["cluster_layer_rot_node"]  # type: ignore[assignment]
+        endpoint_cluster_node = basis["endpoint_cluster_node"]  # type: ignore[assignment]
+        endpoint_cluster_rot_node = basis["endpoint_cluster_rot_node"]  # type: ignore[assignment]
     elif interface_constraint_mode in ("transformed_basis", "shared_rotated") or effective_mode == "shared_rotated":
         basis = assign_global_nodes_cluster_basis(panel_maps, clusters)
         next_global_node = int(basis["next_node"])

@@ -118,6 +118,51 @@ def assemble_section_from_zones(
     node_meta = collect_global_node_meta(
         topology.panel_maps, zone_list, zones_out_list, topology.next_global_node
     )
+    # Cluster-basis junctions allocate unique endpoints + virtual refs; attach
+    # frame-mapping MPCs here so transformed_basis / shared_rotated /
+    # hybrid_* (TB-flagged clusters only) are solvable.
+    mode = str(interface_constraint_mode or "shared")
+    _hybrid_modes = ("hybrid_collinear", "hybrid_kind_crossing")
+    if mode in ("transformed_basis", "shared_rotated", *_hybrid_modes) or str(
+        getattr(topology, "effective_mode", "")
+    ) in ("shared_rotated", *_hybrid_modes):
+        from .connected_assembly_core import (
+            attach_cluster_node_meta,
+            build_cluster_basis_constraints,
+            cluster_is_kind_crossing,
+        )
+
+        if mode in _hybrid_modes:
+            flags = getattr(topology, "cluster_is_collinear_flags", {}) or {}
+            mpc_clusters = []
+            for cid, c in enumerate(topology.clusters):
+                if bool(flags.get(cid, False)):
+                    continue
+                if mode == "hybrid_kind_crossing" and not cluster_is_kind_crossing(
+                    c, topology.panel_maps
+                ):
+                    continue
+                mpc_clusters.append(c)
+        else:
+            mpc_clusters = topology.clusters
+        cluster_mpcs = build_cluster_basis_constraints(
+            topology.panel_maps,
+            zone_list,
+            mpc_clusters,
+            topology.endpoint_cluster_node,
+            topology.endpoint_cluster_rot_node,
+            topology.cluster_layer_node,
+            topology.cluster_layer_rot_node,
+            ndof=int(cache.n_dof_node),
+        )
+        attach_cluster_node_meta(
+            node_meta,
+            topology.clusters,
+            zone_list,
+            topology.cluster_layer_node,
+            topology.cluster_layer_rot_node,
+            cluster_mpcs,
+        )
     abd_p, t_p, g_p, lab_p = compact_panel_abd_from_stacks(
         topology.panel_maps, cache.panel_abd_stacks
     )

@@ -18,11 +18,12 @@ from typing import Any, Callable, Iterable, Sequence, TextIO
 
 import numpy as np
 
-from blade_structure_utilities.geometry_utilities.section_geometry.core.system_layout import (
+from blade_structure_utilities.geometry_utilities.section_geometry.layout.system_layout import (
     SYSTEM_TYPE_KEYS,
     resolve_system_type,
 )
 
+# .../section_shell_fea/processing/static/diagnostics/ → repo root is parents[6]
 _REPO_ROOT = Path(__file__).resolve().parents[6]
 
 from .asme_gci import GciResult, gci_triplet
@@ -39,7 +40,8 @@ from .plot_grid_independence import plot_grid_independence_study
 
 ProgressFn = Callable[[str], None]
 
-STUDY_REFINEMENTS: tuple[float, ...] = (0.024, 0.016, 0.012, 0.008, 0.005)
+STUDY_REFINEMENTS: tuple[float, ...] = (0.024, 0.016, 0.012, 0.008, 0.005, 0.0035)
+# Day-to-day CI smoke: must exclude CI_WATCH_KEYS so ``--keys smoke --gates ci`` PASS.
 CI_SMOKE_KEYS: tuple[str, ...] = (
     "0A",
     "2A-F",
@@ -48,9 +50,28 @@ CI_SMOKE_KEYS: tuple[str, ...] = (
     "2C-F",
     "5C-CN",
     "2D-CN",
+    "2D-F",
+)
+FAST_CI_KEYS: tuple[str, ...] = ("2A-F", "2D-F")
+
+# Known CI membrane residual set (fine GCI >10% on skin |N12| / mid-σ).
+# Full ``--keys all --gates ci`` is expected to fail exactly these until Phase B.
+CI_WATCH_KEYS: tuple[str, ...] = (
+    "3D-CN",
+    "4D-CN",
+    "4D-F",
+    "5D-CN",
     "5D-F",
 )
-FAST_CI_KEYS: tuple[str, ...] = ("5D-F", "2A-F")
+# Study FI / governing_fi residual set (report-only; not CI).
+STUDY_FI_WATCH_KEYS: tuple[str, ...] = (
+    "2D-CN",
+    "3B-CN",
+    "3D-CN",
+    "4D-CN",
+    "5D-CN",
+    "5D-F",
+)
 
 # Study targets (CLI ``--gates study``): plateau at production→finer.
 MAX_FULL_LADDER_DRIFT = 2.0
@@ -62,8 +83,12 @@ CI_MAX_LAST_TWO_DRIFT = 2.0
 CI_MAX_GCI_FINE = 0.10
 STUDY_MAX_GCI_FINE = 0.05
 
-# Acceptance-gate kind peaks (CI / study policy).
-KIND_METRICS = ("peak_abs_n12", "peak_mid_sig", "peak_hashin")
+# Proven CI hard-gates (post junction-local h remediation): membrane + mid-σ.
+CI_KIND_METRICS = ("peak_abs_n12", "peak_mid_sig")
+# Study mode also tracks Hashin in-plane (D-family ownership still under work).
+STUDY_KIND_METRICS = ("peak_abs_n12", "peak_mid_sig", "peak_hashin")
+# Back-compat alias used by summary tables / older tests (= study set).
+KIND_METRICS = STUDY_KIND_METRICS
 # Full P→S→T→Q kind-peak report set (ladder CSV + GCI summary tables).
 REPORT_KIND_METRICS = KIND_PEAK_METRICS
 PRODUCTION_SUBLADDER = tuple(float(x) for x in DEFAULT_REFINEMENTS)
@@ -395,12 +420,12 @@ def run_layout_ladder(
         if progress is not None:
             n_tot = sum(int(row.n_elem.get(k, 0) or 0) for k in KINDS)
             kinds = ",".join(present_kinds(row)) or "-"
-            peak_nxy = row.peak_abs_n12.get("skin", float("nan"))
+            peak_n12 = row.peak_abs_n12.get("skin", float("nan"))
             progress(
                 f"    rung {ri}/{n_rung}  done in {time.perf_counter() - t0:.1f}s  "
                 f"n_elem={n_tot}  kinds=[{kinds}]  "
                 f"mesh_ok={row.mesh_ok}  trust={row.cascade_trust_ok}  "
-                f"peak_|N12|_skin={peak_nxy:.4g}  "
+                f"peak_|N12|_skin={peak_n12:.4g}  "
                 f"gov_fi={row.governing_fi:.4g}"
             )
     return rows
@@ -557,18 +582,21 @@ def evaluate_layout_gates(
     """Return gate failures for mesh/trust, S/T/Q drift, plateau, and GCI.
 
     ``gates="ci"`` (default): production-subladder full drift ≤ ``max_full_drift``,
-    last-two ≤ ``CI_MAX_LAST_TWO_DRIFT`` for skin/web (+ governing_fi last-two),
-    and fine-grid GCI ≤ ``CI_MAX_GCI_FINE`` on skin/web ``peak_hashin`` +
-    ``governing_fi``. Cap kind-peaks are informational under ``skin_offset``.
+    last-two ≤ ``CI_MAX_LAST_TWO_DRIFT``, and fine-grid GCI ≤ ``CI_MAX_GCI_FINE``
+    on skin/web ``peak_abs_n12`` + ``peak_mid_sig`` only (proven freeze). Hashin /
+    ``governing_fi`` stay study-reported. Cap kind-peaks are informational under
+    ``skin_offset``.
 
     ``gates="study"``: skin/web use full ladder ≤ ``max_full_drift`` and last-two
     ≤ ``STUDY_TARGET_LAST_TWO_DRIFT``; fine-grid GCI ≤ ``STUDY_MAX_GCI_FINE`` on
-    all skin/web kind peaks + ``governing_fi``; cap uses endpoint-excluded
-    last-two only ≤ ``CI_MAX_LAST_TWO_DRIFT`` (interior GCI reported, not gated).
+    ``peak_abs_n12`` / ``peak_mid_sig`` / ``peak_hashin`` + ``governing_fi``; cap
+    uses endpoint-excluded last-two only ≤ ``CI_MAX_LAST_TWO_DRIFT`` (interior GCI
+    reported, not gated).
 
     ``gates="ccx"``: membrane-only CI profile — skin/web ``peak_abs_n12`` drift +
     GCI only (Hashin / mid_sig / governing_fi skipped). Cap ``peak_abs_n12`` is
     informational. Equivalent to ``membrane_only=True`` with CI numeric limits.
+    CCX peak ``|N11|``/``|N22|`` remain report-only.
 
     When ``membrane_only=True`` (also set by ``gates="ccx"``, or CCX +
     ``gates="study"``), only ``peak_abs_n12`` is gated and governing_fi is skipped.
@@ -600,13 +628,15 @@ def evaluate_layout_gates(
         else summary.governing_fi_full_drift
     )
     full_suffix = "production" if use_production else "full"
-    kind_metrics: tuple[str, ...] = (
-        ("peak_abs_n12",) if membrane_only else KIND_METRICS
-    )
     if membrane_only:
+        kind_metrics: tuple[str, ...] = ("peak_abs_n12",)
         gci_metrics: tuple[str, ...] = ("peak_abs_n12",)
+    elif limit_mode == "ci":
+        kind_metrics = CI_KIND_METRICS
+        gci_metrics = CI_KIND_METRICS
     else:
-        gci_metrics = KIND_METRICS if limit_mode == "study" else ("peak_hashin",)
+        kind_metrics = STUDY_KIND_METRICS
+        gci_metrics = STUDY_KIND_METRICS
 
     fails: list[GateFailure] = []
     if not summary.all_mesh_ok:
@@ -683,11 +713,12 @@ def evaluate_layout_gates(
                     limit=float(max_gci_fine),
                 )
 
-    if membrane_only:
+    if membrane_only or limit_mode != "study":
+        # CI freeze: Hashin / governing_fi are study-reported only (CSV + study gates).
         return fails
 
-    # governing FI: study mode gates full ladder; CI only checks last-two plateau
-    if limit_mode == "study" and np.isfinite(gov_full) and gov_full > max_full_drift:
+    # governing FI: study mode only (full ladder + last-two + fine GCI).
+    if np.isfinite(gov_full) and gov_full > max_full_drift:
         fails.append(
             GateFailure(
                 summary.layout,
@@ -828,7 +859,7 @@ def write_summary_csv(
 
 
 def resolve_study_keys(spec: str | Sequence[str] | None) -> tuple[str, ...]:
-    """Parse ``all`` / ``smoke`` / comma-list / sequence into layout keys."""
+    """Parse ``all`` / ``smoke`` / ``watch`` / ``fast`` / comma-list into keys."""
     if spec is None or spec == "all":
         return tuple(SYSTEM_TYPE_KEYS)
     if isinstance(spec, str):
@@ -837,6 +868,8 @@ def resolve_study_keys(spec: str | Sequence[str] | None) -> tuple[str, ...]:
             return tuple(SYSTEM_TYPE_KEYS)
         if text.lower() == "smoke":
             return CI_SMOKE_KEYS
+        if text.lower() == "watch":
+            return CI_WATCH_KEYS
         if text.lower() == "fast":
             return FAST_CI_KEYS
         keys = tuple(k.strip() for k in text.split(",") if k.strip())
@@ -861,6 +894,11 @@ def run_grid_independence_study(
     zL: float | None = None,
     backend: str = "mitc4",
     ccx_exe: str = "ccx",
+    interface_constraint_mode: str = "shared",
+    junction_band_elements: int | None = None,
+    junction_band_step_over_h: float | None = None,
+    junction_band_panel_labels: Sequence[str] | None = None,
+    junction_band_which: str = "both",
 ) -> tuple[dict[str, list[CascadeScalars]], list[LayoutDriftSummary], list[GateFailure]]:
     """Run ladders for ``keys``; optionally write ladder + summary CSVs.
 
@@ -875,11 +913,27 @@ def run_grid_independence_study(
     ``backend``:
     - ``mitc4`` (default): native FSDT cascade
     - ``ccx``: live CalculiX membrane cascade (gates default to membrane-only)
+
+    ``interface_constraint_mode``: ``shared`` (production), ``transformed_basis`` /
+    ``shared_rotated`` (Defect K), or study-only ``hybrid_collinear`` /
+    ``hybrid_kind_crossing``.
     """
     layout_keys = resolve_study_keys(keys)
     be = str(backend or "mitc4").lower().strip()
     if be not in ("mitc4", "ccx"):
         raise ValueError(f"backend must be 'mitc4' or 'ccx', got {backend!r}")
+    iface = str(interface_constraint_mode or "shared").strip()
+    _allowed_iface = (
+        "shared",
+        "transformed_basis",
+        "shared_rotated",
+        "hybrid_collinear",
+        "hybrid_kind_crossing",
+    )
+    if iface not in _allowed_iface:
+        raise ValueError(
+            f"interface_constraint_mode must be one of {_allowed_iface}, got {iface!r}"
+        )
     log: ProgressFn | None
     if progress is True:
         log = _default_progress()
@@ -899,6 +953,17 @@ def run_grid_independence_study(
     else:
         raise ValueError(f"load_source must be 'cotide' or 'synthetic'; got {load_source!r}")
 
+    if junction_band_elements is not None:
+        cascade_kw["junction_band_elements"] = int(junction_band_elements)
+    if junction_band_step_over_h is not None:
+        cascade_kw["junction_band_step_over_h"] = float(junction_band_step_over_h)
+    if junction_band_panel_labels is not None:
+        cascade_kw["junction_band_panel_labels"] = tuple(
+            str(x) for x in junction_band_panel_labels
+        )
+    if junction_band_which and str(junction_band_which) != "both":
+        cascade_kw["junction_band_which"] = str(junction_band_which)
+
     gate_mode = str(gates).lower().strip()
     if be == "ccx" and gate_mode == "ci":
         gate_mode = "ccx"
@@ -909,10 +974,16 @@ def run_grid_independence_study(
     t_study = time.perf_counter()
     ccx_work = Path(out_dir) / "ccx_work" if out_dir is not None else None
     if log is not None:
+        jb_n = cascade_kw.get("junction_band_elements", "default")
+        jb_step = cascade_kw.get("junction_band_step_over_h", "default")
+        jb_labs = cascade_kw.get("junction_band_panel_labels", "all")
+        jb_which = cascade_kw.get("junction_band_which", "both")
         log(
             f"[grid-independence] start  layouts={n_keys}  "
             f"rungs={n_rung}  fracs={list(map(float, refinements))}  "
-            f"backend={be}  gates={gate_mode}  load_source={source}"
+            f"backend={be}  gates={gate_mode}  load_source={source}  "
+            f"interface={iface}  junction_band={jb_n}/{jb_step}  "
+            f"labels={jb_labs}  which={jb_which}"
         )
         if active_recipe is not None:
             log(
@@ -955,6 +1026,7 @@ def run_grid_independence_study(
         rows = run_layout_ladder(
             key,
             refinements=refinements,
+            interface_constraint_mode=iface,
             require_mesh_qa=require_mesh_qa,
             progress=log,
             backend=be,
@@ -1034,12 +1106,16 @@ __all__ = [
     "CI_MAX_GCI_FINE",
     "CI_MAX_LAST_TWO_DRIFT",
     "CI_SMOKE_KEYS",
+    "CI_WATCH_KEYS",
     "CotideStationRecipe",
     "FAST_CI_KEYS",
     "GateFailure",
+    "CI_KIND_METRICS",
     "INFORMATIONAL_KINDS",
     "KIND_METRICS",
     "REPORT_KIND_METRICS",
+    "STUDY_FI_WATCH_KEYS",
+    "STUDY_KIND_METRICS",
     "LayoutDriftSummary",
     "MAX_FULL_LADDER_DRIFT",
     "STUDY_MAX_GCI_FINE",

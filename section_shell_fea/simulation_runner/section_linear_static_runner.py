@@ -27,7 +27,7 @@ from blade_structure_utilities.load_utilities.section_loads import (
     MaterialMap,
     SectionForceVector,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
     SectionStripMesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.solve_states import (
@@ -337,6 +337,7 @@ class SectionLinearStaticRunner:
         )
         from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
             build_clamp_supports,
+            build_cluster_basis_supports,
         )
         from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
             assemble_section_from_zones,
@@ -399,7 +400,33 @@ class SectionLinearStaticRunner:
             section_strip_mesh=strip_mesh,
         )
         ndof = int(asm.cache.n_dof_node)
-        fixed = build_clamp_supports(asm.panel_maps, ndof=ndof, bc_mode=self._bc_mode)
+        mode = str(self._interface_constraint_mode or "shared")
+        if mode in ("transformed_basis", "shared_rotated"):
+            topo = asm.topology
+            fixed = build_cluster_basis_supports(
+                asm.panel_maps,
+                topo.endpoint_cluster_index,
+                topo.cluster_layer_node,
+                topo.cluster_layer_rot_node,
+                ndof=ndof,
+                bc_mode=self._bc_mode,
+            )
+        elif mode in ("hybrid_collinear", "hybrid_kind_crossing"):
+            from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+                build_hybrid_collinear_supports,
+            )
+
+            topo = asm.topology
+            fixed = build_hybrid_collinear_supports(
+                asm.panel_maps,
+                topo.endpoint_cluster_index,
+                topo.cluster_layer_node,
+                topo.cluster_layer_rot_node,
+                ndof=ndof,
+                bc_mode=self._bc_mode,
+            )
+        else:
+            fixed = build_clamp_supports(asm.panel_maps, ndof=ndof, bc_mode=self._bc_mode)
         constraints = dict(asm.node_meta.constraints or {})
 
         if self._cap_tie_mode != "none":

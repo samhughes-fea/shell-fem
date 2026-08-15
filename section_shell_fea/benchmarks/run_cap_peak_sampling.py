@@ -42,13 +42,34 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Suppress per-layout / per-rung progress",
     )
+    parser.add_argument(
+        "--interface",
+        choices=(
+            "shared",
+            "transformed_basis",
+            "shared_rotated",
+            "hybrid_collinear",
+            "hybrid_kind_crossing",
+        ),
+        default="shared",
+        help="Junction constraint mode (default: shared)",
+    )
+    parser.add_argument(
+        "--fracs",
+        default="",
+        help="Optional comma-separated density fracs (default: study ladder)",
+    )
     args = parser.parse_args(argv)
     keys = tuple(k.strip() for k in str(args.keys).split(",") if k.strip())
-    _by, drifts = run_cap_peak_study(
-        keys,
-        out_dir=Path(args.out_dir),
-        progress=not args.quiet,
-    )
+    fracs = tuple(float(x) for x in str(args.fracs).split(",") if x.strip())
+    study_kw: dict = {
+        "out_dir": Path(args.out_dir),
+        "progress": not args.quiet,
+        "interface_constraint_mode": args.interface,
+    }
+    if fracs:
+        study_kw["refinements"] = fracs
+    _by, drifts = run_cap_peak_study(keys, **study_kw)
     print(f"wrote {Path(args.out_dir) / 'cap_peak_ladder.csv'}", flush=True)
     print(f"wrote {Path(args.out_dir) / 'cap_peak_locations.json'}", flush=True)
     print(f"wrote {Path(args.out_dir) / 'cap_peak_drift_summary.csv'}", flush=True)

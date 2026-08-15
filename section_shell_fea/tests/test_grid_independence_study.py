@@ -6,6 +6,7 @@ import pytest
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.grid_independence_study import (
     CI_SMOKE_KEYS,
+    CI_WATCH_KEYS,
     FAST_CI_KEYS,
     INFORMATIONAL_KINDS,
     KIND_METRICS,
@@ -35,10 +36,18 @@ def fast_ladders():
 def test_resolve_study_keys_presets():
     assert "5D-F" in resolve_study_keys("all")
     assert resolve_study_keys("smoke") == CI_SMOKE_KEYS
+    assert resolve_study_keys("watch") == CI_WATCH_KEYS
     assert resolve_study_keys("fast") == FAST_CI_KEYS
     assert resolve_study_keys("5D-F,2A-F") == ("5D-F", "2A-F")
     with pytest.raises(ValueError, match="unknown"):
         resolve_study_keys("NOT-A-KEY")
+
+
+def test_smoke_keys_exclude_ci_watch():
+    """Day-to-day ``--keys smoke --gates ci`` must not include the residual watch set."""
+    overlap = set(CI_SMOKE_KEYS) & set(CI_WATCH_KEYS)
+    assert not overlap, f"smoke intersects CI_WATCH_KEYS: {sorted(overlap)}"
+    assert set(FAST_CI_KEYS).isdisjoint(CI_WATCH_KEYS)
 
 
 def test_ci_gates_skip_cap_kind_peaks():
@@ -72,7 +81,8 @@ def test_ci_gates_skip_cap_kind_peaks():
     assert "cap" in INFORMATIONAL_KINDS
 
 
-def test_ci_gates_fail_on_hashin_gci_and_non_monotonic():
+def test_ci_gates_freeze_n12_mid_sig_not_hashin():
+    """CI hard-gates proven membrane/mid-σ; Hashin / gov FI are study-only."""
     base = dict(
         layout="2D-F",
         family="D",
@@ -88,46 +98,53 @@ def test_ci_gates_fail_on_hashin_gci_and_non_monotonic():
         governing_fi_full_drift=1.1,
         governing_fi_last_two_drift=1.1,
         governing_fi_production_drift=1.1,
-        governing_fi_gci_fine=0.02,
-        governing_fi_gci_ok=True,
+        governing_fi_gci_fine=0.25,
+        governing_fi_gci_ok=False,
+        governing_fi_gci_detail="asme_roache_gci",
         all_mesh_ok=True,
         all_trust_ok=True,
     )
-    high = LayoutDriftSummary(
+    # Hashin / gov FI bad — CI must still pass (frozen on N12 + mid_sig).
+    hashin_bad = LayoutDriftSummary(
         **{
             **base,
             "gci_fine": {
-                m: {"skin": 0.02 if m != "peak_hashin" else 0.25, "web": 0.02}
+                m: {"skin": 0.25 if m == "peak_hashin" else 0.02, "web": 0.02}
                 for m in KIND_METRICS
             },
-        }
-    )
-    fails = evaluate_layout_gates(high, gates="ci")
-    assert any(f.metric == "peak_hashin_gci_fine" and f.kind == "skin" for f in fails)
-
-    osc = LayoutDriftSummary(
-        **{
-            **base,
             "gci_ok": {
                 m: {"skin": m != "peak_hashin", "web": True} for m in KIND_METRICS
             },
+        }
+    )
+    assert not evaluate_layout_gates(hashin_bad, gates="ci")
+    # Same case fails under study (Hashin + governing gated).
+    study_fails = evaluate_layout_gates(hashin_bad, gates="study")
+    assert any(f.metric == "peak_hashin_gci_fine" and f.kind == "skin" for f in study_fails)
+    assert any(f.metric == "governing_fi_gci_fine" for f in study_fails)
+
+    # CI still fails on proven membrane GCI.
+    n12_bad = LayoutDriftSummary(
+        **{
+            **base,
+            "gci_fine": {
+                m: {"skin": 0.25 if m == "peak_abs_n12" else 0.02, "web": 0.02}
+                for m in KIND_METRICS
+            },
+            "gci_ok": {
+                m: {"skin": m != "peak_abs_n12", "web": True} for m in KIND_METRICS
+            },
             "gci_detail": {
                 m: {
-                    "skin": "gci_non_monotonic" if m == "peak_hashin" else "",
+                    "skin": "asme_roache_gci" if m == "peak_abs_n12" else "",
                     "web": "",
                 }
                 for m in KIND_METRICS
             },
-            "gci_fine": {
-                m: {"skin": float("nan"), "web": 0.02} for m in KIND_METRICS
-            },
         }
     )
-    fails_osc = evaluate_layout_gates(osc, gates="ci")
-    assert any(
-        f.metric == "peak_hashin_gci_fine" and f.detail == "gci_non_monotonic"
-        for f in fails_osc
-    )
+    fails_n12 = evaluate_layout_gates(n12_bad, gates="ci")
+    assert any(f.metric == "peak_abs_n12_gci_fine" and f.kind == "skin" for f in fails_n12)
 
 
 @pytest.mark.parametrize("layout", FAST_CI_KEYS)
@@ -176,7 +193,11 @@ def test_smoke_matrix_layout_passes_gates(layout):
     summary = summarize_layout_ladder(rows)
     fails = evaluate_layout_gates(summary, gates="ci")
     assert summary.all_mesh_ok and summary.all_trust_ok
-    drift_fails = [f for f in fails if "gci" not in f.metric]
-    assert not drift_fails, (
-        "; ".join(f"{f.kind}/{f.metric}={f.drift:.3f}>{f.limit}" for f in drift_fails)
+    # Full CI contract for smoke: drift + membrane GCI (no watch keys in smoke).
+    assert not fails, (
+        "; ".join(
+            f"{f.kind}/{f.metric}={f.drift:.3f}>{f.limit}"
+            + (f" ({f.detail})" if f.detail else "")
+            for f in fails
+        )
     )

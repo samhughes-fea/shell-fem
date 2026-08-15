@@ -20,6 +20,8 @@ Shared DOF indices (first six)::
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from ....pre_processing.mesh.shell_mesh_map import PanelGlobalMap
@@ -149,6 +151,135 @@ def assign_global_nodes_cluster_basis(
     }
 
 
+def _kind_from_panel_label(label: object) -> str:
+    text = str(label or "")
+    return text.split(":", 1)[0] if ":" in text else (text or "panel")
+
+
+def cluster_is_kind_crossing(
+    cluster: list[tuple[int, str, np.ndarray]],
+    panel_maps: list[PanelGlobalMap],
+) -> bool:
+    """True when a junction cluster joins ≥2 distinct component kinds."""
+    kinds: set[str] = set()
+    for pi, _, _ in cluster:
+        if 0 <= int(pi) < len(panel_maps):
+            kinds.add(_kind_from_panel_label(getattr(panel_maps[int(pi)], "panel_label", "")))
+        else:
+            kinds.add("panel")
+    return len(kinds) >= 2
+
+
+def assign_global_nodes_hybrid_tb_clusters(
+    panel_maps: list[PanelGlobalMap],
+    clusters: list[list[tuple[int, str, np.ndarray]]],
+    use_tb_flags: dict[int, bool],
+) -> dict[str, object]:
+    """Shared nodes except on clusters flagged for transformed-basis kinematics.
+
+    Study hybrid numbering: flagged clusters get virtual cluster refs + unique
+    panel endpoints (TB MPCs attached later); others share endpoint nodes like
+    production ``shared``. Mutates ``panel_maps`` global ids.
+    """
+    cluster_layer_node: dict[tuple[int, str], int] = {}
+    cluster_layer_rot_node: dict[tuple[int, str], int] = {}
+    endpoint_cluster_node: dict[tuple[int, str, str], int] = {}
+    endpoint_cluster_rot_node: dict[tuple[int, str, str], int] = {}
+    shared_endpoint: dict[tuple[int, str, str], int] = {}
+    next_node = 0
+    for cid, c in enumerate(clusters):
+        if not bool(use_tb_flags.get(cid, False)):
+            g_bottom = next_node
+            g_top = next_node + 1
+            next_node += 2
+            for pi, which, _ in c:
+                shared_endpoint[(pi, which, "bottom")] = g_bottom
+                shared_endpoint[(pi, which, "top")] = g_top
+            continue
+        for layer in ("bottom", "top"):
+            cluster_layer_node[(cid, layer)] = next_node
+            next_node += 1
+            cluster_layer_rot_node[(cid, layer)] = next_node
+            next_node += 1
+        for pi, which, _ in c:
+            for layer in ("bottom", "top"):
+                endpoint_cluster_node[(pi, which, layer)] = cluster_layer_node[(cid, layer)]
+                endpoint_cluster_rot_node[(pi, which, layer)] = cluster_layer_rot_node[
+                    (cid, layer)
+                ]
+    for pm in panel_maps:
+        if len(pm.s_nodes) == 0:
+            continue
+        n = len(pm.s_nodes)
+        for local, which, layer in (
+            (0, "start", "bottom"),
+            (n - 1, "end", "bottom"),
+            (n, "start", "top"),
+            (2 * n - 1, "end", "top"),
+        ):
+            key = (pm.panel_index, which, layer)
+            if key in shared_endpoint:
+                pm.global_nodes[local] = shared_endpoint[key]
+            else:
+                pm.global_nodes[local] = next_node
+                next_node += 1
+        for li in range(1, n - 1):
+            pm.global_nodes[li] = next_node
+            next_node += 1
+        for li in range(n + 1, 2 * n - 1):
+            pm.global_nodes[li] = next_node
+            next_node += 1
+    return {
+        "next_node": next_node,
+        "cluster_layer_node": cluster_layer_node,
+        "cluster_layer_rot_node": cluster_layer_rot_node,
+        "endpoint_cluster_node": endpoint_cluster_node,
+        "endpoint_cluster_rot_node": endpoint_cluster_rot_node,
+        "endpoint_cluster_index": {
+            (pi, which): cid for cid, c in enumerate(clusters) for pi, which, _ in c
+        },
+    }
+
+
+def assign_global_nodes_hybrid_collinear(
+    panel_maps: list[PanelGlobalMap],
+    clusters: list[list[tuple[int, str, np.ndarray]]],
+    cluster_is_collinear_flags: dict[int, bool],
+) -> dict[str, object]:
+    """Shared nodes on collinear clusters; cluster-basis on non-collinear.
+
+    Study-only ``hybrid_collinear`` numbering: collinear junctions keep production
+    shared-node kinematics; cusps / T-joints get transformed-basis virtual refs +
+    MPCs. Mutates ``panel_maps`` global ids.
+    """
+    use_tb = {
+        cid: not bool(cluster_is_collinear_flags.get(cid, False))
+        for cid in range(len(clusters))
+    }
+    return assign_global_nodes_hybrid_tb_clusters(panel_maps, clusters, use_tb)
+
+
+def assign_global_nodes_hybrid_kind_crossing(
+    panel_maps: list[PanelGlobalMap],
+    clusters: list[list[tuple[int, str, np.ndarray]]],
+    cluster_is_collinear_flags: dict[int, bool],
+) -> dict[str, object]:
+    """Shared everywhere except kind-crossing ∩ non-collinear clusters (TB).
+
+    Study-only ``hybrid_kind_crossing``: narrower than ``hybrid_collinear`` —
+    same-kind non-collinear cusps stay shared; only multi-kind non-collinear
+    joints get transformed-basis refs. Cap ties remain ``skin_offset``.
+    """
+    use_tb = {
+        cid: (
+            not bool(cluster_is_collinear_flags.get(cid, False))
+            and cluster_is_kind_crossing(c, panel_maps)
+        )
+        for cid, c in enumerate(clusters)
+    }
+    return assign_global_nodes_hybrid_tb_clusters(panel_maps, clusters, use_tb)
+
+
 def build_cluster_basis_constraints(
     panel_maps: list[PanelGlobalMap],
     zones: list,
@@ -177,7 +308,7 @@ def build_cluster_basis_constraints(
             continue
         t_mats: list[np.ndarray] = []
         for pi, which, _ in cluster:
-            t = panel_end_tangent(np.asarray(panels[pi].nodes, dtype=float), which)
+            t = panel_end_tangent(np.asarray(zones[pi].nodes, dtype=float), which)
             t_mats.append(np.outer(t, t))
         M = np.sum(np.stack(t_mats, axis=0), axis=0)
         evals, evecs = np.linalg.eigh(M)
@@ -195,7 +326,7 @@ def build_cluster_basis_constraints(
             if n == 0:
                 continue
             row = 0 if end == "start" else n - 1
-            t_p = panel_end_tangent(np.asarray(panels[pi].nodes, dtype=float), end)
+            t_p = panel_end_tangent(np.asarray(zones[pi].nodes, dtype=float), end)
             n_p = normal_2d(t_p)
             ts, tn = float(np.dot(t_p, t_ref)), float(np.dot(t_p, n_ref))
             ns, nn = float(np.dot(n_p, t_ref)), float(np.dot(n_p, n_ref))
@@ -266,6 +397,49 @@ def build_cluster_basis_supports(
     return fixed
 
 
+def build_hybrid_collinear_supports(
+    panel_maps: list[PanelGlobalMap],
+    endpoint_cluster_index: dict[tuple[int, str], int],
+    cluster_layer_node: dict[tuple[int, str], int],
+    cluster_layer_rot_node: dict[tuple[int, str], int],
+    *,
+    ndof: int,
+    bc_mode: str = DEFAULT_BC_MODE,
+    clamp_dofs: tuple[int, ...] = (W, BETA_S, BETA_X),
+) -> set[int]:
+    """Supports for ``hybrid_collinear``: clamp shared endpoints + TB cluster refs."""
+    mode = normalize_bc_mode(bc_mode)
+    fixed: set[int] = set()
+    fixed.add(gdof(0, U_X, ndof))
+    fixed.add(gdof(0, U_S, ndof))
+    fixed.add(gdof(1, U_X, ndof))
+    done_tb: set[tuple[int, str]] = set()
+    for pm in panel_maps:
+        if len(pm.s_nodes) == 0:
+            continue
+        n = len(pm.s_nodes)
+        support_local = (0, n - 1, n, 2 * n - 1) if mode == "contour_support" else (0, n - 1)
+        for ln in support_local:
+            which = "start" if ln in (0, n) else "end"
+            layer = "bottom" if ln in (0, n - 1) else "top"
+            cid = endpoint_cluster_index.get((pm.panel_index, which), -1)
+            key = (cid, layer)
+            if cid >= 0 and key in cluster_layer_node:
+                if key in done_tb:
+                    continue
+                done_tb.add(key)
+                gn_m = cluster_layer_node[key]
+                gn_r = cluster_layer_rot_node[key]
+                for d in clamp_dofs:
+                    fixed.add(gdof(gn_m, d, ndof))
+                fixed.add(gdof(gn_r, BETA_S, ndof))
+            else:
+                gn = int(pm.global_nodes[ln])
+                for d in clamp_dofs:
+                    fixed.add(gdof(gn, d, ndof))
+    return fixed
+
+
 def attach_cluster_node_meta(
     node_meta: Any,
     clusters: list[list[tuple[int, str, np.ndarray]]],
@@ -305,7 +479,7 @@ def attach_cluster_node_meta(
         t_mats = [
             np.outer(t, t)
             for pi, which, _ in cluster
-            for t in (panel_end_tangent(np.asarray(panels[pi].nodes, dtype=float), which),)
+            for t in (panel_end_tangent(np.asarray(zones[pi].nodes, dtype=float), which),)
         ]
         M = np.sum(np.stack(t_mats, axis=0), axis=0)
         evals, evecs = np.linalg.eigh(M)
@@ -374,8 +548,13 @@ __all__ = [
     "assign_global_nodes_shared",
     "assign_global_nodes_independent",
     "assign_global_nodes_cluster_basis",
+    "assign_global_nodes_hybrid_collinear",
+    "assign_global_nodes_hybrid_kind_crossing",
+    "assign_global_nodes_hybrid_tb_clusters",
+    "cluster_is_kind_crossing",
     "build_cluster_basis_constraints",
     "build_cluster_basis_supports",
+    "build_hybrid_collinear_supports",
     "attach_cluster_node_meta",
     "build_clamp_supports",
 ]
