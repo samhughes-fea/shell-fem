@@ -242,7 +242,7 @@ def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, Section
 
 def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
     """Production load-field path: zero shears + quaternary FI on linear cascade."""
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         build_section_strip_mesh,
     )
 

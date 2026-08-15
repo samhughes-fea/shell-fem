@@ -187,7 +187,7 @@ def map_ccx_stresses_to_panel_resultants(
     for pi, pm in enumerate(mesh.panel_maps):
         if len(pm.s_nodes) == 0:
             all_results.append([]); all_diag.append({}); continue
-        thickness = float(panels[pi].lam.t)
+        thickness = float(zones[pi].lam.t)
         panel_elems = sorted(
             (e for e in mesh.elements if e.panel_index == pi),
             key=lambda e: e.local_element_index,
@@ -745,7 +745,7 @@ def map_ccx_forces_to_panel_resultants(
             all_results.append([])
             all_diag.append({})
             continue
-        p = panels[pi]
+        p = zones[pi]
         thickness = float(p.lam.t)
         panel_elems = sorted(
             (e for e in mesh.elements if e.panel_index == pi),
@@ -962,7 +962,7 @@ def map_root_segment_stresses_to_resultants(
         if pi >= n_panels or row >= n_rows:
             continue
         elems_sorted = sorted(elems, key=lambda e: e.contour_element_index)
-        thickness = float(panels[pi].lam.t)
+        thickness = float(zones[pi].lam.t)
         label = mesh.panel_maps[pi].panel_label if pi < len(mesh.panel_maps) else f"panel_{pi}"
         rows_out: list[ShellPanelResultants] = []
         for elem in elems_sorted:
@@ -1001,6 +1001,10 @@ def map_root_segment_stresses_to_resultants(
             {
                 "span_row": float(row),
                 "x_m": x_mid,
+                "max_abs_N11": max_nx,
+                "max_abs_N12": max_nxy,
+                "max_abs_N22": max_ny,
+                # Legacy aliases (pre-E-frame CSV consumers).
                 "max_abs_Nx": max_nx,
                 "max_abs_Nxy": max_nxy,
                 "max_abs_Ny": max_ny,

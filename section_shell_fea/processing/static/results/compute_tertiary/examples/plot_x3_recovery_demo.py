@@ -313,6 +313,11 @@ def plot_panel_face_semantics(
     """
     from matplotlib.lines import Line2D
 
+    from blade_structure_utilities.fem_utilities.section_shell_fea.visualisation.section_axes import (
+        finish_section_axes,
+        section_hv,
+        section_point_hv,
+    )
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
@@ -320,11 +325,11 @@ def plot_panel_face_semantics(
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import (
         AirfoilSDF,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs.panel_x3_orientation import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff.panel_x3_orientation import (
         mid_segment_frame,
         normal_2d,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -418,7 +423,8 @@ def plot_panel_face_semantics(
         # Same index as strip-mesh panel_index; hide stub labels from labellines
         keep = s.kind in ("cap", "web") or _arc_length(xy) >= min_label_arc
         lab = f"P{i}" if keep else f"_P{i}"
-        (ln,) = ax.plot(xy[:, 0], xy[:, 1], label=lab, **st)
+        h, v = section_hv(xy)
+        (ln,) = ax.plot(h, v, label=lab, **st)
         member_lines.append(ln)
         desc = _web_role(s) if s.kind == "web" else _panel_description(s)
         panel_id_rows.append((i, s.kind, desc, keep))
@@ -493,19 +499,23 @@ def plot_panel_face_semantics(
     for m, n_hat, c_outer, c_inner in stations:
         p_outer = m + eps * n_hat
         p_inner = m - eps * n_hat
+        h_o, v_o = section_point_hv(float(p_outer[0]), float(p_outer[1]))
+        h_i, v_i = section_point_hv(float(p_inner[0]), float(p_inner[1]))
         ax.scatter(
-            [p_outer[0]], [p_outer[1]], s=55, c=c_outer, edgecolors="k", linewidths=0.5,
+            [h_o], [v_o], s=55, c=c_outer, edgecolors="k", linewidths=0.5,
             zorder=6, marker="o",
         )
         ax.scatter(
-            [p_inner[0]], [p_inner[1]], s=55, c=c_inner, edgecolors="k", linewidths=0.5,
+            [h_i], [v_i], s=55, c=c_inner, edgecolors="k", linewidths=0.5,
             zorder=6, marker="o",
         )
 
-    ax.scatter([le[0]], [le[1]], s=40, c="k", marker="^", zorder=5)
-    ax.scatter([te[0]], [te[1]], s=40, c="k", marker="v", zorder=5)
-    ax.annotate("LE", le, textcoords="offset points", xytext=(-12, 4), fontsize=8)
-    ax.annotate("TE", te, textcoords="offset points", xytext=(6, 4), fontsize=8)
+    h_le, v_le = section_point_hv(float(le[0]), float(le[1]))
+    h_te, v_te = section_point_hv(float(te[0]), float(te[1]))
+    ax.scatter([h_le], [v_le], s=40, c="k", marker="^", zorder=5)
+    ax.scatter([h_te], [v_te], s=40, c="k", marker="v", zorder=5)
+    ax.annotate("LE", (h_le, v_le), textcoords="offset points", xytext=(-12, 4), fontsize=8)
+    ax.annotate("TE", (h_te, v_te), textcoords="offset points", xytext=(6, 4), fontsize=8)
 
     # Inline panel ids — stagger along each panel away from markers / other labels
     from matplotlib import patheffects as pe
@@ -536,10 +546,12 @@ def plot_panel_face_semantics(
 
     line_items: list[tuple[object, NDArray[np.float64], float]] = []
     for ln in labeled:
-        xd, yd = ln.get_data()
-        if len(xd) == 0:
+        lab = str(ln.get_label())
+        if not (lab.startswith("P") and lab[1:].isdigit()):
             continue
-        xy = np.column_stack([np.asarray(xd, dtype=float), np.asarray(yd, dtype=float)])
+        xy = np.asarray(strips[int(lab[1:])].midline_b, dtype=float)
+        if xy.shape[0] == 0:
+            continue
         line_items.append((ln, xy, _arc_length(xy)))
     # Longer panels first so short stubs fill remaining gaps
     line_items.sort(key=lambda t: -t[2])
@@ -624,10 +636,12 @@ def plot_panel_face_semantics(
             continue
         placed.append(best_pt)
         staggered.append((ln, best_pt))
-        lo, hi = float(np.min(xy[:, 0])), float(np.max(xy[:, 0]))
+        h_xy, _v_xy = section_hv(xy)
+        lo, hi = float(np.min(h_xy)), float(np.max(h_xy))
         span = max(hi - lo, 1e-15)
+        h_pt, _v_pt = section_point_hv(float(best_pt[0]), float(best_pt[1]))
         ok_lines.append(ln)
-        xvals.append(float(np.clip(float(best_pt[0]), lo + 1e-9 * span, hi - 1e-9 * span)))
+        xvals.append(float(np.clip(h_pt, lo + 1e-9 * span, hi - 1e-9 * span)))
 
     used_labellines = False
     if labelLines is not None and ok_lines:
@@ -648,9 +662,10 @@ def plot_panel_face_semantics(
     label_pe = [pe.withStroke(linewidth=1.5, foreground="white")]
     draw_annotate = annotate_jobs if used_labellines else staggered
     for ln, pt in draw_annotate:
+        h_pt, v_pt = section_point_hv(float(pt[0]), float(pt[1]))
         ax.annotate(
             str(ln.get_label()),
-            (float(pt[0]), float(pt[1])),
+            (h_pt, v_pt),
             fontsize=7,
             ha="center",
             va="center",
@@ -658,8 +673,6 @@ def plot_panel_face_semantics(
             zorder=7,
         )
 
-    ax.set_xlabel(r"$y$ [m] (B-frame)", labelpad=2)
-    ax.set_ylabel(r"$z$ [m] (B-frame)")
     ax.set_title(
         f"Panel face semantics — NACA {str(naca).zfill(4)} / {key} midlines\n"
         r"(markers at $\mathbf{m}\pm\varepsilon\hat{n}$; inline $P_i$ = panel_index)",
@@ -702,10 +715,11 @@ def plot_panel_face_semantics(
             _mk(face_colors["web"][1], "Web FACE_INNER — aft (TE)"),
         ])
 
-    # Tight padded limits; box aspect matches data so legend sits under the x-axis
+    # Tight padded limits in section-plot coords (h=Y_B, v=X_B).
     pts = np.vstack([np.asarray(s.midline_b, dtype=float) for s in strips])
-    xmin, ymin = pts.min(axis=0)
-    xmax, ymax = pts.max(axis=0)
+    h_all, v_all = section_hv(pts)
+    xmin, xmax = float(h_all.min()), float(h_all.max())
+    ymin, ymax = float(v_all.min()), float(v_all.max())
     pad = 0.08 * max(xmax - xmin, ymax - ymin, 1e-9)
     x0, x1 = xmin - pad, xmax + pad
     y0, y1 = ymin - pad, ymax + pad
@@ -713,6 +727,7 @@ def plot_panel_face_semantics(
     ax.set_ylim(y0, y1)
     ax.set_aspect("equal")
     ax.set_box_aspect((y1 - y0) / (x1 - x0))
+    finish_section_axes(ax, square=False, equal_aspect=True)
 
     # Face-semantics legend, then panel-id key underneath
     fig.canvas.draw()

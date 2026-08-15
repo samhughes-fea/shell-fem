@@ -44,7 +44,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (  # noqa: E402
     SectionLinearStaticRunner,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
     shell_mesh_inputs_from_section,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh import (  # noqa: E402
@@ -85,13 +85,13 @@ def _build(frac: float):
     return shell_panel_topology_from_shell_inputs(shell), mesh
 
 
-def _peak_nxy_by_kind(runner) -> dict[str, float]:
+def _peak_n12_by_kind(runner) -> dict[str, float]:
     """Peak |N12| over the nodes of each component kind."""
     sec = runner.secondary_results
     nodal = getattr(sec, "nodal_results", None) if sec is not None else None
     fields = getattr(nodal, "fields", None) or {}
-    nxy = np.asarray(fields.get("N12", []), dtype=float)
-    if nxy.size == 0:
+    n12 = np.asarray(fields.get("N12", []), dtype=float)
+    if n12.size == 0:
         raise RuntimeError(
             "nodal N12 is empty; available secondary nodal fields: "
             f"{sorted(fields.keys())}"
@@ -101,10 +101,10 @@ def _peak_nxy_by_kind(runner) -> dict[str, float]:
         if not len(pm.s_nodes):
             continue
         kind = _kind_of(pm.panel_label)
-        gns = [g for g in pm.global_nodes if 0 <= g < nxy.size]
+        gns = [g for g in pm.global_nodes if 0 <= g < n12.size]
         if not gns:
             continue
-        peak = float(np.nanmax(np.abs(nxy[np.asarray(gns, dtype=int)])))
+        peak = float(np.nanmax(np.abs(n12[np.asarray(gns, dtype=int)])))
         out[kind] = max(out.get(kind, 0.0), peak)
     return out
 
@@ -155,7 +155,7 @@ def main() -> int:
                     print(f"  frac={frac:.4f}  FAILED: "
                           f"{type(exc).__name__}: {str(exc)[:120]}")
                     continue
-                peaks = _peak_nxy_by_kind(runner)
+                peaks = _peak_n12_by_kind(runner)
                 rows[(channel, mode)].append((frac, n_nodes, peaks))
                 rep = getattr(runner, "cap_tie_report", None)
                 extra = (

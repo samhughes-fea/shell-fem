@@ -222,7 +222,7 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
     from blade_structure_utilities.material_utilities.section_bind import (
         shell_material_zones_from_mesh_inputs,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh import (

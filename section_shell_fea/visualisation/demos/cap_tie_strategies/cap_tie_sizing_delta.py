@@ -37,7 +37,7 @@ from blade_structure_precompute.module.section_selection.processing.shell_statio
 from blade_structure_utilities.geometry_utilities.section_geometry import (  # noqa: E402
     resolve_system_type,
 )
-from blade_structure_utilities.geometry_utilities.section_geometry.core.system_layout import (  # noqa: E402
+from blade_structure_utilities.geometry_utilities.section_geometry.layout.system_layout import (  # noqa: E402
     SYSTEM_TYPE_KEYS,
 )
 

@@ -1,26 +1,54 @@
 """Plot ASME/Roache GCI grid-independence study outputs (ladder + summary CSVs).
 
 Plots every finite primary scalar and secondary / tertiary / quaternary kind
-peak present in the ladder (not only |N12|).
+peak present in the ladder (not only |N12|). Also writes per-layout composites
+pairing section mid-surface geometry with CI ladder curves.
 """
 
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from .asme_gci import gci_triplet
+from .asme_gci import FS_TWO_LEVEL, P_DEFAULT, gci_fine, gci_triplet
 from .cascade_mesh_convergence import (
+    DEFAULT_CHORD,
+    DEFAULT_THICKNESS,
+    DEFAULT_TWIST_DEG,
     KIND_PEAK_METRICS,
     PEAK_METRIC_LABELS,
     QUATERNARY_KIND_METRICS,
+    _build_shell,
 )
 
 KINDS = ("skin", "cap", "web")
 KIND_COLORS = {"skin": "#2563eb", "cap": "#dc2626", "web": "#059669"}
+
+# Post-ownership CI watch keys (raw |N12| / mid-σ fine GCI > 10%).
+CI_WATCH_LAYOUTS = frozenset({"3D-CN", "4D-CN", "4D-F", "5D-CN", "5D-F"})
+
+
+def structural_family_for_layout(layout: str) -> str:
+    """Return structural family letter (A–D) for layout key directory grouping."""
+    from blade_structure_utilities.geometry_utilities.section_geometry import (
+        resolve_system_type,
+    )
+
+    try:
+        fam = str(resolve_system_type(str(layout)).structural_family).strip().upper()
+    except Exception:  # noqa: BLE001
+        fam = ""
+    if fam in {"A", "B", "C", "D"}:
+        return fam
+    # Fallback: first letter after optional leading digits (e.g. 5D-F → D, 0A → A).
+    for ch in str(layout):
+        if ch.upper() in {"A", "B", "C", "D"}:
+            return ch.upper()
+    return "other"
 
 # Kind-peak metrics to plot when present in the ladder.
 PEAK_METRICS: tuple[tuple[str, str], ...] = tuple(
@@ -453,6 +481,361 @@ def plot_grid_independence_study(
     if p is not None:
         written.append(p)
 
+    try:
+        written.extend(
+            plot_study_layout_convergence(
+                out,
+                ladder_name=ladder_path.name,
+                summary_name=summary_path.name,
+                out_subdir=str(Path(plots_subdir) / "layouts"),
+            )
+        )
+    except Exception:  # noqa: BLE001 — layout composites must not abort overview plots
+        pass
+
+    return written
+
+
+def _load_recipe_mapping(recipe: str | Path | Mapping[str, Any] | None) -> dict[str, Any]:
+    if recipe is None:
+        return {}
+    if isinstance(recipe, Mapping):
+        return dict(recipe)
+    path = Path(recipe)
+    if not path.is_file():
+        return {}
+    return dict(json.loads(path.read_text(encoding="utf-8")))
+
+
+def shell_from_recipe(
+    layout: str,
+    recipe: str | Path | Mapping[str, Any] | None = None,
+) -> Any:
+    """Build ``ShellMeshInputs`` for ``layout`` from a station recipe mapping/JSON."""
+    data = _load_recipe_mapping(recipe)
+    thickness = dict(data.get("thickness") or DEFAULT_THICKNESS)
+    chord = float(data.get("chord_m", data.get("chord", DEFAULT_CHORD)))
+    twist_deg = float(data.get("twist_deg", DEFAULT_TWIST_DEG))
+    naca_raw = data.get("naca_dat")
+    naca: str | Path | None = None
+    if naca_raw:
+        naca_path = Path(str(naca_raw))
+        if naca_path.is_file():
+            naca = naca_path
+    return _build_shell(
+        layout=str(layout),
+        chord=chord,
+        twist_deg=twist_deg,
+        thickness=thickness,
+        naca_dat=naca,
+    )
+
+
+def _draw_shell_geometry(ax, shell: Any, *, title: str) -> None:
+    """Light print-friendly midlines (skin / web / cap) in B-frame plot axes."""
+    from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+        fit_square_section_axes,
+        section_plot_axes,
+        setup_section_axes,
+    )
+
+    styles = {
+        "skin": dict(color="0.35", lw=1.4, alpha=0.95),
+        "web": dict(color="#059669", lw=1.8, alpha=0.95),
+        "cap": dict(color="#dc2626", lw=2.0, alpha=0.95),
+        "other": dict(color="0.55", lw=1.0, alpha=0.75, ls="--"),
+    }
+    midlines = list(getattr(shell, "midlines", []) or [])
+    for strip in midlines:
+        pts = np.asarray(getattr(strip, "midline_b", None), dtype=float)
+        if pts.ndim != 2 or pts.shape[0] < 2:
+            continue
+        st = styles.get(str(getattr(strip, "kind", "other")), styles["other"])
+        h, v = section_plot_axes(pts)
+        ax.plot(h, v, zorder=2, **st)
+
+    le = getattr(shell, "leading_edge_b", None)
+    te = getattr(shell, "trailing_edge_b", None)
+    if le is not None and te is not None:
+        ends = np.asarray([le, te], dtype=float)
+        if ends.shape == (2, 2):
+            h, v = section_plot_axes(ends)
+            ax.scatter(h, v, c="#111827", s=36, marker="x", zorder=5, label="LE / TE")
+
+    ax.set_facecolor("#f7f7f7")
+    ax.grid(True, which="major", color="0.85", lw=0.8, zorder=0)
+    ax.set_axisbelow(True)
+    setup_section_axes(ax)
+    fit_square_section_axes(ax, pad_frac=0.08)
+    ax.set_title(title, fontsize=10)
+    ax.tick_params(labelsize=8)
+
+
+def _gci_pct_label(summary_row: Mapping[str, str] | None, metric: str, kind: str) -> str:
+    if not summary_row:
+        return "n/a"
+    v = _f(dict(summary_row), f"{metric}_gci_fine_{kind}")
+    if not np.isfinite(v):
+        return "n/a"
+    flag = " FAIL" if v > 0.10 else ""
+    return f"{100.0 * v:.1f}%{flag}"
+
+
+def _local_relative_gci(
+    h: np.ndarray,
+    q: np.ndarray,
+    *,
+    fallback_gci: float = float("nan"),
+) -> np.ndarray:
+    """Per-rung relative GCI (fine→coarse), for ±GCI·|Q| error bands.
+
+    At each index ``i`` (ascending ``h``, fine first) uses the three-level
+    Roache/ASME estimate on ``(i,i+1,i+2)`` when available, else a two-level
+    ``Fs=3`` estimate on ``(i,i+1)``, else ``fallback_gci``.
+    """
+    n = int(h.size)
+    rel = np.full(n, float("nan"), dtype=float)
+    if n == 0:
+        return rel
+    order = np.argsort(h)  # fine → coarse
+    h_s = np.asarray(h[order], dtype=float)
+    q_s = np.asarray(q[order], dtype=float)
+    g_s = np.full(n, float("nan"), dtype=float)
+    for i in range(n):
+        g_i = float("nan")
+        if i + 2 < n:
+            g = gci_triplet(
+                [h_s[i], h_s[i + 1], h_s[i + 2]],
+                [q_s[i], q_s[i + 1], q_s[i + 2]],
+            )
+            if np.isfinite(g.gci_fine) and g.gci_fine >= 0.0:
+                g_i = float(g.gci_fine)
+        if not np.isfinite(g_i) and i + 1 < n:
+            try:
+                g_i = float(
+                    gci_fine(
+                        h_s[i],
+                        h_s[i + 1],
+                        q_s[i],
+                        q_s[i + 1],
+                        p=P_DEFAULT,
+                        fs=FS_TWO_LEVEL,
+                    )
+                )
+            except ValueError:
+                g_i = float("nan")
+        if not np.isfinite(g_i) and np.isfinite(fallback_gci) and fallback_gci >= 0.0:
+            g_i = float(fallback_gci)
+        g_s[i] = g_i
+    # Propagate last known estimate to the coarsest point if still NaN.
+    for i in range(n - 2, -1, -1):
+        if not np.isfinite(g_s[i + 1]) and np.isfinite(g_s[i]):
+            g_s[i + 1] = g_s[i]
+    rel[order] = g_s
+    return rel
+
+
+def plot_layout_convergence_with_geometry(
+    layout: str,
+    ladder_rows: Sequence[dict[str, str]],
+    summary_row: Mapping[str, str] | None,
+    shell: Any,
+    outfile: Path,
+    *,
+    title_suffix: str = "",
+    mark_ci_watch: bool | None = None,
+) -> Path | None:
+    """One layout: section geometry (left) + CI ladder curves (right)."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    rows = sorted(
+        (r for r in ladder_rows if str(r.get("layout")) == str(layout)),
+        key=lambda r: _f(r, "h_m"),
+        reverse=True,
+    )
+    if not rows:
+        return None
+
+    watch = (
+        bool(mark_ci_watch)
+        if mark_ci_watch is not None
+        else str(layout) in CI_WATCH_LAYOUTS
+    )
+    watch_tag = "  [CI watch]" if watch else ""
+    suffix = f" {title_suffix}" if title_suffix else ""
+
+    fig, (ax_g, ax_l) = plt.subplots(
+        1, 2, figsize=(11.0, 4.6), gridspec_kw={"width_ratios": [1.05, 1.25]}
+    )
+    geom_title = f"{layout}{watch_tag}\nsection midlines"
+    if shell is not None:
+        _draw_shell_geometry(ax_g, shell, title=geom_title)
+    else:
+        ax_g.text(0.5, 0.5, "geometry unavailable", ha="center", va="center")
+        ax_g.set_axis_off()
+        ax_g.set_title(geom_title, fontsize=10)
+
+    h = np.asarray([_f(r, "h_m") for r in rows], dtype=float)
+    ax_r = ax_l.twinx()
+    series_specs = (
+        ("peak_abs_n12", "skin", KIND_COLORS["skin"], "-", 1.8, ax_l, "|N12|"),
+        ("peak_abs_n12", "web", KIND_COLORS["web"], "-", 1.6, ax_l, "|N12|"),
+        ("peak_mid_sig", "skin", KIND_COLORS["skin"], "--", 1.5, ax_r, "mid-σ"),
+        ("peak_mid_sig", "web", KIND_COLORS["web"], "--", 1.3, ax_r, "mid-σ"),
+    )
+    any_n12 = False
+    any_mid = False
+    band_labeled = False
+    for metric, kind, color, ls, lw, ax, _family in series_specs:
+        col = f"{metric}_{kind}"
+        q = np.asarray([_f(r, col) for r in rows], dtype=float)
+        mask = np.isfinite(h) & np.isfinite(q) & (q > 0.0)
+        if not mask.any():
+            continue
+        h_m = h[mask]
+        q_m = q[mask]
+        # Sort ascending h for a clean fill_between ribbon.
+        order = np.argsort(h_m)
+        h_m = h_m[order]
+        q_m = q_m[order]
+        fallback = (
+            _f(dict(summary_row), f"{metric}_gci_fine_{kind}")
+            if summary_row
+            else float("nan")
+        )
+        rel = _local_relative_gci(h_m, q_m, fallback_gci=fallback)
+        band = np.where(np.isfinite(rel), np.abs(q_m) * rel, 0.0)
+        if np.any(band > 0.0):
+            ax.fill_between(
+                h_m,
+                np.maximum(q_m - band, 0.0),
+                q_m + band,
+                color=color,
+                alpha=0.18,
+                linewidth=0,
+                zorder=1,
+                label="± local GCI·|Q|" if not band_labeled else None,
+            )
+            band_labeled = True
+        gci_s = _gci_pct_label(summary_row, metric, kind)
+        pretty = "|N12|" if metric == "peak_abs_n12" else "mid-σ"
+        ax.plot(
+            h_m,
+            q_m,
+            ls,
+            color=color,
+            lw=lw,
+            ms=4,
+            marker="o",
+            zorder=3,
+            label=f"{pretty} {kind}  GCI={gci_s}",
+        )
+        if metric == "peak_abs_n12":
+            any_n12 = True
+        else:
+            any_mid = True
+
+    ax_l.set_xlabel("h [m]", fontsize=9)
+    ax_l.set_ylabel("|N12| [N/m]", fontsize=9, color=KIND_COLORS["skin"])
+    ax_r.set_ylabel("mid-σ [Pa]", fontsize=9, color="#6b7280")
+    ax_l.tick_params(labelsize=8)
+    ax_r.tick_params(labelsize=8)
+    ax_l.grid(True, alpha=0.3)
+    if any_n12 or any_mid:
+        lines_l, labels_l = ax_l.get_legend_handles_labels()
+        lines_r, labels_r = ax_r.get_legend_handles_labels()
+        ax_l.legend(lines_l + lines_r, labels_l + labels_r, fontsize=7, loc="best")
+    else:
+        ax_l.text(0.5, 0.5, "no CI ladder series", ha="center", va="center", transform=ax_l.transAxes)
+
+    # Call out CI gate failure on title when either skin/web N12 or mid-σ GCI > 10%.
+    fail_bits: list[str] = []
+    for metric, kind, _lab in (
+        ("peak_abs_n12", "skin", "N12 skin"),
+        ("peak_abs_n12", "web", "N12 web"),
+        ("peak_mid_sig", "skin", "mid-σ skin"),
+        ("peak_mid_sig", "web", "mid-σ web"),
+    ):
+        if not summary_row:
+            break
+        v = _f(dict(summary_row), f"{metric}_gci_fine_{kind}")
+        if np.isfinite(v) and v > 0.10:
+            fail_bits.append(f"{kind}/{metric}={100*v:.1f}%")
+    gate = ("  ·  CI GCI>10%: " + ", ".join(fail_bits)) if fail_bits else ""
+    ax_l.set_title(f"CI ladder vs h{suffix}{gate}", fontsize=10)
+
+    fig.suptitle(f"{layout}{watch_tag} — geometry + convergence{suffix}", fontsize=12, y=1.02)
+    fig.tight_layout()
+    return _savefig(fig, Path(outfile), dpi=150)
+
+
+def plot_study_layout_convergence(
+    study_dir: str | Path,
+    *,
+    keys: Sequence[str] | None = None,
+    out_subdir: str = "plots/layouts",
+    ladder_name: str = "gci_ladder.csv",
+    summary_name: str = "gci_summary.csv",
+    recipe_path: str | Path | None = None,
+    title_suffix: str = "",
+    mark_ci_watch: bool | None = None,
+) -> list[Path]:
+    """Write per-layout geometry+ladder PNGs for a finished GCI study directory."""
+    out = Path(study_dir)
+    ladder_path = out / ladder_name
+    summary_path = out / summary_name
+    if not ladder_path.is_file():
+        alt = out / "grid_independence_ladder.csv"
+        if alt.is_file():
+            ladder_path = alt
+    if not summary_path.is_file():
+        alt = out / "grid_independence_summary.csv"
+        if alt.is_file():
+            summary_path = alt
+    if not ladder_path.is_file() or not summary_path.is_file():
+        return []
+
+    ladder = _read_csv(ladder_path)
+    summary_rows = _read_csv(summary_path)
+    summary_by = {str(r.get("layout", "")): r for r in summary_rows}
+    layouts = _layouts(ladder)
+    if keys is not None:
+        want = {str(k).strip() for k in keys if str(k).strip()}
+        layouts = [k for k in layouts if k in want]
+
+    recipe = recipe_path if recipe_path is not None else out / "station_recipe.json"
+    recipe_map = _load_recipe_mapping(recipe)
+    chord = float(recipe_map.get("chord_m", DEFAULT_CHORD)) if recipe_map else float(DEFAULT_CHORD)
+    twist = float(recipe_map.get("twist_deg", DEFAULT_TWIST_DEG)) if recipe_map else float(DEFAULT_TWIST_DEG)
+    geom_note = f"c={chord:.3g} m, twist={twist:.2g}°"
+
+    dest = out / out_subdir
+    dest.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    for layout in layouts:
+        try:
+            shell = shell_from_recipe(layout, recipe_map or None)
+        except Exception:  # noqa: BLE001
+            shell = None
+        family = structural_family_for_layout(layout)
+        family_dir = dest / family
+        family_dir.mkdir(parents=True, exist_ok=True)
+        outfile = family_dir / f"{layout}_convergence.png"
+        suffix = title_suffix or geom_note
+        path = plot_layout_convergence_with_geometry(
+            layout,
+            ladder,
+            summary_by.get(layout),
+            shell,
+            outfile,
+            title_suffix=suffix,
+            mark_ci_watch=mark_ci_watch,
+        )
+        if path is not None:
+            written.append(path)
     return written
 
 
@@ -511,10 +894,15 @@ def plot_compare_mitc4_ccx(
 
 
 __all__ = [
+    "CI_WATCH_LAYOUTS",
     "plot_compare_mitc4_ccx",
     "plot_gci_fine_bars",
     "plot_grid_independence_study",
     "plot_ladder_small_multiples",
     "plot_last_two_drift_bars",
+    "plot_layout_convergence_with_geometry",
     "plot_scalar_gci_bars",
+    "plot_study_layout_convergence",
+    "shell_from_recipe",
+    "structural_family_for_layout",
 ]

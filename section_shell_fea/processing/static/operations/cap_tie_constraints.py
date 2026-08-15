@@ -53,12 +53,13 @@ a_z b_y`` and ``P`` interpolated between skin nodes ``k`` with weights ``N_k``::
 shared-node compatibility condition, so coincident cap/skin nodes need no
 special case.
 
-Master DOFs must be *independent* for the reduction to be exact:
+Master DOFs must resolve to *independent* DOFs for the reduction to be exact:
 :class:`ReduceConstrainedShellSystem` builds ``T`` by looking each master up in
-the independent set and silently drops any master that is itself a slave. This
-module raises rather than let a constraint be quietly weakened, which rules out
-combining it with ``interface_constraint_mode='transformed_basis'`` where skin
-endpoint DOFs are slaves.
+the independent set and silently drops any master that is itself a slave. When
+``existing`` junction MPCs are present (``transformed_basis`` / ``shared_rotated``),
+this module **expands** skin-master terms through those equations so cap ties
+compose with cluster-frame constraints instead of raising. Cap slaves that are
+already constrained still raise (conflicting second rule).
 """
 
 from __future__ import annotations
@@ -261,6 +262,37 @@ def build_cap_skin_ties(
     return report
 
 
+def _coalesce_terms(terms: list[tuple[int, float]]) -> list[tuple[int, float]]:
+    acc: dict[int, float] = {}
+    for m, c in terms:
+        acc[int(m)] = acc.get(int(m), 0.0) + float(c)
+    return [(m, c) for m, c in acc.items() if abs(c) > 1e-14]
+
+
+def _expand_master_terms(
+    terms: list[tuple[int, float]],
+    existing: Constraints,
+    *,
+    _depth: int = 0,
+) -> list[tuple[int, float]]:
+    """Substitute slave masters through ``existing`` until all masters are free."""
+    if _depth > 12:
+        raise ValueError(
+            "cap-tie master expansion exceeded depth 12 (cyclic constraints?)"
+        )
+    out: list[tuple[int, float]] = []
+    for m, c in terms:
+        m_i = int(m)
+        if m_i in existing:
+            nested = [
+                (int(m2), float(c) * float(c2)) for m2, c2 in existing[m_i]
+            ]
+            out.extend(_expand_master_terms(nested, existing, _depth=_depth + 1))
+        else:
+            out.append((m_i, float(c)))
+    return _coalesce_terms(out)
+
+
 def cap_tie_constraints(
     report: CapTieReport,
     node_meta: GlobalNodeMeta,
@@ -270,14 +302,17 @@ def cap_tie_constraints(
 ) -> Constraints:
     """Turn located ties into rigid-link MPCs on the six shared DOFs.
 
-    Raises when a link would collide with ``existing`` constraints — either the
-    cap node is already a slave, or a skin master is itself a slave (which the
-    T-matrix reduction would silently drop, weakening the link without warning).
+    Cap nodes already constrained by junction MPCs (``transformed_basis``
+    endpoint slaves) are skipped — the cluster path owns them, same as the
+    shared-node skip in :func:`build_cap_skin_ties`. Skin masters that are
+    themselves slaves are expanded through ``existing`` so emitted masters
+    stay independent.
     """
     existing = existing or {}
     existing_slaves = set(existing.keys())
     constraints: Constraints = {}
     has_drilling = int(ndof) >= 6
+    skipped_junction = 0
 
     tangents = node_meta.tangent_yz
     for lk in report.links:
@@ -299,7 +334,11 @@ def cap_tie_constraints(
         }
         if has_drilling:
             slave_dofs[BETA_ZET] = gdof(lk.slave_node, BETA_ZET, ndof)
-        clash = [d for d in slave_dofs.values() if d in existing_slaves or d in constraints]
+        # Junction / prior MPC already owns this cap node — do not double-tie.
+        if any(d in existing_slaves for d in slave_dofs.values()):
+            skipped_junction += 1
+            continue
+        clash = [d for d in slave_dofs.values() if d in constraints]
         if clash:
             raise ValueError(
                 f"cap node {lk.slave_node} ({lk.cap_label}) is already a "
@@ -334,16 +373,6 @@ def cap_tie_constraints(
             m_bx = gdof(gm, BETA_X, ndof)
             m_bz = gdof(gm, BETA_ZET, ndof) if has_drilling else None
 
-            masters = [m_ux, m_us, m_w, m_bs, m_bx] + ([m_bz] if has_drilling else [])
-            bad = [d for d in masters if d in existing_slaves]
-            if bad:
-                raise ValueError(
-                    f"skin master node {gm} ({lk.skin_label}) has DOFs {sorted(bad)} "
-                    "that are themselves constraint slaves; the reduction would drop "
-                    "them and silently weaken the cap tie. Use "
-                    "interface_constraint_mode='shared' with cap ties."
-                )
-
             terms[U_X] += [(m_ux, n_k), (m_bs, n_k * cr_t)]
             terms[U_S] += [(m_us, n_k * tt), (m_w, n_k * nt), (m_bx, n_k * cr_rt)]
             terms[W] += [(m_us, n_k * tn), (m_w, n_k * nn), (m_bx, n_k * cr_rn)]
@@ -355,10 +384,18 @@ def cap_tie_constraints(
                 terms[BETA_ZET] += [(m_bs, n_k * tn), (m_bz, n_k * nn)]
 
         for local, sdof in slave_dofs.items():
-            kept = [(m, c) for m, c in terms[local] if abs(c) > 1e-14]
+            kept = _expand_master_terms(
+                [(m, c) for m, c in terms[local] if abs(c) > 1e-14],
+                existing,
+            )
             if kept:
                 constraints[sdof] = kept
 
+    if skipped_junction:
+        report.notes.append(
+            f"skipped {skipped_junction} cap-tie link(s) already owned by "
+            "junction / existing MPCs (transformed_basis endpoints)"
+        )
     return constraints
 
 

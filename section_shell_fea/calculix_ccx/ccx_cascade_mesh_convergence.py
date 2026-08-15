@@ -42,7 +42,8 @@ from blade_structure_utilities.mesh_utilities.section_mesh import (
     mesh_quality_report,
 )
 
-from .sfv_panel_loads import sfv_to_nx_nxy
+from .sfv_panel_loads import sfv_to_n11_n12
+
 from .solve import solve_global_coupled_ccx
 
 
@@ -90,6 +91,8 @@ def run_ccx_cascade_at_frac(
     ccx_exe: str = "ccx",
     l_x: float = 1.0,
     cap_tie_export: str = "tie",
+    junction_band_elements: int | None = None,
+    junction_band_step_over_h: float | None = None,
 ) -> CascadeScalars:
     """Build mesh at ``frac``, solve with CalculiX, return membrane ``CascadeScalars``."""
     thickness = dict(thickness or DEFAULT_THICKNESS)
@@ -101,7 +104,12 @@ def run_ccx_cascade_at_frac(
         thickness=thickness,
         naca_dat=naca_dat,
     )
-    mesh = build_section_strip_mesh(shell, target_element_length_frac=float(frac))
+    mesh = build_section_strip_mesh(
+        shell,
+        target_element_length_frac=float(frac),
+        junction_band_elements=junction_band_elements,
+        junction_band_step_over_h=junction_band_step_over_h,
+    )
     report = mesh_quality_report(mesh, target_element_length_frac=float(frac))
     if require_mesh_qa:
         assert_strip_mesh_quality(mesh, target_element_length_frac=float(frac))
@@ -115,7 +123,7 @@ def run_ccx_cascade_at_frac(
     zones = list(topo.zones)
     resultants = BeamResultantVector.from_named(**load)
     sfv = shape_section_force_vector(resultants, shell.midlines, L_x=float(l_x))
-    nx_panels, nxy_panels = sfv_to_nx_nxy(sfv, zones)
+    n11_panels, n12_panels = sfv_to_n11_n12(sfv, zones)
 
     work = Path(work_dir) if work_dir is not None else Path("ccx_cascade_work")
     work = work / str(layout) / f"frac_{float(frac):.4f}".replace(".", "p")
@@ -128,8 +136,8 @@ def run_ccx_cascade_at_frac(
     try:
         results, diag, _inp = solve_global_coupled_ccx(
             zones,
-            nx_panels,
-            nxy_panels,
+            n11_panels,
+            n12_panels,
             section_strip_mesh=mesh,
             work_dir=work / export,
             ccx_exe=ccx_exe,
@@ -145,8 +153,8 @@ def run_ccx_cascade_at_frac(
             try:
                 results, diag, _inp = solve_global_coupled_ccx(
                     zones,
-                    nx_panels,
-                    nxy_panels,
+                    n11_panels,
+                    n12_panels,
                     section_strip_mesh=mesh,
                     work_dir=work / "equation",
                     ccx_exe=ccx_exe,
@@ -178,17 +186,17 @@ def run_ccx_cascade_at_frac(
                 trust = False
 
     labels = [str(getattr(p, "label", "")) for p in zones]
-    abs_nxy = _panel_resultant_arrays(zones, results, "N12")
-    abs_nx = _panel_resultant_arrays(zones, results, "N11")
-    abs_ny = _panel_resultant_arrays(zones, results, "N22")
-    peak_nxy, peak_nxy_int = _accumulate_kind_peaks(
-        abs_nxy, labels=labels, band=ENDPOINT_BAND
+    abs_n12 = _panel_resultant_arrays(zones, results, "N12")
+    abs_n11 = _panel_resultant_arrays(zones, results, "N11")
+    abs_n22 = _panel_resultant_arrays(zones, results, "N22")
+    peak_n12, peak_n12_int = _accumulate_kind_peaks(
+        abs_n12, labels=labels, band=ENDPOINT_BAND
     )
-    peak_nx, peak_nx_int = _accumulate_kind_peaks(
-        abs_nx, labels=labels, band=ENDPOINT_BAND
+    peak_n11, peak_n11_int = _accumulate_kind_peaks(
+        abs_n11, labels=labels, band=ENDPOINT_BAND
     )
-    peak_ny, peak_ny_int = _accumulate_kind_peaks(
-        abs_ny, labels=labels, band=ENDPOINT_BAND
+    peak_n22, peak_n22_int = _accumulate_kind_peaks(
+        abs_n22, labels=labels, band=ENDPOINT_BAND
     )
 
     return CascadeScalars(
@@ -202,12 +210,12 @@ def run_ccx_cascade_at_frac(
         d_inf=float("nan"),
         residual_rel=float("nan"),
         residual_rel_independent=float("nan"),
-        peak_abs_n12=peak_nxy,
-        peak_abs_n11=peak_nx,
-        peak_abs_n22=peak_ny,
-        peak_abs_n12_interior=peak_nxy_int,
-        peak_abs_n11_interior=peak_nx_int,
-        peak_abs_n22_interior=peak_ny_int,
+        peak_abs_n12=peak_n12,
+        peak_abs_n11=peak_n11,
+        peak_abs_n22=peak_n22,
+        peak_abs_n12_interior=peak_n12_int,
+        peak_abs_n11_interior=peak_n11_int,
+        peak_abs_n22_interior=peak_n22_int,
         governing_fi=float("nan"),
         cascade_trust_ok=bool(trust),
         solve_residual_rel=None,

@@ -242,7 +242,7 @@ def _build_geometric_interfaces(zones: list, tol: float = 1e-6) -> list[dict]:
     cluster_size is the total number of panel-endpoints meeting at that junction
     (2 for a 2-way interface, 3 for a T-junction, etc.).
     """
-    clusters = _build_endpoint_clusters_raw(panels, tol)
+    clusters = _build_endpoint_clusters_raw(zones, tol)
 
     interfaces: list[dict] = []
     seen_pairs: set[tuple[int, str, int, str]] = set()
@@ -277,7 +277,7 @@ def _build_geometric_interfaces(zones: list, tol: float = 1e-6) -> list[dict]:
 
 def _build_endpoint_clusters(zones: list, tol: float = 1e-6) -> list[list[dict]]:
     """Cluster coincident panel endpoints: [{pi,end,pt}, ...] per junction."""
-    return _build_endpoint_clusters_raw(panels, tol)
+    return _build_endpoint_clusters_raw(zones, tol)
 
 
 def check_panel_equilibrium(
@@ -300,7 +300,7 @@ def check_panel_equilibrium(
     - resultant-based mismatch (secondary diagnostic)
     """
     results: list[dict] = []
-    interfaces = _build_geometric_interfaces(panels, tol=endpoint_tol)
+    interfaces = _build_geometric_interfaces(zones, tol=endpoint_tol)
     # Build a common traction-frame tangent per geometric junction cluster.
     cluster_tangent: dict[tuple[int, ...], np.ndarray] = {}
     endpoint_sets: list[set[tuple[int, str]]] = []
@@ -320,7 +320,7 @@ def check_panel_equilibrium(
         key = tuple(sorted(hash(x) for x in s))
         t_mats: list[np.ndarray] = []
         for pi, end in s:
-            t = _panel_end_tangent(panels[pi], end)
+            t = _panel_end_tangent(zones[pi], end)
             t_mats.append(np.outer(t, t))
         if not t_mats:
             cluster_tangent[key] = np.array([1.0, 0.0], dtype=float)
@@ -356,11 +356,11 @@ def check_panel_equilibrium(
         r_i = res_i[0] if end_i == "start" else res_i[-1]
         r_j = res_j[0] if end_j == "start" else res_j[-1]
 
-        label_i = getattr(panels[pi], "label", None) or f"panel_{pi}"
-        label_j = getattr(panels[pj], "label", None) or f"panel_{pj}"
+        label_i = getattr(zones[pi], "label", None) or f"panel_{pi}"
+        label_j = getattr(zones[pj], "label", None) or f"panel_{pj}"
 
-        t_i = _panel_end_tangent(panels[pi], end_i)
-        t_j = _panel_end_tangent(panels[pj], end_j)
+        t_i = _panel_end_tangent(zones[pi], end_i)
+        t_j = _panel_end_tangent(zones[pj], end_j)
         key = _cluster_key((pi, end_i), (pj, end_j))
         t_ref = cluster_tangent.get(key, t_i)
         sign_i = 1.0 if float(np.dot(t_i, t_ref)) >= 0.0 else -1.0
@@ -510,21 +510,36 @@ def check_panel_equilibrium(
             "reaction_Nx_j": Fx_j,
             "reaction_Nxy_i": Fs_i,
             "reaction_Nxy_j": Fs_j,
+            # Legacy Nx/Nxy keys kept for existing tests; E-frame aliases below.
             "reaction_dNx_rel": dFx_rel,
             "reaction_dNxy_rel": dFs_rel,
+            "reaction_dN11_rel": dFx_rel,
+            "reaction_dN12_rel": dFs_rel,
             "reaction_tol_nx": tol_react_nx,
             "reaction_tol_nxy": tol_react_nxy,
+            "reaction_tol_n11": tol_react_nx,
+            "reaction_tol_n12": tol_react_nxy,
             "reaction_pass_nx": pass_react_nx,
             "reaction_pass_nxy": pass_react_nxy,
+            "reaction_pass_n11": pass_react_nx,
+            "reaction_pass_n12": pass_react_nxy,
             "reaction_pass": bool(pass_react_nx and pass_react_nxy),
             "field_Nx_i": fNx_i,
             "field_Nx_j": fNx_j,
             "field_Nxy_i": fNxy_i,
             "field_Nxy_j": fNxy_j,
+            "field_N11_i": fNx_i,
+            "field_N11_j": fNx_j,
+            "field_N12_i": fNxy_i,
+            "field_N12_j": fNxy_j,
             "resultant_dNx_rel": dNx_rel_field,
             "resultant_dNxy_rel": dNxy_rel_field,
+            "resultant_dN11_rel": dNx_rel_field,
+            "resultant_dN12_rel": dNxy_rel_field,
             "resultant_nxy_source": nxy_source,
+            "resultant_n12_source": nxy_source,
             "nxy_compare_mode": nxy_source,
+            "n12_compare_mode": nxy_source,
             # Physics-correct traction-vector continuity (geometry-based).
             "dTx_rel": dTx_rel,
             "dT_yz_rel": dT_yz_rel,
@@ -537,12 +552,18 @@ def check_panel_equilibrium(
             "resultant_dTn_rel": dT_yz_rel,
             "resultant_dNx_rel_centroid": dNx_rel_resultant,
             "resultant_dNxy_rel_centroid": dNxy_rel_resultant,
+            "resultant_dN11_rel_centroid": dNx_rel_resultant,
+            "resultant_dN12_rel_centroid": dNxy_rel_resultant,
             "resultant_tol_nx": tol_res_nx,
             "resultant_tol_nxy": tol_res_nxy,
+            "resultant_tol_n11": tol_res_nx,
+            "resultant_tol_n12": tol_res_nxy,
             "resultant_tol_dTx": tol_res_tx,
             "resultant_tol_dT_yz": tol_res_tyz,
             "resultant_pass_nx": pass_res_nx,
             "resultant_pass_nxy": pass_res_nxy,
+            "resultant_pass_n11": pass_res_nx,
+            "resultant_pass_n12": pass_res_nxy,
             "resultant_pass_dT_yz": pass_dT_yz,
             "resultant_pass": bool(pass_res_nx and pass_res_nxy),
         })
@@ -562,7 +583,7 @@ def check_cluster_equilibrium(
       Tx_sum   = Σ Tx_int
       T_yz_sum = Σ Ts_int * s_hat
     """
-    clusters = _build_endpoint_clusters(panels, tol=endpoint_tol)
+    clusters = _build_endpoint_clusters(zones, tol=endpoint_tol)
     if not _edge_traction_diagnostics_enabled():
         return []
     if not all_panel_diagnostics:
@@ -576,7 +597,7 @@ def check_cluster_equilibrium(
         t_sum = np.zeros(2, dtype=float)
         members: list[str] = []
         # Compute collinearity of this cluster (5° tolerance).
-        _tangents = [_panel_end_tangent(panels[int(ep["pi"])], str(ep["end"])) for ep in c]
+        _tangents = [_panel_end_tangent(zones[int(ep["pi"])], str(ep["end"])) for ep in c]
         _collinear = True
         if len(_tangents) >= 2:
             _t0 = _tangents[0]
@@ -589,13 +610,13 @@ def check_cluster_equilibrium(
         for ep in c:
             pi = int(ep["pi"])
             end = str(ep["end"])
-            lbl = str(getattr(panels[pi], "label", None) or f"panel_{pi}")
+            lbl = str(getattr(zones[pi], "label", None) or f"panel_{pi}")
             members.append(f"{lbl}:{end}")
             if pi >= len(all_panel_diagnostics):
                 continue
             di = all_panel_diagnostics[pi] or {}
             tx, ts = _diag_boundary_edge_traction(di, end)
-            t = _panel_end_tangent(panels[pi], end)
+            t = _panel_end_tangent(zones[pi], end)
             t_sum = t_sum + ts * t
             tx_terms.append(float(tx))
             ts_terms.append(float(ts))

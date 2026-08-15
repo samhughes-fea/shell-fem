@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from blade_structure_utilities.mesh_utilities.section_mesh.engine.fixtures.discretise import discretise_strip
+from blade_structure_utilities.mesh_utilities.section_mesh.strip.fixtures.discretise import discretise_strip
 from .orientation import quad_coords_from_strip
 
 

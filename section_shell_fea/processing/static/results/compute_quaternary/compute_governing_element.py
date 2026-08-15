@@ -14,6 +14,30 @@ from typing import Any
 import numpy as np
 
 
+def _bundle_zones(bundle: Any) -> list:
+    """The bundle's material zones, or raise saying which attribute is missing.
+
+    Deliberately not ``getattr(bundle, "zones", None) or []``. Both functions
+    below used to read ``bundle.panels``, which the ``panels`` -> ``zones``
+    rename left behind: the attribute was simply absent, ``or []`` supplied an
+    empty list, the loop body never ran, and a governing FI of ``0.0`` was
+    returned for every bundle. Nothing raised, and reported job FI was zero
+    everywhere (docs/bug_log.md BL-012).
+
+    An empty zone list is still legal — a bundle may genuinely carry none — so
+    the distinction that matters is *absent attribute* versus *empty sequence*,
+    which is exactly what the swallow destroyed.
+    """
+    zones = getattr(bundle, "zones", None)
+    if zones is None:
+        raise AttributeError(
+            f"{type(bundle).__name__} has no 'zones'. Governing-FI selection "
+            f"needs the material zones; a silent empty list here returns FI=0 "
+            f"for the whole section (BL-012)."
+        )
+    return list(zones)
+
+
 def max_hashin_fi_from_bundle(
     bundle: Any,
     *,
@@ -27,11 +51,11 @@ def max_hashin_fi_from_bundle(
     )
 
     st = strengths or default_skin_strengths_pa()
-    panels = getattr(bundle, "panels", None) or []
+    zones = _bundle_zones(bundle)
     all_res = getattr(bundle, "all_panel_results", None) or []
     fi_max = 0.0
     needs_review = False
-    for pi, panel in enumerate(panels):
+    for pi, panel in enumerate(zones):
         if pi >= len(all_res):
             continue
         plies = panel.lam.build_plies()
@@ -66,9 +90,9 @@ def select_governing_hashin_element(
         "needs_review": False,
         "provenance_kinds": [],
     }
-    panels = getattr(bundle, "panels", None) or []
+    zones = _bundle_zones(bundle)
     all_res = getattr(bundle, "all_panel_results", None) or []
-    for pi, panel in enumerate(panels):
+    for pi, panel in enumerate(zones):
         pnm = str(getattr(panel, "name", f"p{pi}"))
         if pi >= len(all_res):
             continue

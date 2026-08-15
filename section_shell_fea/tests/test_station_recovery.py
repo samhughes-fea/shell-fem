@@ -14,7 +14,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
     SectionLinearStaticRunner,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
     build_section_strip_mesh,
 )
 

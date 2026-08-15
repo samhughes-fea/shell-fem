@@ -344,7 +344,7 @@ def plot_clpt_laminate_stress_fi(
         ShellPanelResultants,
     )
 
-    p = panels[panel_index]
+    p = zones[panel_index]
     plies_legacy = p.lam.build_plies()
     lam = laminate_definition_from_legacy(p.lam, plies=plies_legacy)
     if lam is None:

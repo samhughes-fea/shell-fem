@@ -12,7 +12,7 @@ from blade_structure_utilities.load_utilities.section_loads.surface_traction.sta
     StationAeroContext,
     build_station_load_field as _build_station_load_field,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.inputs.shell_inputs import ShellMeshInputs
+from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import ShellMeshInputs
 
 warnings.warn(
     "Import build_station_load_field from "

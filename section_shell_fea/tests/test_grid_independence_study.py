@@ -50,6 +50,71 @@ def test_smoke_keys_exclude_ci_watch():
     assert set(FAST_CI_KEYS).isdisjoint(CI_WATCH_KEYS)
 
 
+def _summary_with_gci(*, gci: float, detail: str) -> LayoutDriftSummary:
+    """A summary that is clean apart from one skin ``peak_abs_n12`` GCI cell."""
+    return LayoutDriftSummary(
+        layout="0A",
+        family="A",
+        has_spar_caps=False,
+        present_kinds=("skin", "web"),
+        full_drift={m: {"skin": 1.1, "web": 1.1} for m in KIND_METRICS},
+        last_two_drift={m: {"skin": 1.1, "web": 1.1} for m in KIND_METRICS},
+        production_drift={m: {"skin": 1.1, "web": 1.1} for m in KIND_METRICS},
+        interior_last_two_drift={m: {"skin": 1.1, "web": 1.1} for m in KIND_METRICS},
+        gci_fine={
+            m: {"skin": gci if m == "peak_abs_n12" else 0.02, "web": 0.02}
+            for m in KIND_METRICS
+        },
+        gci_ok={
+            m: {"skin": m != "peak_abs_n12", "web": True} for m in KIND_METRICS
+        },
+        gci_detail={
+            m: {"skin": detail if m == "peak_abs_n12" else "", "web": ""}
+            for m in KIND_METRICS
+        },
+        governing_fi_full_drift=1.1,
+        governing_fi_last_two_drift=1.1,
+        governing_fi_production_drift=1.1,
+        governing_fi_gci_fine=0.02,
+        governing_fi_gci_ok=True,
+        all_mesh_ok=True,
+        all_trust_ok=True,
+    )
+
+
+def test_small_non_monotonic_gci_is_not_a_convergence_failure():
+    """Roache's GCI assumes monotonic convergence; below the limit it just does not apply.
+
+    The gate used to fail ``gci_non_monotonic`` unconditionally, which rejected
+    six smoke-matrix layouts whose GCI was `2e-4` against a limit of `0.1` — a
+    quantity converged to within noise, failed for the shape of its Richardson
+    triple. Classification now comes from ``classify_gci_fail``, which is the
+    same decision the stability scorecard reports, so the two cannot disagree.
+    """
+    converged = _summary_with_gci(gci=0.000212, detail="gci_non_monotonic")
+    assert not evaluate_layout_gates(converged, gates="ci")
+
+
+def test_non_monotonic_gci_above_the_limit_still_fails():
+    """The guard on the guard: magnitude must still dominate.
+
+    Without this, the fix above would be indistinguishable from switching the
+    GCI gate off.
+    """
+    diverged = _summary_with_gci(gci=0.25, detail="gci_non_monotonic")
+    fails = evaluate_layout_gates(diverged, gates="ci")
+    assert any(
+        f.metric == "peak_abs_n12_gci_fine" and f.kind == "skin" for f in fails
+    ), f"a GCI of 0.25 against a 0.10 limit must fail regardless of detail; got {fails}"
+
+
+def test_undefined_gci_still_fails():
+    """A GCI that could not be computed is missing evidence, not applicability."""
+    undefined = _summary_with_gci(gci=float("nan"), detail="gci_undefined")
+    fails = evaluate_layout_gates(undefined, gates="ci")
+    assert any(f.metric == "peak_abs_n12_gci_fine" for f in fails)
+
+
 def test_ci_gates_skip_cap_kind_peaks():
     """Cap kind-peak drifts are informational under CI (Defect K analogue)."""
     summary = LayoutDriftSummary(

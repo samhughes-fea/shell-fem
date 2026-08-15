@@ -56,7 +56,7 @@ def test_discrete_caps_retain_web_intersections_without_webfoot_forcing(layout_k
     """Discrete caps (Y=C): cap strips still intersect webs without foot forcing."""
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -81,7 +81,7 @@ def test_discrete_caps_retain_web_intersections_without_webfoot_forcing(layout_k
 @pytest.mark.parametrize("layout_key", ["2C-CN", "3D-F"])
 def test_interior_cap_vertex_on_web_after_mesh_inputs(airfoil, layout_key: str):
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 

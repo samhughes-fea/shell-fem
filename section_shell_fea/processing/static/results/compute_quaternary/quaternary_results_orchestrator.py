@@ -265,7 +265,7 @@ def _governing_from_arrays(
                 "panel_index": int(panel_index[ri_il]),
                 "element_index": int(element_index[ri_il]) if element_index is not None else int(ri_il),
                 "ply_index": -1,
-                "criterion": "hashin",
+                "criterion": "hashin_il",
             }
 
     vm = np.asarray(von_mises_fi, dtype=float)

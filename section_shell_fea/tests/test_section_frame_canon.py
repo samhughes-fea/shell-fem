@@ -286,7 +286,7 @@ class TestSectionPlotContract:
 
     def test_axes_are_labelled_and_inverted(self, tmp_path):
         pytest.importorskip("matplotlib")
-        from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+        from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
             build_section_strip_mesh,
         )
 
@@ -301,7 +301,7 @@ class TestSectionPlotContract:
     def test_drawn_extents_are_chord_horizontal(self, tmp_path):
         """The 90°-rotated rendering would put the chord on the vertical axis."""
         pytest.importorskip("matplotlib")
-        from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+        from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
             build_section_strip_mesh,
         )
 
@@ -317,3 +317,83 @@ class TestSectionPlotContract:
         pt = build_shell_panel_topology("2412", [0.35], chord_m=CHORD, twist_rad=0.15)
         pts = np.vstack([np.asarray(p.nodes, dtype=float) for p in pt.zones])
         assert float(np.min(pts[:, 1])) < 0.0 < float(np.max(pts[:, 1]))
+
+
+class TestFlapEdgeMapReachesTheRightAxis:
+    """The load channels must bend the section about the axis they name.
+
+    ``blade_resultants_to_shell_channels`` maps ``Mz <- flap`` / ``My <- edge``,
+    and ``beam_resultants_to_nodal_load`` turns those into axial couples about
+    the stored columns. Whether that lands on the flapwise or the edgewise axis
+    depends entirely on the section frame — and no existing load test can see
+    it, because each is self-consistent within whatever frame it is handed.
+
+    This is the assertion that was missing when the strips carried the swapped
+    rotated-NACA frame: the adapter said ``Mz <- flap`` while the couple bent
+    the section edgewise.
+    """
+
+    def _axial_node_loads(self, **named_resultants):
+        """Nodal axial load per node, and the canonical-B node positions."""
+        from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+            blade_resultants_to_shell_channels,
+        )
+        from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+            BeamResultantVector,
+        )
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.beam_resultants_to_nodal_load import (
+            beam_resultants_to_nodal_load,
+        )
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+            U_X,
+            gdof,
+        )
+        from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
+            SectionLinearStaticRunner,
+        )
+        from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
+            build_section_strip_mesh,
+        )
+
+        pt = build_shell_panel_topology("2412", [0.35], chord_m=CHORD, twist_rad=0.0)
+        mesh = build_section_strip_mesh(pt.shell_inputs, n_elements_per_panel=6)
+        runner = SectionLinearStaticRunner(
+            panel_topology=pt, section_strip_mesh=mesh,
+            My=0.0, Mz=0.0, load_channel="equipollent",
+        ).execute()
+        node_meta = runner.assembly.node_meta
+
+        ch = blade_resultants_to_shell_channels(**named_resultants)
+        vec = BeamResultantVector.from_named(
+            N=0.0, Vy=ch.Vy, Vz=ch.Vz, My=ch.My, Mz=ch.Mz, T=0.0,
+        )
+        f = beam_resultants_to_nodal_load(node_meta, vec)
+        fx = np.array(
+            [f[gdof(i, U_X, 6)] for i in range(node_meta.n_nodes)], dtype=float
+        )
+        return np.asarray(node_meta.yz, dtype=float), fx
+
+    @staticmethod
+    def _abs_corr(pos: np.ndarray, fx: np.ndarray) -> tuple[float, float]:
+        loaded = np.isfinite(fx) & np.isfinite(pos).all(axis=1) & (np.abs(fx) > 0.0)
+        r_x = abs(float(np.corrcoef(pos[loaded, 0], fx[loaded])[0, 1]))
+        r_y = abs(float(np.corrcoef(pos[loaded, 1], fx[loaded])[0, 1]))
+        return r_x, r_y
+
+    def test_flapwise_moment_produces_flapwise_bending(self):
+        """M_flapwise: axial load varies with X_B, and not at all with Y_B."""
+        pos, fx = self._axial_node_loads(M_flapwise=1.0e5)
+        r_x, r_y = self._abs_corr(pos, fx)
+        assert r_y == pytest.approx(0.0, abs=1e-9), (
+            f"a flapwise moment leaked into edgewise bending: |corr(Y_B)|={r_y:.4f}"
+        )
+        assert r_x > 0.5, f"expected axial load to track X_B; |corr(X_B)|={r_x:.4f}"
+
+    def test_edgewise_moment_produces_edgewise_bending(self):
+        """M_edgewise: the mirror image — axial load varies with Y_B only."""
+        pos, fx = self._axial_node_loads(M_edgewise=1.0e5)
+        r_x, r_y = self._abs_corr(pos, fx)
+        assert r_x == pytest.approx(0.0, abs=1e-9), (
+            f"an edgewise moment leaked into flapwise bending: |corr(X_B)|={r_x:.4f}"
+        )
+        assert r_y > 0.5, f"expected axial load to track Y_B; |corr(Y_B)|={r_y:.4f}"

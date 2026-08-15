@@ -75,10 +75,18 @@ def section_integrals_from_bundle(
     fields: Iterable[str] = ("N11", "N22", "N12"),
 ) -> dict[str, float]:
     """Contour integrals ``∮ N ds`` per field over all panels (trapezoid on ``s``)."""
-    panels = getattr(bundle, "panels", None) or []
+    # ``.zones``, not ``.panels``: the rename left this reading an attribute the
+    # bundle no longer has, and ``or []`` turned that into "no panels" — every
+    # contour integral came back 0.0 with nothing said (docs/bug_log.md BL-012).
+    zones = getattr(bundle, "zones", None)
+    if zones is None:
+        raise AttributeError(
+            f"{type(bundle).__name__} has no 'zones'; contour integrals over an "
+            f"empty sequence are silently zero (BL-012)."
+        )
     all_res = getattr(bundle, "all_panel_results", None) or []
     out = {f: 0.0 for f in fields}
-    for pi, panel in enumerate(panels):
+    for pi, panel in enumerate(zones):
         if pi >= len(all_res):
             continue
         s = np.asarray(panel.s, dtype=float).ravel()

@@ -177,7 +177,7 @@ def fsdt_periodic_station_hashin(
 
 
 def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResult:
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         build_section_strip_mesh,
     )
 

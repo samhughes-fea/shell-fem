@@ -18,7 +18,7 @@ from .solve import solve_global_coupled_ccx
 from .cap_skin_ties import CcxCapSkinTieSurface, build_cap_skin_tie_surfaces
 from .joint_validation import run_joint_validation
 from .ccx_cascade_mesh_convergence import run_ccx_cascade_at_frac
-from .sfv_panel_loads import sfv_to_nx_nxy
+from .sfv_panel_loads import sfv_to_n11_n12, sfv_to_nx_nxy
 
 __all__ = [
     "CcxElement",
@@ -31,6 +31,7 @@ __all__ = [
     "run_ccx_cascade_at_frac",
     "shell_basis_from_quad",
     "run_joint_validation",
+    "sfv_to_n11_n12",
     "sfv_to_nx_nxy",
     "solve_global_coupled_ccx",
 ]

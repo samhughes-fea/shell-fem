@@ -4,9 +4,12 @@
 **Former name:** `fem_utilities.section_shell_model`  
 **Role:** FE **worker** only — apply precomputed loads, assemble, solve, cascade.
 
-This package has **no** knowledge of sizing vs fatigue, parallel vs serial, or
-iterative vs single-shot. Callers decide when to invoke it and which cascade
-tiers to read.
+Apply a precomputed `SectionForceVector` (SFV) to nodal loads, form MITC4
+stiffness, assemble and solve the linear-static shell system, then recover the
+P→S→T→Q cascade (plus diagnostics). This package has **no** knowledge of sizing
+vs fatigue, parallel vs serial, or iterative vs single-shot — callers decide when
+to invoke it and which cascade tiers to read.
+Glossary: [`../../docs/CASCADE_GLOSSARY.md`](../../docs/CASCADE_GLOSSARY.md).
 
 ```text
 section_geometry → section_contract → section_mesh
@@ -26,17 +29,22 @@ Canonical import: `blade_structure_utilities.fem_utilities.section_shell_fea`.
 | **Barrel** | `blade_structure_utilities.fem_utilities.section_shell_fea` |
 | **Consumers** | Import the FE barrel / runner only; import `section_bind` / `section_loads` barrels for types — never deep home paths |
 
-Ownership index: [`docs/COEXISTENCE_IMPLICIT_SHELL.md`](../../docs/COEXISTENCE_IMPLICIT_SHELL.md).
+Ownership index: [`docs/COEXISTENCE_IMPLICIT_SHELL.md`](../../docs/COEXISTENCE_IMPLICIT_SHELL.md).  
+Docs index: [`docs/README.md`](docs/README.md).
 
 ## Table of contents
 
 1. [Purpose / ownership](#1-purpose--ownership)
-2. [Ownership homes](#2-ownership-homes)
-3. [Public API](#3-public-api)
-4. [Contract](#4-contract)
-5. [Provenance / locked boundaries](#5-provenance--locked-boundaries)
-6. [Package layout](#6-package-layout)
-7. [See also](#7-see-also)
+2. [Computable set](#2-computable-set)
+3. [Stage Mermaid](#3-stage-mermaid)
+4. [Governing equations](#4-governing-equations)
+5. [PNG proof](#5-png-proof)
+6. [Ownership homes](#6-ownership-homes)
+7. [Public API](#7-public-api)
+8. [Contract](#8-contract)
+9. [Provenance / locked boundaries](#9-provenance--locked-boundaries)
+10. [Package layout](#10-package-layout)
+11. [See also](#11-see-also)
 
 ---
 
@@ -52,30 +60,181 @@ Ownership index: [`docs/COEXISTENCE_IMPLICIT_SHELL.md`](../../docs/COEXISTENCE_I
 | Actor | Role |
 |-------|------|
 | **Producer (upstream)** | Bind + loads — zones + precomputed SFV |
-| **This worker** | Classical FEM on the section shell |
+| **This worker** | Classical FEM on the section shell (MITC4 / FSDT; **C ≡ E** on each facet) |
 | **Consumers** | `section_selection`, `bv_methodology`, other use cases reading cascade tiers |
+
+**Reader answers**
+
+| Question | Answer |
+|----------|--------|
+| What is solved? | Contour-supported linear-static MITC4: \(\mathbf{K}\mathbf{U}=\mathbf{F}\) after apply-SFV → assemble → BC → reduce(`T`) |
+| Which cascade tier holds Hashin FI? | **Quaternary (Q)** — `CascadeBin.quaternary_results.hashin_fi` |
+| Which figure proves mesh / GCI behaviour? | [`ladder_governing_fi.png`](visualisation/output/gci_study_mitc4/plots/ladder_governing_fi.png) (+ fine-grid Hashin peak bars) |
 
 ---
 
-## 2. Ownership homes
+## 2. Computable set
+
+| Tier | Symbol | Product | Typical consumer |
+|------|--------|---------|------------------|
+| **P** primary | \(U_e\), reactions | Element DOFs after disassembly | Diagnostics / residual |
+| **S** secondary | \(N,M,Q\) in **E** | Mid-surface resultants | Buckling prestress; resultant audits |
+| **T** tertiary | \(\boldsymbol{\sigma}_{\mathrm{ply}}\) in **M** | Per-plate face stresses (+ \(\tau_{13},\tau_{23}\)) | Fatigue rainflow |
+| **Q** quaternary | FI | Hashin / Von Mises / extreme-fibre + governing | Sizing FI gate |
+| **D** diagnostics | — | Phase timings, trust, GCI hooks | Orchestration logs (nest only) |
+
+Deep cascade maths: [`processing/static/results/docs/README.md`](processing/static/results/docs/README.md).  
+Frames: mesh / DOFs in **B** + curvilinear **C**; resultants in **E**; ply FI in **M**. On each facet **C ≡ E**.
+
+---
+
+## 3. Stage Mermaid
+
+```mermaid
+flowchart LR
+  subgraph upstream [Upstream — not this package]
+    geom[section_geometry]
+    mesh[section_mesh]
+    bind[section_bind]
+    loads[section_loads SFV]
+    geom --> mesh --> bind
+    mesh --> loads
+  end
+  subgraph prep [pre_processing]
+    apply[loading apply SFV → f/Fe]
+    ke[element_library MITC4 Ke]
+    abd[constitutive ABD]
+    topo[mesh panel topology]
+  end
+  subgraph proc [processing]
+    asm[static assemble BC solve]
+    cas[P → S → T → Q]
+    buck[buckling Kg eigen]
+  end
+  bind --> abd
+  loads --> apply
+  mesh --> topo
+  abd --> ke
+  apply --> asm
+  ke --> asm
+  topo --> asm
+  asm --> cas
+  cas --> buck
+```
+
+Stage narrative: [`docs/SECTION_SOLVE_STAGES.md`](docs/SECTION_SOLVE_STAGES.md).  
+Shell model / assumptions: [`docs/SHELL_MODEL.md`](docs/SHELL_MODEL.md).
+
+---
+
+## 4. Governing equations
+
+**Virtual work (FSDT shell, pointer form)** — membrane + bending + transverse shear
+on the mid-surface \(\Omega\):
+
+\[
+\delta\Pi
+=
+\int_{\Omega}
+\big(
+\delta\boldsymbol{\varepsilon}_{0}^{\mathsf{T}}\mathbf{N}
++
+\delta\boldsymbol{\kappa}^{\mathsf{T}}\mathbf{M}
++
+\delta\boldsymbol{\gamma}^{\mathsf{T}}\mathbf{Q}
+\big)\,
+\mathrm{d}A
+-
+\delta W_{\mathrm{ext}}
+= 0.
+\]
+
+Discrete element stiffness (MITC4 mixed shear interpolation):
+
+\[
+\mathbf{K}_e
+=
+\int_{\Omega_e}
+\mathbf{B}^{\mathsf{T}}\,\mathbf{D}\,\mathbf{B}\,\mathrm{d}A,
+\qquad
+\mathbf{D}
+\leftarrow
+\mathrm{ABD}+G_{\mathrm{eff}}.
+\]
+
+Global solve after assemble / essential BC / reduction \(\mathbf{T}\):
+
+\[
+\mathbf{K}_r\,\mathbf{q}=\mathbf{f}_r,
+\qquad
+\mathbf{d}=\mathbf{T}\,\mathbf{q},
+\qquad
+\mathbf{KU}=\mathbf{F}\ \text{(reconstructed)}.
+\]
+
+**DOF layout per node** (curvilinear **C**, coincides with laminate **E** on the facet):
+
+| Index | DOF | Meaning |
+|------:|-----|---------|
+| 0 | \(u_x\) | Spanwise (C \(x\) / E \(x_1\)) |
+| 1 | \(u_s\) | Contour tangent (C \(s\) / E \(x_2\)) |
+| 2 | \(w\) | Shell normal (C \(n\) / E \(x_3\)) |
+| 3 | \(\beta_s\) | Mindlin rotation about \(s\) |
+| 4 | \(\beta_x\) | Mindlin rotation about \(x\) |
+| 5 | \(\beta_z\) | Drilling (MITC4+ default, `ndof=6`) |
+
+Q4 element: \(4\times\mathrm{ndof}\) local DOFs (24 with drilling). Details:
+[`pre_processing/element_library/mitc4/element.py`](pre_processing/element_library/mitc4/element.py),
+[`docs/SHELL_MODEL.md`](docs/SHELL_MODEL.md).
+
+---
+
+## 5. PNG proof
+
+Committed artefacts under `visualisation/output/` and tier `examples/outputs/`
+(link only — do not regenerate for docs).
+
+| Proof | Figure | Answers |
+|-------|--------|---------|
+| Undeformed mesh | ![section mesh](visualisation/output/section_centerline_mesh_v2/section_mesh_2C-F_i000.png) | Strip Q4 topology consumed by FE (meshing owned upstream) |
+| Displacement ladder (primary field under refinement) | ![d∞ ladder](visualisation/output/gci_study_mitc4/plots/ladder_d_inf.png) | Primary \(\|\mathbf{d}\|_\infty\) vs mesh rung |
+| Hashin FI (Q) | ![Hashin envelope](processing/static/results/compute_quaternary/examples/outputs/hashin_envelope_composite.png) | Quaternary holds Hashin FI |
+| Mesh / GCI behaviour | ![governing FI ladder](visualisation/output/gci_study_mitc4/plots/ladder_governing_fi.png) | Governing FI vs refinement (ASME GCI campaign) |
+| Fine-grid Hashin peaks | ![Hashin by layout](visualisation/output/gci_study_mitc4/plots/gci_fine_peak_hashin_by_layout.png) | Layout-wise Hashin peak at fine rung |
+| Panel max-FI bars (benchmark) | ![panel max FI](visualisation/output/benchmark_shell_elements/naca2412_twinweb_carbon__panel_maxfi_bars.png) | Element-oracle FI comparison |
+
+GCI narrative: [`docs/NUMERICAL_STABILITY_AND_GCI.md`](docs/NUMERICAL_STABILITY_AND_GCI.md).  
+Cap-peak sampling CSVs: [`visualisation/output/cap_peak_sampling/`](visualisation/output/cap_peak_sampling/).
+
+---
+
+## 6. Ownership homes
+
+**Large-package layout** (exception to the uniform `api/`+`types/`+domain-homes
+shell used by smaller spine workers — see
+[WORKER_PACKAGE_TEMPLATE.md](../../../docs/conventions/WORKER_PACKAGE_TEMPLATE.md)):
 
 | # | Home | Owns |
 |---|------|------|
-| 1 | [`pre_processing/loading/README.md`](pre_processing/loading/README.md) | Apply SFV → nodal `f` / `Fe` (product load path) |
-| 2 | [`pre_processing/element_library/README.md`](pre_processing/element_library/README.md) | MITC4 / formulation factory (`Ke`) |
-| 3 | [`processing/static/README.md`](processing/static/README.md) | Assemble / BC / solve + cascade index |
-| 4 | [`simulation_runner/README.md`](simulation_runner/README.md) | `SectionLinearStaticRunner` / buckling runner |
-| 5 | [`calculix_ccx/README.md`](calculix_ccx/README.md) | Quarantined CCX validation backend |
-| 6 | [`visualisation/README.md`](visualisation/README.md) | Plot helpers + demos (not a math kernel) |
+| 1 | [`pre_processing/loading/`](pre_processing/loading/README.md) | Apply SFV → nodal `f` / `Fe` |
+| 2 | [`pre_processing/element_library/`](pre_processing/element_library/README.md) | MITC4 / formulation factory (`Ke`) |
+| 3 | [`pre_processing/constitutive/`](pre_processing/constitutive/README.md) | Zone constitutive prep (ABD stacks) |
+| 4 | [`pre_processing/mesh/`](pre_processing/mesh/README.md) | FE mesh map / panel topology |
+| 5 | [`pre_processing/containers/`](pre_processing/containers/README.md) | FE-local product DTOs |
+| 6 | [`pre_processing/dispatch/`](pre_processing/dispatch/README.md) | Theory / solve registries |
+| 7 | [`processing/static/`](processing/static/README.md) | Assemble / BC / solve + cascade |
+| 8 | [`processing/buckling/`](processing/buckling/README.md) | Geometric stiffness / eigen |
+| 9 | [`simulation_runner/`](simulation_runner/README.md) | Static / buckling runners |
+| 10 | [`calculix_ccx/`](calculix_ccx/README.md) | Quarantined CCX backend |
+| 11 | [`visualisation/`](visualisation/README.md) | Plot helpers + demos |
 
 Deep stage taxonomy: [`docs/TAXONOMY.md`](docs/TAXONOMY.md),
 [`docs/SECTION_SOLVE_STAGES.md`](docs/SECTION_SOLVE_STAGES.md),
-[`docs/SHELL_MODEL.md`](docs/SHELL_MODEL.md). Cascade tier maths:
-[`processing/static/results/docs/README.md`](processing/static/results/docs/README.md).
+[`docs/SHELL_MODEL.md`](docs/SHELL_MODEL.md).
 
 ---
 
-## 3. Public API
+## 7. Public API
 
 ```python
 from blade_structure_utilities.fem_utilities.section_shell_fea import (
@@ -101,7 +260,7 @@ Do **not** shape loads or bind laminates inside this worker.
 
 ---
 
-## 4. Contract
+## 8. Contract
 
 | | |
 |---|---|
@@ -129,7 +288,7 @@ Campaign `.log` dumps live in orchestration (`section_selection`), not here.
 
 ---
 
-## 5. Provenance / locked boundaries
+## 9. Provenance / locked boundaries
 
 | Claim | Today |
 |-------|-------|
@@ -137,6 +296,7 @@ Campaign `.log` dumps live in orchestration (`section_selection`), not here.
 | Apply SFV only | `section_force_vector_to_nodal_load`; Channel B staging in `section_loads` |
 | No orchestration modes | No sizing/fatigue APIs on the runner |
 | CCX quarantined | Opt-in `register_calculix_ccx_backend()`; not production theory |
+| Staging layout permanent | `pre_processing/` · `processing/` — do **not** flatten or relocate |
 | Demos | [`visualisation/demos/`](visualisation/demos/README.md); artifacts under `visualisation/output/` |
 
 Orchestration stays outside: `blade_structure_precompute.module.section_selection`,
@@ -144,32 +304,31 @@ Orchestration stays outside: `blade_structure_precompute.module.section_selectio
 
 ---
 
-## 6. Package layout
+## 10. Package layout
 
 ```text
 section_shell_fea/
   pre_processing/
-    loading/           # apply SFV (home 1)
-    element_library/   # MITC4 Ke (home 2)
+    loading/           # apply SFV
+    element_library/   # MITC4 Ke
+    constitutive/
+    mesh/              # FE mesh map / panel topology
+    containers/        # FE-local DTOs
     dispatch/          # theory / solve registries
-    containers/        # FE-local types
-    mesh/              # FE-local panel topology helpers
   processing/
-    static/            # assemble / solve / cascade (home 3)
+    static/            # assemble / solve / cascade
     buckling/          # eigen track
-  simulation_runner/   # public runners (home 4)
-  calculix_ccx/        # CCX validation (home 5)
-  visualisation/       # helpers + demos/ + output/ (home 6)
-  benchmarks/          # CLI studies → visualisation/output/
-  interface/           # thin adapters
-  docs/                # taxonomy / stages / architecture
-  README.md            # package index
+  simulation_runner/
+  calculix_ccx/        # backend quarantine
+  visualisation/ docs/ benchmarks/ tests/
 ```
 
 ---
 
-## 7. See also
+## 11. See also
 
+- [`docs/README.md`](docs/README.md) — documentation index
+- [`../../docs/CASCADE_GLOSSARY.md`](../../docs/CASCADE_GLOSSARY.md) — shared spine vocabulary
 - [`section_loads`](../../load_utilities/section_loads/README.md) — shape SFV
 - [`section_bind`](../../material_utilities/section_bind/README.md) — MaterialZone
 - [`section_mesh`](../../mesh_utilities/section_mesh/README.md) — strip mesh inputs

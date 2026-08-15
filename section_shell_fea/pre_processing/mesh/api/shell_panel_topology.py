@@ -15,11 +15,11 @@ import warnings
 from dataclasses import dataclass
 from typing import Any
 
-from blade_structure_utilities.geometry_utilities.section_geometry.interface.section_midline_host import (
+from blade_structure_utilities.geometry_utilities.section_geometry.midlines.section_midline_host import (
     SectionMidlineHost,
 )
 from blade_structure_utilities.material_utilities.section_bind import LaminateLike, MaterialZone
-from blade_structure_utilities.mesh_utilities.section_mesh.inputs.shell_inputs import (
+from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import (
     ShellMeshInputs,
 )
 
@@ -97,17 +97,17 @@ def build_shell_panel_topology(
     import numpy as np
 
     from blade_structure_utilities.geometry_utilities.section_geometry import AirfoilSDF
-    from blade_structure_utilities.geometry_utilities.section_geometry.engine.sections import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.sections import (
         MultiCellSection,
     )
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.midlines.shell_midline_export import (
         build_shell_midline_strips,
         rotate_chord_to_blade,
     )
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_strip_topology import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.topology.shell_strip_topology import (
         build_shell_strip_topology,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs.shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import (
         shell_mesh_inputs_from_strips,
     )
 

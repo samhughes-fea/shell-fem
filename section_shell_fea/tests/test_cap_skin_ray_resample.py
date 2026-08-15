@@ -19,11 +19,11 @@ def airfoil():
 
 def _cap_endpoints_after_split_only(airfoil, layout_key: str) -> dict[str, tuple[np.ndarray, np.ndarray]]:
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import build_shell_midline_strips
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_strip_topology import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.midlines.shell_midline_export import build_shell_midline_strips
+    from blade_structure_utilities.geometry_utilities.section_geometry.topology.shell_strip_topology import (
         _split_skin_at_junctions,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs.shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import (
         _validate_strips,
     )
 
@@ -45,7 +45,7 @@ def _cap_endpoints_after_split_only(airfoil, layout_key: str) -> dict[str, tuple
 
 def _cap_endpoints_before_split(airfoil, layout_key: str) -> dict[str, tuple[np.ndarray, np.ndarray]]:
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import build_shell_midline_strips
+    from blade_structure_utilities.geometry_utilities.section_geometry.midlines.shell_midline_export import build_shell_midline_strips
 
     layout = resolve_system_type(layout_key)
     section = build_section_view(airfoil, layout, twist_angle_rad=0.0)
@@ -64,12 +64,12 @@ def _cap_endpoints_before_split(airfoil, layout_key: str) -> dict[str, tuple[np.
 def test_split_skin_moves_only_nonweb_cap_endpoints_to_skin(layout_key, airfoil):
     """Class A/B: non-web cap ends snap to skin; web-coupled ends may differ."""
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import build_shell_midline_strips
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_strip_topology import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.midlines.shell_midline_export import build_shell_midline_strips
+    from blade_structure_utilities.geometry_utilities.section_geometry.topology.shell_strip_topology import (
         _point_to_open_polyline_nearest,
         _split_skin_at_junctions,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs.shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import (
         _validate_strips,
     )
 
@@ -118,7 +118,7 @@ def test_split_skin_moves_only_nonweb_cap_endpoints_to_skin(layout_key, airfoil)
 def test_cap_endpoints_unchanged_after_skin_ray_resample(airfoil, layout_key):
     """Resampling must not move cap strip endpoints (skin–web junction snap)."""
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -148,7 +148,7 @@ def test_cap_endpoints_unchanged_after_skin_ray_resample(airfoil, layout_key):
 @pytest.mark.parametrize("layout_key", ["2D-F"])
 def test_cap_interior_segments_nondegenerate(airfoil, layout_key):
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -174,14 +174,14 @@ def test_cap_interior_segments_nondegenerate(airfoil, layout_key):
 def test_cap_resample_disabled_preserves_midline_count(airfoil):
     """With resampling off, cap vertex count matches split-only pipeline."""
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import build_shell_midline_strips
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_strip_topology import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.midlines.shell_midline_export import build_shell_midline_strips
+    from blade_structure_utilities.geometry_utilities.section_geometry.topology.shell_strip_topology import (
         _split_skin_at_junctions,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs.shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import (
         _validate_strips,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 

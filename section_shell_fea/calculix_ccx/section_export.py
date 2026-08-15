@@ -73,7 +73,7 @@ def _cload_entries(
     for pi, pm in enumerate(mesh.panel_maps):
         if len(pm.s_nodes) == 0:
             continue
-        p = panels[pi]
+        p = zones[pi]
         yz_nodes = interp_yz_nodes(pm.s_nodes, p)
         s_nodes = pm.s_nodes
         nx_nodes = np.interp(
@@ -242,7 +242,7 @@ def write_section_inp(
 
     written_mats: set[str] = set()
     for elset_name, pi in sorted(elset_to_panel.items()):
-        p = panels[pi]
+        p = zones[pi]
         mat_name = f"MAT_{elset_name}"
         if mat_name not in written_mats:
             lines.append(f"*MATERIAL, NAME={mat_name}")
@@ -263,7 +263,7 @@ def write_section_inp(
     # CalculiX requires *CLOAD inside the *STEP. Shells are expanded to 3D internally and have
     # no section-force output, so request 3D stress (S) via *EL PRINT and recover resultants by
     # integrating (membrane = mid-surface S * t; see io/calculix_results.py).
-    cloads = _cload_entries(mesh, panels, nx_panels, nxy_panels)
+    cloads = _cload_entries(mesh, zones, nx_panels, nxy_panels)
     lines.extend(["*STEP", "*STATIC"])
     if cloads:
         lines.append("*CLOAD")
@@ -336,7 +336,7 @@ def write_section_inp_periodic(
     job = job_name or out.stem
     l_x = float(mesh.l_x)
     if y_e is None or z_e is None:
-        y_e, z_e = compute_elastic_centroid_from_panels(panels)
+        y_e, z_e = compute_elastic_centroid_from_panels(zones)
     y_e = float(y_e)
     z_e = float(z_e)
 
@@ -368,7 +368,7 @@ def write_section_inp_periodic(
         elset_to_panel.setdefault(elset_name, e.panel_index)
     written_mats: set[str] = set()
     for elset_name, pi in sorted(elset_to_panel.items()):
-        p = panels[pi]
+        p = zones[pi]
         mat_name = f"MAT_{elset_name}"
         if mat_name not in written_mats:
             lines.append(f"*MATERIAL, NAME={mat_name}")
@@ -389,7 +389,7 @@ def write_section_inp_periodic(
         n = len(pm.s_nodes)
         if n == 0:
             continue
-        yz_nodes = interp_yz_nodes(pm.s_nodes, panels[pi])
+        yz_nodes = interp_yz_nodes(pm.s_nodes, zones[pi])
         tans = _node_tangents_yz(yz_nodes)
         for i in range(n):
             gb = pm.global_nodes[i]

@@ -1,5 +1,7 @@
 # Bug log — section_shell_fea
 
+Canonical package bug / frame-canon log. Docs index: [`README.md`](README.md).
+
 ## Coordinate-frames canon compliance (2026-08-11/12)
 
 Audit of this package against
@@ -42,12 +44,11 @@ its strips. Measured on NACA 2412, chord 1.0, `2D-CN`, zero twist:
 |---|---|---|
 | `leading_edge_b` | `(0.0000, -0.3330)` | col 1 — canonical B, \(-f_{pivot}c\) |
 | `trailing_edge_b` | `(-0.0000, +0.6667)` | col 1 — canonical B, \((1-f_{pivot})c\) |
-| `midline_b` | col0 extent `0.9880`, col1 extent `0.1185` | **col 0** — rotated-NACA, LE origin |
+| `midline_b` | col0 extent ~thickness, col1 extent ~chord | **col 1** — canonical B via `chord_to_blade` |
 
-The endpoints go through `chord_to_blade` (swap + pivot shift + rotation); the
-strips go through `rotate_chord_to_blade` (bare rotation). Mapping the LE exactly
-into the strip frame gives `(0, 0)` — an LE origin, confirming the strips carry
-the raw-NACA adapter frame under a `_b` name.
+The endpoints and strips both go through `chord_to_blade` (swap + pivot shift +
+rotation). Historical note: an earlier emit used bare `rotate_chord_to_blade`
+(LE origin); that path is retired.
 
 **Consequence.** `panel_x3_orientation` orients webs by \(\hat n \cdot (\mathrm{LE} - m)\),
 so it takes a dot product between a strip-frame normal and a canonical-B LE. It
@@ -67,3 +68,96 @@ in these packages can see it.
 
 **Fix.** Emit strips with `chord_to_blade` so the whole DTO is canonical B. The
 LE/TE emit is already correct and needs no change.
+
+#### Follow-up measurement (2026-08-13) — the emitter is now correct
+
+The `chord_to_blade` strip emit above has landed
+(`midlines/shell_midline_export.py`), and measures correct in isolation. On
+NACA 2412, chord 1.0, `C` family, zero twist, via `AirfoilSDF.from_naca`:
+
+| stage | col0 | col1 | chord on |
+|---|---|---|---|
+| `AirfoilSDF.vertices` (raw NACA) | 1.0000 | 0.1216 | col0 |
+| `section.components_unrotated` | 0.9880 | 0.0770 | col0 |
+| `midline_b` (emitted) | 0.1186 | 0.9880 | **col1 — canonical B** |
+
+`chord_to_blade` is `naca_to_S ∘ rotate_S_to_B`, so its input must be **raw
+NACA**; fed that, it is correct. `tests/test_section_frame_canon.py` and
+`section_mesh/tests/test_section_plane_canon.py` both pass (40 tests).
+
+**The residual `SectionFrameViolation` seen from `section_selection` was not
+this defect.** Two separate causes, both outside this package:
+
+1. **BSP fixture frame.** `evaluate_station(coords=…)` documents Scale **S**
+   ordering (col0 = flapwise, col1 = edgewise), and
+   `scale_adapter.scale_s_to_naca_xy` swaps to NACA on that basis. The shared
+   `sample_airfoil_coords` fixture supplied *NACA*-ordered coordinates, so the
+   swap put the chord on the thickness axis and the guard correctly rejected the
+   payload. Every FI evaluation reported `station has NO strength check`.
+2. **`_ch.M22` did not exist.** With the guard cleared, `evaluate.py` failed on
+   `AttributeError: 'ShellSolverChannels' object has no attribute 'M22'`.
+   `ShellSolverChannels` is `N, Vy, Vz, My, Mz, T`; the hand-rolled block also
+   passed `M22=` to `from_named`, which only accepts `My`. Replaced with
+   `BeamResultantVector.from_flap_edge(...)`, which owns that composition.
+
+Item 8 stays **open** for the `panel_x3_orientation` concern (item 11) — the
+dot-product across frames is unaffected by the above and still needs its own
+check.
+
+**Consequence worth flagging.** FI had never actually executed through the BSP
+path. With both causes fixed it runs and scales correctly (`max_fi ∝ M`), which
+exposed a third defect — a criterion gap in per-component attribution:
+
+3. **`fi_by_component` was zero on every isotropic zone.**
+   `evaluate.py` built `fi_by_panel` from `quaternary.hashin_fi.in_plane`
+   **only**. On an isotropic zone Hashin does not apply and that array is
+   identically zero, while the real value sits in `quaternary.von_mises_fi`.
+   Measured on 2B-CN, NACA 2412, isotropic skin/spar/web:
+
+   ```
+   governing        = {'fi': 0.687, 'panel_index': 9, 'criterion': 'von_mises'}
+   hashin_fi.in_plane : shape (261, 1)  nanmax 0.0000
+   von_mises_fi       : shape (261,)    nanmax 0.6870
+   ```
+
+   Because every component then scored 0.0, the component-aware FI search in
+   `optimize.py` picked its governing DV by *tuple order* (`t_spar` first)
+   rather than by physics — on `0B` it grew `t_spar` 0.003 → 0.0488 while FI
+   got **worse** (2.654 → 3.273), when `t_skin` was governing at 3.14 against
+   the spar's 0.36. Fixed by attributing across both criteria (row-wise max,
+   the same rule `governing` uses). `fi_by_component` now reports
+   `{skin 0.4712, spar 0.073, web 0.687}` on that section, and the FI-informed
+   loop converges.
+
+   The loop itself was never missing — `optimize.py` has had a component-aware
+   FI phase (16 outer iterations, ×1.5 expansion, 8-step bisection) all along.
+   It was starved of the input it steers by.
+
+4. **Still open — the search commits to a DV before it has any attribution.**
+   With (3) fixed, `test_sizing_handoff_characterization` goes green but the
+   FI-only smoke (`1B-CN`, catalog composites, `EI_req=0`) still mis-converges.
+   Traced trajectory:
+
+   ```
+   FI#01  t_skin=0.0020 t_spar=0.0030 t_web=0.0020  max_fi=None   by={}
+   FI#03  t_skin=0.0020 t_spar=0.0068 t_web=0.0020  max_fi= 7.142  by={skin 7.14, spar 0.0, web 6.82}
+   FI#08  t_skin=0.0020 t_spar=0.0500 t_web=0.0020  max_fi=13.014  by={skin 13.01, spar 0.0, web 7.15}
+   FI#12  t_skin=0.0020 t_spar=0.0471 t_web=0.0020  max_fi=15.502  by={skin 15.50, spar 0.0, web 8.09}
+   FI#17  t_skin=0.0030 t_spar=0.0500 t_web=0.0020  max_fi= 6.335  by={skin 5.03, spar 0.0, web 6.34}
+   FI#18+ t_skin>=0.0045 t_spar=0.0500              max_fi=None    (cavity exhausted)
+   ```
+
+   The first evaluation returns `max_fi=None` (a 3 mm spar snaps to an
+   unusable stack), so `fi_by_component` is `{}`, `worst` stays `0.0`, and the
+   governing DV falls back to **tuple order** — `t_spar`. Fourteen evaluations
+   then grow the one component whose FI contribution is identically zero, while
+   skin governs at 7–15, and FI gets *worse* (7.14 → 15.50). By the time the
+   loop corrects to `t_skin` at FI#17, `t_spar` is pinned at its 0.05 cap and
+   the cavity can no longer accept skin growth, so every later trial fails.
+
+   Two coupled faults: no defined behaviour when attribution is unavailable,
+   and no exhaustion fallback when the chosen DV saturates
+   (`_at_thickness_caps` requires *all* DVs at cap, so it never trips).
+   Deliberately **not** patched in place — the search is being moved out of BSP
+   into a `section_layup` worker that designs each zone against its own
+   criterion, which removes the heuristic rather than tuning it.

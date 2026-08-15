@@ -30,7 +30,7 @@ flowchart LR
 
 | Tier | Directory | Product | Owns |
 |------|-----------|---------|------|
-| 1 | `compute_primary/` | `ShellPrimaryResultSet` | Solve disassembly (`U_e`); **docs TBD** |
+| 1 | `compute_primary/` | `ShellPrimaryResultSet` | Solve disassembly (`U_e`); [`compute_primary/docs/README.md`](../compute_primary/docs/README.md) |
 | 2 | [`compute_secondary/`](../compute_secondary/docs/README.md) | `ShellSecondaryResultSet` | Shell resultants `[N; M]` (+ optional Q1/Q2) |
 | 3 | [`compute_tertiary/`](../compute_tertiary/docs/README.md) | `ShellTertiaryResultSet` | CLT → per-plate face \(\boldsymbol{\sigma}_{123}\) (+ interface \(\tau\)) |
 | 4 | [`compute_quaternary/`](../compute_quaternary/docs/README.md) | `ShellQuaternaryResultSet` | Hashin / Von Mises / extreme-fibre FI + governing |

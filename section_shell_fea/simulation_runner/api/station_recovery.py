@@ -80,7 +80,7 @@ def _bundle_from_linear_static(
     asm = static.assembly
     if asm is None:
         raise RuntimeError("executed runner missing assembly")
-    nested: list[list[Any]] = [[] for _ in panels]
+    nested: list[list[Any]] = [[] for _ in zones]
     secondary = static.secondary_results
     if secondary is not None and secondary.elemental_results is not None:
         rows = list(secondary.elemental_results.resultant_rows or [])
@@ -113,7 +113,7 @@ def _bundle_from_linear_static(
         q_warp=[],
         reference_resultants=reference,
         all_panel_results=nested,
-        all_panel_diagnostics=[{} for _ in panels],
+        all_panel_diagnostics=[{} for _ in zones],
         panel_abd=np.asarray(asm.abd_p, dtype=float),
         panel_thickness_m=np.asarray(asm.t_p, dtype=float),
         panel_G_eff=np.asarray(asm.g_p, dtype=float),

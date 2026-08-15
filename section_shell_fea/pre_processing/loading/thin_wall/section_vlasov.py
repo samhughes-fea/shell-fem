@@ -80,7 +80,7 @@ def compute_section_vlasov(
     Parameters
     ----------
     airfoil   : (N, 2) array [y, z]
-    panels    : MaterialZone objects (``material_utilities.section_bind.MaterialZone``)
+    zones     : MaterialZone objects (``material_utilities.section_bind.MaterialZone``)
     B         : bimoment [N·m²]
     dB_dx     : rate of bimoment along span [N·m]
     webs_geom : list of (upper_pt, lower_pt) tuples for spar webs; if provided,
@@ -115,7 +115,7 @@ def compute_section_vlasov(
     )
 
     # 4. E-weighted I_ω over all panels
-    I_omega_E = _integrate_panels_E_omega2(panels, verts, omega_hat_v)
+    I_omega_E = _integrate_panels_E_omega2(zones, verts, omega_hat_v)
     if I_omega_E < 1e-60:
         I_omega_E = 1.0
 

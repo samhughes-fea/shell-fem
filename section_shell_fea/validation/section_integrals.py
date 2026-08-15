@@ -59,7 +59,7 @@ def section_element_geometry(
         )
 
         section_strip_mesh = build_section_strip_mesh_from_panels(
-            panels, n_elements_per_panel=n_elements_per_panel
+            zones, n_elements_per_panel=n_elements_per_panel
         )
     panel_maps, _ = panel_maps_from_section_strip_mesh(section_strip_mesh, zones)
     out: list[list[ElementGeom]] = []
@@ -185,7 +185,7 @@ def multistation_equilibrium_interlaminar(
     Returns ``tau_eq_max`` / ``tau_eq_mean`` [Pa] and ``dsigma_dx_max`` [Pa/m].
     """
     from lib.interlaminar_shear import interlaminar_shear_max  # type: ignore[import-untyped]
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         build_section_strip_mesh,
     )
 

@@ -49,8 +49,8 @@ def _build_pipeline(airfoil, layout_key: str, twist_rad: float = 0.0):
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.material_utilities.section_bind import bind_shell_material_zones
@@ -236,8 +236,8 @@ def test_target_element_length_m_coarser_on_short_webs_than_skin(airfoil):
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -267,8 +267,8 @@ def test_target_element_length_m_overridden_by_explicit_uniform_count(airfoil):
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -303,8 +303,8 @@ def test_web_junction_clusters_are_multi_member_after_skin_split(airfoil, layout
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -334,10 +334,10 @@ def test_cap_endpoints_preserve_exported_positions(airfoil, layout_key):
         build_section_view,
         resolve_system_type,
     )
-    from blade_structure_utilities.geometry_utilities.section_geometry.interface.shell_midline_export import (
+    from blade_structure_utilities.geometry_utilities.section_geometry.midlines.shell_midline_export import (
         build_shell_midline_strips,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -387,11 +387,11 @@ def _web_element_lengths(mesh) -> list[float]:
 def _build_uniform_density_mesh(layout_key: str, chord_m: float, *, h_target_m: float):
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         ENDPOINT_TOL_FRAC,
         build_section_strip_mesh,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -409,10 +409,26 @@ def _build_uniform_density_mesh(layout_key: str, chord_m: float, *, h_target_m: 
     return shell_inputs, mesh
 
 
+# The spacing bound below is met *exactly* by this mesher, so the comparison sits
+# on the boundary and float noise decides it: all three chords were failing by
+# 4e-18, 3.9e-13 and 4.3e-13 respectively (relative ~1e-11 at worst, arc-length
+# accumulation rather than representation error). Same class as `_SPAN_REL_TOL`
+# in `section_schedule/rules/ply_drops.py`, where `0.150 - 0.100 = 0.0499...9`
+# silently cost a unit of ply allowance per station.
+_SPACING_REL_TOL = 1e-9
+
+
 @pytest.mark.parametrize("chord_m", [0.3, 1.6, 5.0])
 def test_uniform_density_strip_mesh(chord_m: float) -> None:
-    """Flat panels keep ~h_target spacing; element count grows with chord."""
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import MIN_ELEMENTS_PER_PANEL
+    """Flat panels keep ~h_target spacing; element count grows with chord.
+
+    Note for whoever reads this next: the max deviation lands on `0.5 * h_target`
+    exactly, meaning some element is 1.5x or 0.5x nominal — the worst case this
+    contract permits. That is the mesher using its whole allowance, not a defect,
+    but it does mean this assertion has no headroom and will re-break if the
+    tolerance is ever removed.
+    """
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import MIN_ELEMENTS_PER_PANEL
 
     layout_key = "2D-F"
     h_target = 0.012 * chord_m
@@ -427,7 +443,8 @@ def test_uniform_density_strip_mesh(chord_m: float) -> None:
         ds = np.diff(np.asarray(pm.s_nodes, dtype=float))
         non_floor_ds.extend(float(x) for x in ds if float(x) > 0.0)
     assert non_floor_ds
-    assert max(abs(d - h_target) for d in non_floor_ds) <= 0.5 * h_target
+    bound = 0.5 * h_target
+    assert max(abs(d - h_target) for d in non_floor_ds) <= bound * (1.0 + _SPACING_REL_TOL)
 
 
 def test_uniform_density_element_count_grows_with_chord() -> None:
@@ -439,8 +456,8 @@ def test_uniform_density_element_count_grows_with_chord() -> None:
 
 def test_fractional_strip_mesh_rejects_conflicting_sizing(airfoil) -> None:
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -467,7 +484,7 @@ def test_fractional_strip_mesh_rejects_conflicting_sizing(airfoil) -> None:
 def test_solver_and_strip_mesh_agree_on_panel_element_counts(airfoil) -> None:
     """MITC4 / CCX maps consume one SectionStripMesh — element counts must match."""
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         MIN_ELEMENTS_PER_PANEL,
         TARGET_ELEMENT_LENGTH_FRAC,
         build_section_strip_mesh,
@@ -478,7 +495,7 @@ def test_solver_and_strip_mesh_agree_on_panel_element_counts(airfoil) -> None:
     from blade_structure_utilities.fem_utilities.section_shell_fea.calculix_ccx.mesh import (
         build_ccx_section_mesh,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.material_utilities.section_bind import bind_shell_material_zones

@@ -49,8 +49,8 @@ def test_cap_mesh_nodes_intersect_web_midlines(layout_key: str):
     """Cap mesh carries web-centric shared nodes at cap-web intersections."""
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
 
@@ -114,8 +114,8 @@ def test_mitc4_cap_nodes_pin_web_junctions_without_slivers(layout_key: str):
     """
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.mesh_utilities.line_1d import LineMeshSpec
@@ -175,8 +175,8 @@ def test_mitc4_cap_nodes_pin_web_junctions_without_slivers(layout_key: str):
 def test_1a_cn_skin_mesh_endpoints_match_panel_polyline(airfoil):
     """Skin strip MITC4 endpoints match underlying panel polyline ends (no drift)."""
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import build_section_strip_mesh
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.material_utilities.section_bind import bind_shell_material_zones

@@ -4,7 +4,7 @@ Operational suite for the `section_shell_fea` worker: matplotlib helpers and
 figure-producing demos. FE mathematics live in loading / element_library /
 processing / simulation_runner.
 
-↑ Parent: [`../README.md`](../README.md)
+↑ Parent: [`../README.md`](../README.md) · Docs index: [`../docs/README.md`](../docs/README.md)
 
 ## Purpose / ownership
 
@@ -22,6 +22,19 @@ processing / simulation_runner.
 | [`demos/`](demos/README.md) | Former top-level `examples/` scripts + catalog |
 | [`output/`](output/) | Generated PNGs / CSV / study artifacts (SoT) |
 
+## Artefacts ↔ stages
+
+| `output/` tree | Stage / claim |
+|----------------|---------------|
+| [`section_centerline_mesh_v2/`](output/section_centerline_mesh_v2/) | Prep mesh / panel topology |
+| [`gci_study_mitc4/`](output/gci_study_mitc4/) | Static solve + Q under refinement (GCI) |
+| [`gci_defect_k_shared/`](output/gci_defect_k_shared/), [`gci_defect_k_tb/`](output/gci_defect_k_tb/) | Defect-K junction studies |
+| [`gci_study_ccx/`](output/gci_study_ccx/), [`gci_study_mitc4_vs_ccx/`](output/gci_study_mitc4_vs_ccx/) | Quarantined CCX validation |
+| [`cap_peak_sampling/`](output/cap_peak_sampling/) | Cap-peak diagnostics (CSV/JSON) |
+| [`benchmark_shell_elements/`](output/benchmark_shell_elements/) | Element / FI oracle comparison |
+
+Docs link these in place — do not regenerate for documentation upgrades.
+
 ## How to run demos
 
 ```bash
@@ -34,5 +47,7 @@ write into `visualisation/output/` by default.
 ## See also
 
 - [`../README.md`](../README.md)
+- [`../docs/README.md`](../docs/README.md)
+- [`../docs/NUMERICAL_STABILITY_AND_GCI.md`](../docs/NUMERICAL_STABILITY_AND_GCI.md)
 - Geometry viz pattern: [`../../../geometry_utilities/section_geometry/visualisation/README.md`](../../../geometry_utilities/section_geometry/visualisation/README.md)
 - Loads viz: [`../../../load_utilities/section_loads/visualisation/README.md`](../../../load_utilities/section_loads/visualisation/README.md)

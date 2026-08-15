@@ -44,7 +44,7 @@ class _OrthotropicLam:
 def test_is_isotropic_source_marker_routes_to_isotropic_kind():
     panel_maps = [_FakePanelMap()]
     panels = [_FakePanel(lam=_IsotropicSourceLam(sigma_y_pa=3.0e8))]
-    kinds, y, uts, ucs, tus = _panel_constitutive_metadata(panel_maps, zones)
+    kinds, y, uts, ucs, tus = _panel_constitutive_metadata(panel_maps, panels)
     assert kinds == ["isotropic"]
     assert y[0] == pytest.approx(3.0e8)
     assert uts[0] == pytest.approx(4.0e8)
@@ -55,7 +55,7 @@ def test_is_isotropic_source_marker_routes_to_isotropic_kind():
 def test_orthotropic_laminate_routes_to_orthotropic_kind():
     panel_maps = [_FakePanelMap()]
     panels = [_FakePanel(lam=_OrthotropicLam())]
-    kinds, y, uts, ucs, tus = _panel_constitutive_metadata(panel_maps, zones)
+    kinds, y, uts, ucs, tus = _panel_constitutive_metadata(panel_maps, panels)
     assert kinds == ["orthotropic"]
     assert np.isnan(y[0])
     assert np.isnan(uts[0])
@@ -64,7 +64,7 @@ def test_orthotropic_laminate_routes_to_orthotropic_kind():
 def test_empty_panel_defaults_to_orthotropic():
     panel_maps = [_FakePanelMap(s_nodes=np.array([]))]
     panels = [_FakePanel(lam=_IsotropicSourceLam())]
-    kinds, y, uts, ucs, tus = _panel_constitutive_metadata(panel_maps, zones)
+    kinds, y, uts, ucs, tus = _panel_constitutive_metadata(panel_maps, panels)
     assert kinds == ["orthotropic"]
     assert np.isnan(y[0])
 
@@ -75,7 +75,7 @@ def test_mixed_panels_classified_independently():
         _FakePanel(lam=_IsotropicSourceLam(sigma_y_pa=6.5e8)),
         _FakePanel(lam=_OrthotropicLam()),
     ]
-    kinds, y, uts, ucs, tus = _panel_constitutive_metadata(panel_maps, zones)
+    kinds, y, uts, ucs, tus = _panel_constitutive_metadata(panel_maps, panels)
     assert kinds == ["isotropic", "orthotropic"]
     assert y[0] == pytest.approx(6.5e8)
     assert np.isnan(y[1])

@@ -287,7 +287,7 @@ def build_capped_catalogue_fixture(
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import (
         AirfoilSDF,
     )
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh import (

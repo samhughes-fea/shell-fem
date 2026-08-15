@@ -273,7 +273,7 @@ def save_thin_wall_stress_figures(
     fig1, ax1 = plt.subplots(figsize=(9.0, 6.5), facecolor="#0f1117")
     plot_section(
         ax1,
-        panels,
+        zones,
         booms,
         webs_geom,
         airfoil,
@@ -294,7 +294,7 @@ def save_thin_wall_stress_figures(
     fig2, ax2 = plt.subplots(figsize=(9.0, 6.5), facecolor="#0f1117")
     plot_section(
         ax2,
-        panels,
+        zones,
         booms,
         webs_geom,
         airfoil,
@@ -333,7 +333,7 @@ def save_clpt_ply_figure(
     outfile = Path(outfile)
     outfile.parent.mkdir(parents=True, exist_ok=True)
     plot_clpt_laminate_stress_fi(
-        panels,
+        zones,
         q_tot,
         sig_p,
         panel_index=panel_index,
@@ -371,7 +371,7 @@ def save_panel_along_contour_figure(
     outfile = Path(outfile)
     outfile.parent.mkdir(parents=True, exist_ok=True)
 
-    p = panels[panel_index]
+    p = zones[panel_index]
     s_along = np.asarray(p.s, dtype=float)
     q_along = np.asarray(q_tot[panel_index], dtype=float).ravel()
     sig_along = np.asarray(sig_p[panel_index], dtype=float).ravel()
@@ -719,7 +719,7 @@ def save_clpt_fi_on_section_geometry(
     else:
         v_hi = max(1.0, fmax) if fmax > 0.0 else 1.0
     return _scalar_field_on_section_geometry(
-        outfile, airfoil, webs_geom, spar_positions, panels, all_panel_fi,
+        outfile, airfoil, webs_geom, spar_positions, zones, all_panel_fi,
         title=(
             "CLPT: max ply Hashin FI on section geometry (per MITC4 element along contour)\n"
             f"(max FI = {fmax:.3e}; colour scale 0 … {v_hi:.3e})"
@@ -1002,7 +1002,7 @@ def save_reserve_factor_on_section_geometry(
     rf_min = float(np.nanmin(all_rf)) if all_rf.size else 0.0
     rf_max = float(np.nanmax(all_rf)) if all_rf.size else rf_cap
     return _scalar_field_on_section_geometry(
-        outfile, airfoil, webs_geom, spar_positions, panels, rf_panels,
+        outfile, airfoil, webs_geom, spar_positions, zones, rf_panels,
         title=(
             f"Strength reserve factor RF = 1/FI (capped at {rf_cap:.0f}) on section geometry\n"
             f"(min RF = {rf_min:.2f}; max RF = {rf_max:.2f})"
@@ -1235,7 +1235,7 @@ def save_warping_stress_on_section_geometry(
     v_abs = max(float(np.nanmax(np.abs(all_vals))) if all_vals.size else 1.0, 1e-30)
 
     return _scalar_field_on_section_geometry(
-        outfile, airfoil, webs_geom, spar_positions, panels, per_panel,
+        outfile, airfoil, webs_geom, spar_positions, zones, per_panel,
         title="Vlasov warping stress σ_ω on section geometry [MPa]",
         cbar_label="σ_ω [MPa]",
         cmap="RdBu_r", vmin=-v_abs, vmax=v_abs, diverging=True,

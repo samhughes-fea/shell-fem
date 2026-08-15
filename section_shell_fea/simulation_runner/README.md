@@ -2,7 +2,7 @@
 
 Runners that orchestrate one worker call (not a sizing/fatigue campaign).
 
-↑ Parent: [`../README.md`](../README.md)
+↑ Parent: [`../README.md`](../README.md) · Docs index: [`../docs/README.md`](../docs/README.md)
 
 ## Purpose / ownership
 
@@ -50,6 +50,14 @@ Barrel re-exports these from `section_shell_fea`.
 
 ---
 
+## PNG pointers
+
+| Figure | Meaning |
+|--------|---------|
+| Mesh input | [`../visualisation/output/section_centerline_mesh_v2/section_mesh_2C-F_i000.png`](../visualisation/output/section_centerline_mesh_v2/section_mesh_2C-F_i000.png) |
+| Q Hashin | [`../processing/static/results/compute_quaternary/examples/outputs/hashin_envelope_composite.png`](../processing/static/results/compute_quaternary/examples/outputs/hashin_envelope_composite.png) |
+| GCI governing FI | [`../visualisation/output/gci_study_mitc4/plots/ladder_governing_fi.png`](../visualisation/output/gci_study_mitc4/plots/ladder_governing_fi.png) |
+
 ## Provenance / what happens today
 
 | Claim | Today |
@@ -57,6 +65,7 @@ Barrel re-exports these from `section_shell_fea`.
 | Public entry | Package `__init__.py` exports runners + `CascadeBin` |
 | Agnosticism | No sizing/fatigue purpose flags |
 | Diagnostics | Structured `DiagnosticsBin` only — not campaign logs |
+| Hashin FI tier | Quaternary on static runner product |
 
 ## See also
 

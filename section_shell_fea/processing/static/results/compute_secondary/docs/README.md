@@ -470,7 +470,7 @@ Also available: `panel_row_nesting.nest_resultant_rows_by_panel` (import from mo
 
 - Results cascade index: [`../../docs/README.md`](../../docs/README.md)
 - Examples: [`../examples/README.md`](../examples/README.md)
-- Upstream: `compute_primary/` (solve / `U_e`; deep docs TBD)
+- Upstream: `compute_primary/` (solve / `U_e`; [`../compute_primary/docs/README.md`](../compute_primary/docs/README.md))
 - Tertiary (CLT consumer): [`../../compute_tertiary/docs/README.md`](../../compute_tertiary/docs/README.md)
 - Quaternary (FI): [`../../compute_quaternary/docs/README.md`](../../compute_quaternary/docs/README.md)
 - Element kernel math: `pre_processing/element_library/mitc4/element.py`

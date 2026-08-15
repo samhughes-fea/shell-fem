@@ -49,7 +49,7 @@ def solve_global_coupled_ccx(
     ccx_path = _require_ccx(ccx_exe)
 
     mesh = build_ccx_section_mesh(
-        panels,
+        zones,
         section_strip_mesh=section_strip_mesh,
         interface_constraint_mode=interface_constraint_mode,
         l_x=l_x,
@@ -59,7 +59,7 @@ def solve_global_coupled_ccx(
     inp_path = work / f"{job_name}.inp"
     write_section_inp(
         mesh,
-        panels,
+        zones,
         nx_panels,
         nxy_panels,
         inp_path,
@@ -79,7 +79,7 @@ def solve_global_coupled_ccx(
 
     dat_path = work / f"{job_name}.dat"
     stress_rows = parse_ccx_dat_stresses(dat_path) if dat_path.is_file() else []
-    results, diag = map_ccx_stresses_to_panel_resultants(mesh, panels, stress_rows)
+    results, diag = map_ccx_stresses_to_panel_resultants(mesh, zones, stress_rows)
     return results, diag, inp_path
 
 

@@ -168,7 +168,7 @@ def _serialize_panel_polylines(zones: Any, q_tot: Any, sig_p: Any, sig_b: Any) -
     n = len(zones)
     rows: list[dict[str, Any]] = []
     for i in range(n):
-        p = panels[i]
+        p = zones[i]
         label = getattr(p, "label", None) or f"panel_{i}"
         s = np.asarray(getattr(p, "s", []), dtype=float)
         nodes = np.asarray(getattr(p, "nodes", []), dtype=float)

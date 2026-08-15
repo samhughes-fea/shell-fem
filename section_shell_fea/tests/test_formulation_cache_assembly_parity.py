@@ -98,7 +98,7 @@ def _legacy_assemble(panel_maps, zones, nx, nxy, *, L_x=1.0, n_gdof: int):
 def test_formulation_cache_matches_legacy_inline_assembly():
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
     zones = list(panel_topology.zones)
-    nx = [np.linspace(0, 1000, len(np.asarray(p.s, dtype=float))) for p in panels]
+    nx = [np.linspace(0, 1000, len(np.asarray(p.s, dtype=float))) for p in zones]
     nxy = [np.zeros_like(n) for n in nx]
 
     strip = build_section_strip_mesh(panel_topology.shell_inputs, n_elements_per_panel=4)

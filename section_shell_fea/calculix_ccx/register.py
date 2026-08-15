@@ -46,13 +46,13 @@ def _solve_ccx(
         )
 
         section_strip_mesh = build_section_strip_mesh_from_panels(
-            panels,
+            zones,
             n_elements_per_panel=kwargs.get("n_elements_per_panel", 10),
             target_element_length_m=kwargs.get("target_element_length_m"),
             endpoint_tol=kwargs.get("endpoint_tol", 1e-6),
         )
     res, diag, _inp = solve_global_coupled_ccx(
-        panels,
+        zones,
         nx_panels,
         nxy_panels,
         section_strip_mesh=section_strip_mesh,

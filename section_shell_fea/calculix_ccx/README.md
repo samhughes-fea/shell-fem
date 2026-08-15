@@ -122,7 +122,7 @@ mid_sig / `governing_fi` are NaN and excluded from gates).
 
 | Piece | Path |
 |-------|------|
-| SFV → nx/nxy | `sfv_panel_loads.py` |
+| SFV → N11/N12 | `sfv_panel_loads.py` (`sfv_to_n11_n12`) |
 | Cascade rung | `ccx_cascade_mesh_convergence.run_ccx_cascade_at_frac` |
 | Study orchestration | `grid_independence_study` with `backend="ccx"` / `gates="ccx"` |
 | CLI | `benchmarks/run_ccx_grid_independence_study.py` |

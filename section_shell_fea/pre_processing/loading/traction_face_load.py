@@ -31,8 +31,14 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from ...processing.static.operations.connected_assembly_core import U_S, W, gdof
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import normal_2d
+
+# DOF layout matches ``static.operations.connected_assembly_core`` (avoid circular import).
+U_S, W = 1, 2
+
+
+def gdof(node_idx: int, local: int, ndof: int) -> int:
+    return node_idx * ndof + local
 
 
 def _skin_node_pairs(node_meta: Any) -> tuple[NDArray[np.float64], NDArray[np.float64], list[tuple[int, int]]]:

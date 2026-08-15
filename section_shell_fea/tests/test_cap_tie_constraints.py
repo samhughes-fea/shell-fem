@@ -23,7 +23,7 @@ def assembled_5df():
         resolve_system_type,
     )
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
-    from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh import (
@@ -237,8 +237,36 @@ def test_zero_offset_link_reduces_to_frame_rotation(assembled_5df):
     ), "zero-offset link still couples u_x to rotations"
 
 
-def test_rejects_master_that_is_already_a_slave(assembled_5df):
-    """A master that is itself a slave would be silently dropped by the reduction."""
+def test_expands_master_that_is_already_a_slave(assembled_5df):
+    """Skin masters that are junction slaves expand through existing MPCs."""
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.cap_tie_constraints import (
+        build_cap_skin_ties,
+        cap_tie_constraints,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+        U_X,
+        gdof,
+    )
+
+    asm = assembled_5df
+    ndof = int(asm.cache.n_dof_node)
+    report = build_cap_skin_ties(asm.panel_maps, asm.node_meta)
+    victim = report.links[0].master_nodes[0] * ndof  # u_x of a skin master
+    free_master = victim + 1000  # synthetic independent DOF
+    mpcs = cap_tie_constraints(
+        report,
+        asm.node_meta,
+        ndof=ndof,
+        existing={victim: [(free_master, 1.0)]},
+    )
+    slave_ux = gdof(report.links[0].slave_node, U_X, ndof)
+    masters = {m for m, _c in mpcs[slave_ux]}
+    assert victim not in masters
+    assert free_master in masters
+
+
+def test_skips_cap_slave_already_owned_by_junction(assembled_5df):
+    """Cap nodes already constrained by junction MPCs are skipped, not raised."""
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.cap_tie_constraints import (
         build_cap_skin_ties,
         cap_tie_constraints,
@@ -247,7 +275,9 @@ def test_rejects_master_that_is_already_a_slave(assembled_5df):
     asm = assembled_5df
     ndof = int(asm.cache.n_dof_node)
     report = build_cap_skin_ties(asm.panel_maps, asm.node_meta)
-    victim = report.links[0].master_nodes[0] * ndof  # u_x of a skin master
-
-    with pytest.raises(ValueError, match="themselves constraint slaves"):
-        cap_tie_constraints(report, asm.node_meta, ndof=ndof, existing={victim: [(0, 1.0)]})
+    cap_ux = report.links[0].slave_node * ndof
+    mpcs = cap_tie_constraints(
+        report, asm.node_meta, ndof=ndof, existing={cap_ux: [(0, 1.0)]}
+    )
+    assert cap_ux not in mpcs
+    assert any("skipped" in n for n in report.notes)

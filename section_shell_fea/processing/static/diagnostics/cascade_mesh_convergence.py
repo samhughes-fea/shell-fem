@@ -12,9 +12,13 @@ Tier coverage
 * **Tertiary** — mid-face ply stress norm + interface ``|τ13|``, ``|τ23|``.
 * **Quaternary** — Hashin in-plane / interlaminar peaks + ``governing_fi``.
 
-``peak_*`` fields are unrestricted elemental maxima (raw). ``peak_*_interior``
-exclude the first/last :data:`ENDPOINT_BAND` elements of each panel strip
-(endpoint-band sampling diagnostic; see grid-independence gate policy).
+``peak_*`` fields are unrestricted elemental maxima for membrane / mid-σ /
+shear. Hashin / interlaminar / ``governing_fi`` exclude **kind-crossing**
+junction nodes (skin–cap / skin–web / cap–web) and cap-tie-slave elements
+(FI continuum ownership; Defect K / ``skin_offset``). Same-kind strip
+interfaces are not junctions. ``peak_*_interior`` additionally drop the
+first/last :data:`ENDPOINT_BAND` elements (diagnostic only; not a CI
+acceptance substitute).
 """
 
 from __future__ import annotations
@@ -22,7 +26,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Collection, Iterable, Mapping, Sequence
 
 import numpy as np
 
@@ -50,7 +54,7 @@ from blade_structure_utilities.mesh_utilities.section_mesh import (
     build_section_strip_mesh,
     mesh_quality_report,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
     shell_mesh_inputs_from_section,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.results.containers.ply_results import (
@@ -179,6 +183,9 @@ class CascadeScalars:
     peak_hashin_interior: dict[str, float] = field(default_factory=dict)
     peak_hashin_il_interior: dict[str, float] = field(default_factory=dict)
     governing_fi: float = float("nan")
+    governing_panel_index: int = -1
+    governing_element_index: int = -1
+    governing_criterion: str = ""
     cascade_trust_ok: bool = True
     solve_residual_rel: float | None = None
     interface_constraint_mode: str = "shared"
@@ -239,7 +246,7 @@ def _build_shell(
         cap_height=float(thickness["spar"]),
     )
     shell = shell_mesh_inputs_from_section(
-        section, twist_rad=twist, layout_key=layout, n_web_samples=20, n_cap_samples=80
+        section, twist_rad=twist, layout_key=layout, n_web_samples=20, n_cap_samples=120
     )
     return shell
 
@@ -294,6 +301,60 @@ def _set_panel_value(
         prev = arr[ei]
         if not np.isfinite(prev) or float(value) > float(prev):
             arr[ei] = float(value)
+
+
+def _kind_owner_counts(panel_maps: Sequence[Any]) -> dict[int, int]:
+    """Count distinct component kinds owning each global node.
+
+    Same-kind strip–strip shared nodes count as 1. Kind-crossing joints
+    (skin–cap / skin–web / cap–web) count as >1 — those are Defect-K junctions.
+    """
+    kinds_by_node: dict[int, set[str]] = {}
+    for pm in panel_maps:
+        kind = _kind_from_label(getattr(pm, "panel_label", ""))
+        for gn in set(int(g) for g in pm.global_nodes if int(g) >= 0):
+            kinds_by_node.setdefault(gn, set()).add(kind)
+    return {gn: len(kinds) for gn, kinds in kinds_by_node.items()}
+
+
+def _element_global_nodes(pm: Any, local_ei: int) -> list[int]:
+    elems = list(pm.elements or [])
+    if not (0 <= int(local_ei) < len(elems)):
+        return []
+    gids: list[int] = []
+    for li in elems[int(local_ei)]:
+        li_i = int(li)
+        if 0 <= li_i < len(pm.global_nodes):
+            gn = int(pm.global_nodes[li_i])
+            if gn >= 0:
+                gids.append(gn)
+    return gids
+
+
+def _fi_sampling_excluded(
+    *,
+    panel_maps: Sequence[Any],
+    pi: int,
+    ei: int,
+    kind_owner_count: Mapping[int, int],
+    tie_slave_nodes: set[int],
+) -> bool:
+    """True when FI peak ownership is joint/tie artefact (not continuum strip).
+
+    Excludes elements that touch a kind-crossing junction node or a cap-tie
+    slave node. Membrane / mid-σ peaks remain unfiltered; this is Hashin /
+    gov-FI sampling ownership only (Defect K / skin_offset tie), not endpoint
+    masking and not same-kind strip interfaces.
+    """
+    if not (0 <= int(pi) < len(panel_maps)):
+        return False
+    pm = panel_maps[int(pi)]
+    gids = _element_global_nodes(pm, int(ei))
+    if not gids:
+        return False
+    if any(int(g) in tie_slave_nodes for g in gids):
+        return True
+    return any(int(kind_owner_count.get(int(g), 0)) > 1 for g in gids)
 
 
 def _accumulate_kind_peaks(
@@ -358,6 +419,10 @@ def run_cascade_at_frac(
     load: Mapping[str, float] | None = None,
     naca_dat: str | Path | None = None,
     require_mesh_qa: bool = True,
+    junction_band_elements: int | None = None,
+    junction_band_step_over_h: float | None = None,
+    junction_band_panel_labels: Collection[str] | None = None,
+    junction_band_which: str = "both",
 ) -> CascadeScalars:
     """Build mesh at ``frac``, QA, solve cascade, extract dataclass scalars."""
     thickness = dict(thickness or DEFAULT_THICKNESS)
@@ -369,7 +434,14 @@ def run_cascade_at_frac(
         thickness=thickness,
         naca_dat=naca_dat,
     )
-    mesh = build_section_strip_mesh(shell, target_element_length_frac=float(frac))
+    mesh = build_section_strip_mesh(
+        shell,
+        target_element_length_frac=float(frac),
+        junction_band_elements=junction_band_elements,
+        junction_band_step_over_h=junction_band_step_over_h,
+        junction_band_panel_labels=junction_band_panel_labels,
+        junction_band_which=junction_band_which,
+    )
     report = mesh_quality_report(mesh, target_element_length_frac=float(frac))
     if require_mesh_qa:
         assert_strip_mesh_quality(mesh, target_element_length_frac=float(frac))
@@ -417,6 +489,12 @@ def run_cascade_at_frac(
     n_elem_by_panel = [
         len(list(pm.elements or [])) if panel_maps else 0 for pm in panel_maps
     ]
+    kind_owner_count = _kind_owner_counts(panel_maps) if panel_maps else {}
+    tie_slave_nodes: set[int] = set()
+    if getattr(runner, "cap_tie_report", None) is not None:
+        tie_slave_nodes = {
+            int(lk.slave_node) for lk in runner.cap_tie_report.links
+        }
 
     stores: dict[str, list[np.ndarray]] = {
         m: _blank_panel_arrays(n_elem_by_panel) for m in KIND_PEAK_METRICS
@@ -502,15 +580,25 @@ def run_cascade_at_frac(
             )
 
     governing_fi = float("nan")
+    governing_panel_index = -1
+    governing_element_index = -1
+    governing_criterion = ""
     if results.quaternary_results is not None:
-        gov = results.quaternary_results.governing or {}
-        if gov.get("fi") is not None:
-            governing_fi = float(gov["fi"])
         h = results.quaternary_results.hashin_fi
         if h is not None and tertiary is not None:
             if h.in_plane is not None:
                 in_plane = np.asarray(h.in_plane, dtype=float)
                 for gi in range(min(panel_index.size, in_plane.shape[0])):
+                    pi = int(panel_index[gi])
+                    ei = int(elem_index[gi])
+                    if _fi_sampling_excluded(
+                        panel_maps=panel_maps,
+                        pi=pi,
+                        ei=ei,
+                        kind_owner_count=kind_owner_count,
+                        tie_slave_nodes=tie_slave_nodes,
+                    ):
+                        continue
                     row = in_plane[gi]
                     val = (
                         float(np.nanmax(row))
@@ -521,23 +609,60 @@ def run_cascade_at_frac(
                         stores,
                         n_elem_by_panel,
                         "peak_hashin",
-                        int(panel_index[gi]),
-                        int(elem_index[gi]),
+                        pi,
+                        ei,
                         val,
                         n_panel=n_panel,
                     )
             if h.interlaminar is not None:
                 il = np.asarray(h.interlaminar, dtype=float).ravel()
                 for gi in range(min(panel_index.size, il.size)):
+                    pi = int(panel_index[gi])
+                    ei = int(elem_index[gi])
+                    if _fi_sampling_excluded(
+                        panel_maps=panel_maps,
+                        pi=pi,
+                        ei=ei,
+                        kind_owner_count=kind_owner_count,
+                        tie_slave_nodes=tie_slave_nodes,
+                    ):
+                        continue
                     _set_panel_value(
                         stores,
                         n_elem_by_panel,
                         "peak_hashin_il",
-                        int(panel_index[gi]),
-                        int(elem_index[gi]),
+                        pi,
+                        ei,
                         abs(float(il[gi])),
                         n_panel=n_panel,
                     )
+
+        # Continuum-owned governing FI = max of filtered Hashin (not joint/tie).
+        best_fi = -1.0
+        for pi, arr in enumerate(stores["peak_hashin"]):
+            vals = np.asarray(arr, dtype=float)
+            if not np.any(np.isfinite(vals)):
+                continue
+            ei = int(np.nanargmax(vals))
+            fv = float(vals[ei])
+            if fv > best_fi:
+                best_fi = fv
+                governing_fi = fv
+                governing_panel_index = int(pi)
+                governing_element_index = int(ei)
+                governing_criterion = "hashin"
+        for pi, arr in enumerate(stores["peak_hashin_il"]):
+            vals = np.asarray(arr, dtype=float)
+            if not np.any(np.isfinite(vals)):
+                continue
+            ei = int(np.nanargmax(vals))
+            fv = float(vals[ei])
+            if fv > best_fi:
+                best_fi = fv
+                governing_fi = fv
+                governing_panel_index = int(pi)
+                governing_element_index = int(ei)
+                governing_criterion = "hashin_il"
 
     peak_kwargs = _kind_peak_kwargs(stores, labels=labels)
     diag = results.diagnostics
@@ -553,6 +678,9 @@ def run_cascade_at_frac(
         residual_rel=residual_rel,
         residual_rel_independent=residual_rel_independent,
         governing_fi=governing_fi,
+        governing_panel_index=governing_panel_index,
+        governing_element_index=governing_element_index,
+        governing_criterion=governing_criterion,
         cascade_trust_ok=bool(diag.cascade_trust_ok) if diag is not None else True,
         solve_residual_rel=None if diag is None else diag.solve_residual_rel,
         interface_constraint_mode=str(interface_constraint_mode),
@@ -612,6 +740,9 @@ def write_convergence_csv(
         "residual_rel_independent",
         "solve_residual_rel",
         "governing_fi",
+        "governing_panel_index",
+        "governing_element_index",
+        "governing_criterion",
     ]
     for kind in KINDS:
         fieldnames.extend(
@@ -641,6 +772,9 @@ def write_convergence_csv(
                 "residual_rel_independent": row.residual_rel_independent,
                 "solve_residual_rel": row.solve_residual_rel,
                 "governing_fi": row.governing_fi,
+                "governing_panel_index": getattr(row, "governing_panel_index", -1),
+                "governing_element_index": getattr(row, "governing_element_index", -1),
+                "governing_criterion": getattr(row, "governing_criterion", ""),
             }
             for kind in KINDS:
                 rec[f"n_elem_{kind}"] = row.n_elem.get(kind, 0)

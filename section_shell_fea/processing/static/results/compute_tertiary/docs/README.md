@@ -173,7 +173,7 @@ Midline tangent and CCW unit normal (B-frame \(YZ\)):
 \hat{\mathbf{n}}=(-t_z,\,t_y)
 \]
 
-Station \(\mathbf{m}=\tfrac12(\mathbf{r}_i+\mathbf{r}_{i+1})\). Evaluated by `mid_segment_frame` / `normal_2d` in `mesh_utilities.section_mesh.inputs.panel_x3_orientation` (same convention as FE `shell_mesh_map.normal_2d`).
+Station \(\mathbf{m}=\tfrac12(\mathbf{r}_i+\mathbf{r}_{i+1})\). Evaluated by `mid_segment_frame` / `normal_2d` in `mesh_utilities.section_mesh.handoff.panel_x3_orientation` (same convention as FE `shell_mesh_map.normal_2d`).
 
 Pass conditions for documented face semantics (`panel_x3_orientation_ok`):
 

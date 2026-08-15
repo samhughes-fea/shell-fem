@@ -53,7 +53,7 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
         SectionLinearStaticRunner,
     )
 
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         build_section_strip_mesh,
     )
 
@@ -285,7 +285,7 @@ def test_mitc4_integration_no_placeholders():
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ProvenanceKind  # noqa: E402
 
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         build_section_strip_mesh,
     )
 
@@ -562,7 +562,7 @@ def test_linear_static_returns_active_transverse_shear_fields():
         SectionLinearStaticRunner,
     )
 
-    from blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh import (
+    from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         build_section_strip_mesh,
     )
 

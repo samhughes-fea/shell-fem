@@ -46,7 +46,7 @@ from blade_structure_utilities.geometry_utilities.section_geometry.api.factory i
     build_section_view,
     resolve_system_type,
 )
-from blade_structure_utilities.geometry_utilities.section_geometry.core.system_layout import (  # noqa: E402
+from blade_structure_utilities.geometry_utilities.section_geometry.layout.system_layout import (  # noqa: E402
     SYSTEM_TYPE_KEYS,
 )
 from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import (  # noqa: E402
@@ -61,7 +61,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner
 from blade_structure_utilities.load_utilities.section_loads import (  # noqa: E402
     shape_section_force_vector,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.inputs._section_to_shell_inputs import (
+from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
     shell_mesh_inputs_from_section,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh import (  # noqa: E402

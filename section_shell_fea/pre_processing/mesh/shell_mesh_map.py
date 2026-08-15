@@ -8,7 +8,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from blade_structure_utilities.mesh_utilities.section_mesh.engine.mesh_topology import (
+from blade_structure_utilities.mesh_utilities.section_mesh.strip.mesh_topology import (
     NElements,
     cluster_points,
     panel_endpoints,
@@ -89,7 +89,7 @@ def normal_2d(t: np.ndarray) -> np.ndarray:
     """Unit normal 90° CCW of a section-plane tangent ``t`` (canonical B).
 
     Thin wrapper: ``coordinate_frames.section_normal_2d`` owns the shell ``+x3``
-    convention. Mirrors ``section_mesh.inputs.panel_x3_orientation.normal_2d`` so
+    convention. Mirrors ``section_mesh.handoff.panel_x3_orientation.normal_2d`` so
     mesh and FE cannot drift apart.
     """
     from blade_structure_utilities.geometry_utilities.coordinate_frames import (

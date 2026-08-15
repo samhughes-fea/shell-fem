@@ -19,7 +19,7 @@ from typing import Any
 import numpy as np
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellPanelResultants
-from blade_structure_utilities.mesh_utilities.section_mesh.engine.mesh_topology import NElements
+from blade_structure_utilities.mesh_utilities.section_mesh.strip.mesh_topology import NElements
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import SectionVlasovResult
 from .solve import solve_global_coupled_ccx
 
@@ -53,19 +53,19 @@ def ccx_global_coupled_solve_from_thin_wall(
     )
 
     vlasov, nx_panels, nxy_panels = prepare_thin_wall_panel_loads(
-        airfoil, panels, webs_geom, q_tot, sig_p, B, dB_dx
+        airfoil, zones, webs_geom, q_tot, sig_p, B, dB_dx
     )
 
     if section_strip_mesh is None:
         section_strip_mesh = build_section_strip_mesh_from_panels(
-            panels,
+            zones,
             n_elements_per_panel=n_elements_per_panel,
             target_element_length_m=target_element_length_m,
             min_elements_per_panel=int(min_elements_per_panel),
         )
 
     all_panel_results, all_panel_diag, _inp = solve_global_coupled_ccx(
-        panels,
+        zones,
         nx_panels,
         nxy_panels,
         section_strip_mesh=section_strip_mesh,

@@ -87,7 +87,7 @@ def test_require_shell_theory_supports_returns_capability() -> None:
 
 def test_dispatch_routes_fsdt_to_periodic_hashin(monkeypatch) -> None:
     monkeypatch.setattr(
-        "blade_structure_utilities.mesh_utilities.section_mesh.engine.strip_mesh.build_section_strip_mesh",
+        "blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh.build_section_strip_mesh",
         lambda *a, **k: object(),
     )
     monkeypatch.setattr(std, "fsdt_periodic_station_hashin", lambda *a, **k: {"solver": "fsdt"})

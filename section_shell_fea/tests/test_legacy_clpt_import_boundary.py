@@ -114,7 +114,12 @@ def test_direct_section_stress_model_sys_path_shims_are_allowlisted() -> None:
 
 
 def test_default_laminates_live_in_material_adapters() -> None:
-    """Demo wall laminates belong in material adapters (no FE topology shim)."""
+    """Demo wall laminates belong in material-land (no FE topology shim).
+
+    The home is now ``section_bind/assign`` rather than a generic ``adapters``
+    bucket — the same intent, satisfied by a real worker home. The assertions
+    below are the invariant; the path is just where it currently lives.
+    """
     # This test file lives under blade_structure_utilities/.../tests; repo root is
     # parents[4] from here (tests → section_shell_fea → fem_utilities →
     # blade_structure_utilities → repo).
@@ -123,7 +128,8 @@ def test_default_laminates_live_in_material_adapters() -> None:
         repo
         / "blade_structure_utilities"
         / "material_utilities"
-        / "adapters"
+        / "section_bind"
+        / "assign"
         / "default_laminates.py"
     )
     text = path.read_text(encoding="utf-8")

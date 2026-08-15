@@ -57,14 +57,23 @@ from blade_structure_utilities.mesh_utilities.section_mesh import (
 ProgressFn = Callable[[str], None]
 
 DEFAULT_INVESTIGATION_KEYS: tuple[str, ...] = (
-    "2B-CN",
-    "2C-CN",
-    "1B-CN",
-    "5B-F",
-    "3D-F",
-    "2A-F",
+    "4D-F",
+    "5D-F",
+    "0A",
+    "3B-F",
+    "3B-CN",
+    "4D-CN",
+    "2D-F",
 )
-METRICS = ("peak_abs_n12", "peak_mid_sig", "peak_hashin")
+METRICS = (
+    "peak_abs_n12",
+    "peak_abs_m11",
+    "peak_abs_m22",
+    "peak_abs_q2",
+    "peak_mid_sig",
+    "peak_hashin",
+    "peak_hashin_il",
+)
 STATISTICS = ("max", "p50", "p95", "p99", "interior_max", "interface_excluded_max")
 SAMPLING_DRIFT_LIMIT = 2.0
 ROBUST_STABLE_LIMIT = 1.25
@@ -174,12 +183,19 @@ def _safe_last_two(values: Sequence[float]) -> float:
     return _safe_drift(values[-2:])
 
 
-def _owner_counts(panel_maps: Sequence[Any]) -> dict[int, int]:
-    counts: dict[int, int] = {}
+def _kind_from_label(label: object) -> str:
+    text = str(label)
+    return text.split(":", 1)[0] if ":" in text else "panel"
+
+
+def _kind_owner_counts(panel_maps: Sequence[Any]) -> dict[int, int]:
+    """Distinct component kinds per global node (kind-crossing = junction)."""
+    kinds_by_node: dict[int, set[str]] = {}
     for pm in panel_maps:
+        kind = _kind_from_label(getattr(pm, "panel_label", ""))
         for gn in set(int(g) for g in pm.global_nodes if int(g) >= 0):
-            counts[gn] = counts.get(gn, 0) + 1
-    return counts
+            kinds_by_node.setdefault(gn, set()).add(kind)
+    return {gn: len(kinds) for gn, kinds in kinds_by_node.items()}
 
 
 def _element_global_nodes(pm: Any, local_ei: int) -> list[int]:
@@ -259,6 +275,10 @@ def analyze_cap_peak_rung(
     interface_constraint_mode: str = "shared",
     require_mesh_qa: bool = True,
     endpoint_band: int = ENDPOINT_BAND,
+    junction_band_elements: int | None = None,
+    junction_band_step_over_h: float | None = None,
+    junction_band_panel_labels: Sequence[str] | None = None,
+    junction_band_which: str = "both",
 ) -> CapPeakRung:
     """Solve one density rung and return raw / robust / tagged peak stats."""
     tie = cap_tie_mode if cap_tie_mode is not None else cap_tie_mode_for_layout(layout)
@@ -270,7 +290,12 @@ def analyze_cap_peak_rung(
         naca_dat=naca_dat,
     )
     mesh = build_section_strip_mesh(
-        shell, target_element_length_frac=float(frac)
+        shell,
+        target_element_length_frac=float(frac),
+        junction_band_elements=junction_band_elements,
+        junction_band_step_over_h=junction_band_step_over_h,
+        junction_band_panel_labels=junction_band_panel_labels,
+        junction_band_which=junction_band_which,
     )
     report = mesh_quality_report(mesh, target_element_length_frac=float(frac))
     if require_mesh_qa:
@@ -290,7 +315,7 @@ def analyze_cap_peak_rung(
     results = runner.get_results()
     asm = runner.assembly
     panel_maps = list(asm.panel_maps)
-    owner_count = _owner_counts(panel_maps)
+    owner_count = _kind_owner_counts(panel_maps)
     tie_slaves: set[int] = set()
     n_links = 0
     if runner.cap_tie_report is not None:
@@ -302,17 +327,29 @@ def analyze_cap_peak_rung(
     n_elem_by_panel = [len(list(pm.elements or [])) for pm in panel_maps]
 
     # Per-panel elemental fields (aligned to local element index).
-    abs_nxy = [np.full(n, np.nan, dtype=float) for n in n_elem_by_panel]
+    abs_n12 = [np.full(n, np.nan, dtype=float) for n in n_elem_by_panel]
+    abs_m11 = [np.full(n, np.nan, dtype=float) for n in n_elem_by_panel]
+    abs_m22 = [np.full(n, np.nan, dtype=float) for n in n_elem_by_panel]
+    abs_q2 = [np.full(n, np.nan, dtype=float) for n in n_elem_by_panel]
     mid_sig = [np.full(n, np.nan, dtype=float) for n in n_elem_by_panel]
     hashin = [np.full(n, np.nan, dtype=float) for n in n_elem_by_panel]
+    hashin_il = [np.full(n, np.nan, dtype=float) for n in n_elem_by_panel]
     hashin_ply = [np.full(n, -1, dtype=int) for n in n_elem_by_panel]
 
     if results.secondary_results is not None and results.secondary_results.elemental_results:
         for row in results.secondary_results.elemental_results.resultant_rows or []:
             pi = int(row.panel_index)
             ei = int(row.station_index)
-            if 0 <= pi < n_panel and 0 <= ei < n_elem_by_panel[pi] and row.N12 is not None:
-                abs_nxy[pi][ei] = abs(float(row.N12))
+            if not (0 <= pi < n_panel and 0 <= ei < n_elem_by_panel[pi]):
+                continue
+            if row.N12 is not None:
+                abs_n12[pi][ei] = abs(float(row.N12))
+            if row.M11 is not None:
+                abs_m11[pi][ei] = abs(float(row.M11))
+            if row.M22 is not None:
+                abs_m22[pi][ei] = abs(float(row.M22))
+            if row.Q2 is not None:
+                abs_q2[pi][ei] = abs(float(row.Q2))
 
     tertiary = results.tertiary_results
     if tertiary is not None and tertiary.ply_results is not None:
@@ -341,37 +378,53 @@ def analyze_cap_peak_rung(
 
     if results.quaternary_results is not None:
         h = results.quaternary_results.hashin_fi
-        if h is not None and h.in_plane is not None and tertiary is not None:
-            in_plane = np.asarray(h.in_plane, dtype=float)
+        if h is not None and tertiary is not None:
             panel_index = np.asarray(tertiary.panel_index, dtype=int)
             elem_index = (
                 np.asarray(tertiary.element_index, dtype=int)
                 if tertiary.element_index is not None
                 else np.arange(panel_index.size, dtype=int)
             )
-            for gi in range(min(panel_index.size, in_plane.shape[0])):
-                pi = int(panel_index[gi])
-                ei = int(elem_index[gi])
-                if not (0 <= pi < n_panel and 0 <= ei < n_elem_by_panel[pi]):
-                    continue
-                row = in_plane[gi]
-                if row.ndim == 0:
-                    val = float(row)
-                    ply_i = 0
-                else:
-                    if not np.any(np.isfinite(row)):
+            if h.in_plane is not None:
+                in_plane = np.asarray(h.in_plane, dtype=float)
+                for gi in range(min(panel_index.size, in_plane.shape[0])):
+                    pi = int(panel_index[gi])
+                    ei = int(elem_index[gi])
+                    if not (0 <= pi < n_panel and 0 <= ei < n_elem_by_panel[pi]):
                         continue
-                    ply_i = int(np.nanargmax(row))
-                    val = float(row[ply_i])
-                prev = hashin[pi][ei]
-                if not np.isfinite(prev) or val > prev:
-                    hashin[pi][ei] = val
-                    hashin_ply[pi][ei] = ply_i
+                    row = in_plane[gi]
+                    if row.ndim == 0:
+                        val = float(row)
+                        ply_i = 0
+                    else:
+                        if not np.any(np.isfinite(row)):
+                            continue
+                        ply_i = int(np.nanargmax(row))
+                        val = float(row[ply_i])
+                    prev = hashin[pi][ei]
+                    if not np.isfinite(prev) or val > prev:
+                        hashin[pi][ei] = val
+                        hashin_ply[pi][ei] = ply_i
+            if h.interlaminar is not None:
+                il = np.asarray(h.interlaminar, dtype=float).ravel()
+                for gi in range(min(panel_index.size, il.size)):
+                    pi = int(panel_index[gi])
+                    ei = int(elem_index[gi])
+                    if not (0 <= pi < n_panel and 0 <= ei < n_elem_by_panel[pi]):
+                        continue
+                    val = abs(float(il[gi]))
+                    prev = hashin_il[pi][ei]
+                    if not np.isfinite(prev) or val > prev:
+                        hashin_il[pi][ei] = val
 
     field_by_metric = {
-        "peak_abs_n12": abs_nxy,
+        "peak_abs_n12": abs_n12,
+        "peak_abs_m11": abs_m11,
+        "peak_abs_m22": abs_m22,
+        "peak_abs_q2": abs_q2,
         "peak_mid_sig": mid_sig,
         "peak_hashin": hashin,
+        "peak_hashin_il": hashin_il,
     }
     kind_panels = _panel_kind_indices(panel_maps)
     stats_out: list[KindMetricStats] = []
@@ -762,6 +815,11 @@ def run_cap_peak_study(
     require_mesh_qa: bool = True,
     progress: bool | ProgressFn = True,
     recipe: Any | None = None,
+    interface_constraint_mode: str = "shared",
+    junction_band_elements: int | None = None,
+    junction_band_step_over_h: float | None = None,
+    junction_band_panel_labels: Sequence[str] | None = None,
+    junction_band_which: str = "both",
 ) -> tuple[dict[str, list[CapPeakRung]], list[CapPeakDriftRow]]:
     """Cotide-backed multi-key cap-peak sampling study."""
     log: ProgressFn | None
@@ -774,12 +832,23 @@ def run_cap_peak_study(
 
     active = recipe or load_cotide_station_recipe()
     kw = active.cascade_kwargs()
+    iface = str(interface_constraint_mode or "shared").strip()
+    kw["interface_constraint_mode"] = iface
+    if junction_band_elements is not None:
+        kw["junction_band_elements"] = int(junction_band_elements)
+    if junction_band_step_over_h is not None:
+        kw["junction_band_step_over_h"] = float(junction_band_step_over_h)
+    if junction_band_panel_labels is not None:
+        kw["junction_band_panel_labels"] = tuple(str(x) for x in junction_band_panel_labels)
+    if junction_band_which and str(junction_band_which) != "both":
+        kw["junction_band_which"] = str(junction_band_which)
     layout_keys = tuple(str(k) for k in keys)
     t0 = time.perf_counter()
     if log is not None:
         log(
             f"[cap-peak] start  layouts={len(layout_keys)}  "
-            f"rungs={len(tuple(refinements))}  fracs={list(map(float, refinements))}"
+            f"rungs={len(tuple(refinements))}  fracs={list(map(float, refinements))}  "
+            f"interface={iface}"
         )
         log(
             f"[cap-peak] station  {active.station_label}  zL={active.zL:.6g}  "
@@ -794,7 +863,7 @@ def run_cap_peak_study(
             log(
                 f"[cap-peak] [{i}/{len(layout_keys)}] {key}  "
                 f"family={resolve_system_type(key).structural_family}  "
-                f"cap_tie={cap_tie_mode_for_layout(key)}"
+                f"cap_tie={cap_tie_mode_for_layout(key)}  interface={iface}"
             )
         rows = run_cap_peak_ladder(
             key,

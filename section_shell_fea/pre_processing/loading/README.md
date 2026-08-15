@@ -1,16 +1,18 @@
 # loading — apply SectionForceVector → nodal loads
 
-Product load application: shaped SFV → nodal `f` / `Fe`.
+↑ Parent computable set: [`../../README.md` §2](../../README.md#2-computable-set)
 
-↑ Parent: [`../../README.md`](../../README.md)
+Project a shaped `SectionForceVector` (SFV) onto MITC4 nodal degrees of freedom as
+absolute forces — contour densities become the shell right-hand side without this
+home owning thin-wall or aero shaping.
 
 ## Purpose / ownership
 
-| Owns | Does **not** own |
-|------|------------------|
-| `section_force_vector_to_nodal_load` | SFV *shaping* ([`section_loads`](../../../../load_utilities/section_loads/README.md)) |
-| Legacy `beam_resultants_to_nodal_load` helpers | TractionField / XFOIL staging (lives under `section_loads.surface_traction`) |
-| Skin node-pair lumping of contour densities | MITC4 `Ke` / assemble / solve |
+| Owns | Does **not** own | Why |
+|------|------------------|-----|
+| `section_force_vector_to_nodal_load` | SFV *shaping* ([`section_loads`](../../../../load_utilities/section_loads/README.md)) | One SFV product; FE only applies |
+| Legacy `beam_resultants_to_nodal_load` helpers | TractionField / XFOIL staging (`section_loads.surface_traction`) | Channel B staging left the FE tree |
+| Skin node-pair lumping of contour densities | MITC4 `Ke` / assemble / solve | Stiffness and solve live elsewhere |
 
 **Locked boundary:** FE only **applies** a precomputed `SectionForceVector`. Channel B
 staging (`build_station_load_field`) is owned by `section_loads`; temporary FE
@@ -30,9 +32,20 @@ skin node pair in curvilinear **C** DOFs \([u_x,u_s,w]\):
 \tfrac12\,(f_x,\,f_s,\,f_w)\,\mathrm{d}s\,L_x.
 \]
 
-Nearest-pair matching uses B-plane \((y,z)\) sample coordinates vs skin midline
+Nearest-pair matching uses B-plane sample coordinates vs skin midline
 locations. Equipollence of the *shaped* SFV is a loads-worker concern; this home
 only projects densities onto DOFs.
+
+Weak-form RHS term corresponding to this projection:
+
+\[
+\delta W_{\mathrm{ext}}
+=
+\int_{\partial\Omega}
+\delta\mathbf{u}^{\mathsf{T}}\,\mathbf{t}\,\mathrm{d}s
+\;\approx\;
+\delta\mathbf{d}^{\mathsf{T}}\,\mathbf{f}.
+\]
 
 ---
 
@@ -56,6 +69,27 @@ Staging / XFOIL: import from
 
 ---
 
+## Call graph
+
+```mermaid
+flowchart LR
+  sfv[SectionForceVector] --> apply[section_force_vector_to_nodal_load]
+  meta[node_meta_skin_pairs] --> apply
+  Lx[L_x] --> apply
+  apply --> f[nodal_f]
+```
+
+---
+
+## PNG pointers
+
+| Figure | Meaning |
+|--------|---------|
+| Upstream shaped SFV / equipollence | [`section_loads` visualisation](../../../../load_utilities/section_loads/visualisation/README.md) |
+| Station mesh receiving loads | [`../../visualisation/output/section_centerline_mesh_v2/section_mesh_2C-F_i000.png`](../../visualisation/output/section_centerline_mesh_v2/section_mesh_2C-F_i000.png) |
+
+---
+
 ## Provenance / what happens today
 
 | Claim | Today |
@@ -66,6 +100,8 @@ Staging / XFOIL: import from
 
 ## See also
 
-- [`../../README.md`](../../README.md) — package README
+- [`../../README.md`](../../README.md) — package README · computable set §2
+- [`../../../../docs/CASCADE_GLOSSARY.md`](../../../../docs/CASCADE_GLOSSARY.md)
+- [`../../docs/README.md`](../../docs/README.md)
 - [`../../../../load_utilities/section_loads/README.md`](../../../../load_utilities/section_loads/README.md)
 - [`../../simulation_runner/README.md`](../../simulation_runner/README.md)

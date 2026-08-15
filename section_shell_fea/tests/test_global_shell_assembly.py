@@ -86,6 +86,8 @@ def test_assemble_global_shell_interface_modes_change_junction_topology() -> Non
     # Shared physically collapses coincident junction nodes into one, so it has
     # strictly fewer global nodes than the constraint-based transformed basis.
     assert nm_shared.n_nodes < nm_tb.n_nodes
+    assert nm_tb.constraints is not None and len(nm_tb.constraints) > 0
+    assert not nm_shared.constraints
 
 
 def test_assembly_only_fast_path_is_deterministic() -> None:

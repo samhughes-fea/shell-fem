@@ -19,12 +19,16 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 
 
 def extract_shell_laminate_recovery_data(
-    panels: Sequence[Any],
+    zones: Sequence[Any],
     *,
     panel_abd: np.ndarray | None = None,
     panel_labels: Sequence[str] | None = None,
 ) -> ShellRecoverySectionPointSet:
-    """Extract shell-owned laminate recovery data from MITC4/thin-wall panel objects."""
+    """Extract shell-owned laminate recovery data from MITC4/thin-wall zone objects.
+
+    ``panel_abd`` / ``panel_labels`` keep their names: they are per-zone rows
+    aligned to ``zones``, and every caller already agrees on those spellings.
+    """
 
     from blade_structure_utilities.geometry_utilities.coordinate_frames import (
         ply_stress_transform_E_to_M,
@@ -41,26 +45,26 @@ def extract_shell_laminate_recovery_data(
     abds = np.asarray(panel_abd, dtype=float) if panel_abd is not None else None
     label_seq = list(panel_labels) if panel_labels is not None else None
     valid_index = 0
-    for pi, panel in enumerate(panels):
-        s_coords = getattr(panel, "s", None)
+    for pi, zone in enumerate(zones):
+        s_coords = getattr(zone, "s", None)
         if s_coords is None or len(s_coords) < 2:
             continue
-        label = str(getattr(panel, "label", "") or f"panel_{pi}")
+        label = str(getattr(zone, "label", "") or f"panel_{pi}")
         if label_seq is not None:
             if valid_index >= len(label_seq) or label_seq[valid_index] != label:
-                raise ValueError("panel_labels ordering does not match panel traversal")
+                raise ValueError("panel_labels ordering does not match zone traversal")
         composite_labels.append(label)
-        lam_raw = getattr(panel.lam, "_ld", panel.lam)
+        lam_raw = getattr(zone.lam, "_ld", zone.lam)
         if isinstance(lam_raw, LaminateDefinition):
             plies = lam_raw.build_clpt_ply_rows()
         else:
-            plies = list(panel.lam.build_plies())
+            plies = list(zone.lam.build_plies())
         if not plies:
-            raise ValueError(f"Panel {label!r} has no plies for recovery extraction")
+            raise ValueError(f"Zone {label!r} has no plies for recovery extraction")
         if abds is not None:
             abd = np.asarray(abds[valid_index], dtype=float)
         else:
-            abd, _t, _nu, _E, _G = panel_abd_tuple_from_lam(panel.lam)
+            abd, _t, _nu, _E, _G = panel_abd_tuple_from_lam(zone.lam)
         abd_inv_rows.append(np.linalg.inv(abd))
         basis_rows.append(_default_composite_resultant_basis())
 
@@ -115,7 +119,7 @@ def build_shell_station_analysis_with_recovery_point_set(
     *,
     geometry: ShellSectionStationGeometry,
     constitutive: BeamSectionConstitutiveInput,
-    panels: Sequence[Any],
+    zones: Sequence[Any],
     provenance: ShellStationProvenance,
     panel_abd: np.ndarray | None = None,
     panel_labels: Sequence[str] | None = None,
@@ -126,7 +130,7 @@ def build_shell_station_analysis_with_recovery_point_set(
     """Build a station analysis artifact with attached shell-native recovery point set."""
 
     point_set = extract_shell_laminate_recovery_data(
-        panels,
+        zones,
         panel_abd=panel_abd,
         panel_labels=panel_labels,
     )
@@ -155,6 +159,13 @@ def _default_composite_resultant_basis() -> np.ndarray:
 
 
 def _ply_strengths_from_shell_ply(ply: Any) -> dict[str, float]:
+    """Hashin allowables off a ply row, or ``{}`` when it carries none.
+
+    An empty result is reported by the caller rather than swallowed here: a
+    recovery point with no allowables cannot yield a meaningful failure index,
+    and for a long time it produced an index of zero instead — indistinguishable
+    from a comfortable margin (``docs/bug_log.md`` BL-011).
+    """
     out: dict[str, float] = {}
     for key in ("Xt", "Xc", "Yt", "Yc", "S12"):
         value = getattr(ply, key, None)
