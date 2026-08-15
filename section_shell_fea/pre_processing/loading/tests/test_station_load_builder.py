@@ -26,7 +26,7 @@ def _minimal_shell_inputs() -> ShellMeshInputs:
     strip = ShellMidlineStrip(
         label="outer_skin",
         kind="skin",
-        midline_b=ring,
+        midline_twisted_pitch_axis_blade_frame=ring,
         thickness_m=0.01,
         closed=True,
     )

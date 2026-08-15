@@ -68,7 +68,9 @@ Largest compatibility surface. Prefer the canonical names in all new code.
 | `run_section_with_mitc4_shell` / `api/legacy_clamped.py` | `run_section_periodic_bc(..., shell_theory=ShellTheory.FSDT)` | formerly `api/legacy_clamped.py` (+ package `__init__`) | **removed** — clamped section FE path deleted; periodic is the only section shell FE entry |
 | `reduce_propagate_solve` | `SectionLinearStaticRunner.from_global(...).solve()` | formerly `engine/connected_assembly_core.py` | **removed** (Wave 3) |
 | `section_solve_legacy_dict` / `.legacy_dict()` | typed `SectionLinearStaticResult` | `simulation_runner/section_linear_static_runner.py` | retained for diagnostics (not scheduled) |
-| `loading_axis_yz=` on `run_section_periodic_bc` / tapered / CCX | `resultants=BeamResultantVector(..., about_yz=...)` | `api/periodic.py`, `pre_processing/loading/beam_resultant_handoff.py` | **warns** (`DeprecationWarning`) |
+| `loading_axis_yz=` on `run_section_periodic_bc` / tapered / CCX | `resultants=BeamResultantVector(..., about_xy=...)` | `api/periodic.py`, `pre_processing/loading/beam_resultant_handoff.py` | **warns** (`DeprecationWarning`) |
+| `BeamResultantVector.about_yz` / `.with_about_yz` | `.about_xy` / `.with_about_xy` | `section_contract/beam_resultant_vector.py` | **warns** (`DeprecationWarning`) |
+| `SectionLinearStaticRunner(about_yz=...)` | `about_xy=...` | `simulation_runner/section_linear_static_runner.py` | **warns** (`DeprecationWarning`) |
 | Scalar `N,Vy,Vz,M22,Mz,T` kwargs alone | `resultants=BeamResultantVector` | same | **silent** shim (centroid-referenced); migrate callers |
 | `SectionShellRecoveryBundle.y_sc` / `.z_sc` | `.y_e` / `.z_e` (elastic centroid, **not** shear centre) | `station_analysis_types.py` | **silent** dual-write; prefer `y_e`/`z_e` |
 | `run_station_periodic_hashin` / `fi_track="periodic"` / `_run_station_periodic_hashin_impl` | `run_station_hashin` / `run_station_linear_static_hashin` (+ optional traction kwargs) | formerly `station_recovery.py` | **removed** — production traction uses linear-static cascade |

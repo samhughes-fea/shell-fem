@@ -12,8 +12,8 @@ Key invariants checked:
   A4  len(zones) == len(shell_inputs.midlines); every panel label matches
       exactly one strip via label = f"{kind}:{label}".
   A5  panels are emitted in skin → caps → webs order, and panel.nodes
-      equals the corresponding strip's midline_b (as produced by
-      bind_shell_material_zones).
+      equals the corresponding strip's midline_twisted_pitch_axis_blade_frame
+      (as produced by bind_shell_material_zones).
   A6  Same contract holds with a non-zero twist angle.
 """
 
@@ -123,7 +123,7 @@ def test_panel_ordering_skin_caps_webs(airfoil, layout_key):
 
 @pytest.mark.parametrize("layout_key", _LAYOUT_KEYS)
 def test_panel_nodes_match_ordered_midline_b(airfoil, layout_key):
-    """panel.nodes must equal the corresponding strip's midline_b (geometry A5)."""
+    """panel.nodes must equal strip midline_twisted_pitch_axis_blade_frame (A5)."""
     shell_inputs, zones, _ = _build_pipeline(airfoil, layout_key)
 
     skin_ms = [m for m in shell_inputs.midlines if m.kind == "skin"]
@@ -132,13 +132,14 @@ def test_panel_nodes_match_ordered_midline_b(airfoil, layout_key):
     ordered = skin_ms + cap_ms + web_ms
 
     for i, (panel, m) in enumerate(zip(zones, ordered)):
-        expected_nodes = np.asarray(m.midline_b, dtype=float)
+        expected_nodes = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         assert panel.nodes.shape == expected_nodes.shape, (
             f"{layout_key}: zones[{i}] shape {panel.nodes.shape} "
-            f"!= midline_b shape {expected_nodes.shape}"
+            f"!= midline_twisted_pitch_axis_blade_frame shape {expected_nodes.shape}"
         )
         assert np.allclose(panel.nodes, expected_nodes, atol=_GEOM_TOL_M), (
-            f"{layout_key}: zones[{i}] nodes diverge from midline_b "
+            f"{layout_key}: zones[{i}] nodes diverge from "
+            f"midline_twisted_pitch_axis_blade_frame "
             f"(max diff={np.abs(panel.nodes - expected_nodes).max():.2e} m). "
             f"Do not index zones[i] directly against midlines[i]; "
             f"midlines are unordered (skin/web/cap dict insertion order)."
@@ -202,16 +203,17 @@ def test_contract_with_nonzero_twist(airfoil, layout_key):
 
     for i, (panel, m) in enumerate(zip(zones, ordered)):
         assert panel.label == f"{m.kind}:{m.label}"
-        expected_nodes = np.asarray(m.midline_b, dtype=float)
+        expected_nodes = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         assert np.allclose(panel.nodes, expected_nodes, atol=_GEOM_TOL_M)
 
-    # Twisted B-frame: trailing_edge_b (at [chord, 0] in S-frame) must move under twist.
-    # leading_edge_b is at the origin and stays [0,0] regardless of twist angle.
+    # Twisted B-frame: trailing_edge_twisted_pitch_axis_blade_frame (at [chord, 0]
+    # in S-frame) must move under twist. leading_edge_twisted_pitch_axis_blade_frame
+    # is at the origin and stays [0,0] regardless of twist angle.
     shell_inputs_0, _, _ = _build_pipeline(airfoil, layout_key, twist_rad=0.0)
-    te_twist = np.array(shell_inputs.trailing_edge_b)
-    te_zero = np.array(shell_inputs_0.trailing_edge_b)
+    te_twist = np.array(shell_inputs.trailing_edge_twisted_pitch_axis_blade_frame)
+    te_zero = np.array(shell_inputs_0.trailing_edge_twisted_pitch_axis_blade_frame)
     assert not np.allclose(te_twist, te_zero, atol=1e-6), (
-        "trailing_edge_b must rotate under non-zero twist."
+        "trailing_edge_twisted_pitch_axis_blade_frame must rotate under non-zero twist."
     )
 
 
@@ -347,7 +349,7 @@ def test_cap_endpoints_preserve_exported_positions(airfoil, layout_key):
         section, twist_rad=0.0, n_web_samples=20, n_cap_samples=40
     )
     cap_end_geo = {
-        s.label: (np.asarray(s.midline_b, dtype=float)[0], np.asarray(s.midline_b, dtype=float)[-1])
+        s.label: (np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)[0], np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)[-1])
         for s in strips_geo
         if s.kind == "cap"
     }
@@ -357,7 +359,7 @@ def test_cap_endpoints_preserve_exported_positions(airfoil, layout_key):
     for m in shell_inputs.midlines:
         if m.kind != "cap":
             continue
-        arr = np.asarray(m.midline_b, dtype=float)
+        arr = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         g0, g1 = cap_end_geo[m.label]
         same_order = np.allclose(arr[0], g0, atol=1e-9, rtol=0.0) and np.allclose(
             arr[-1], g1, atol=1e-9, rtol=0.0

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -176,6 +177,7 @@ class SectionLinearStaticRunner:
         My: float = 0.0,
         Mz: float = 0.0,
         T: float = 0.0,
+        about_xy: tuple[float, float] | None = None,
         about_yz: tuple[float, float] | None = None,
         torsion_about_shear_centre: bool = False,
         shear_centre_E_mean: float = 70e9,
@@ -234,7 +236,16 @@ class SectionLinearStaticRunner:
         self._My = float(My)
         self._Mz = float(Mz)
         self._T_load = float(T)
-        self._about_yz = about_yz
+        if about_yz is not None:
+            warnings.warn(
+                "SectionLinearStaticRunner(about_yz=...) is deprecated; use about_xy=...",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if about_xy is not None:
+                raise TypeError("Pass only one of about_xy= or about_yz=")
+            about_xy = about_yz
+        self._about_xy = about_xy
         self._torsion_about_shear_centre = bool(torsion_about_shear_centre)
         self._shear_centre_E_mean = float(shear_centre_E_mean)
         self._traction_field = traction_field
@@ -351,17 +362,17 @@ class SectionLinearStaticRunner:
                 "SectionLinearStaticRunner.execute() currently supports "
                 f"ShellTheory.FSDT only; got {self._shell_theory!r}"
             )
-        about_yz = self._about_yz
-        if self._torsion_about_shear_centre and about_yz is not None:
+        about_xy = self._about_xy
+        if self._torsion_about_shear_centre and about_xy is not None:
             raise ValueError(
-                "Pass either torsion_about_shear_centre=True or about_yz=..., not both"
+                "Pass either torsion_about_shear_centre=True or about_xy=..., not both"
             )
         if self._torsion_about_shear_centre:
             from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.shear_centre_loading_axis import (
                 shear_centre_about_yz_from_panel_topology,
             )
 
-            about_yz = shear_centre_about_yz_from_panel_topology(
+            about_xy = shear_centre_about_yz_from_panel_topology(
                 panel_topology, E_mean=float(self._shear_centre_E_mean)
             )
 
@@ -445,7 +456,7 @@ class SectionLinearStaticRunner:
 
         resultants = self._resultants_in
         if resultants is None:
-            origin = about_yz if about_yz is not None else BEAM_LOAD_AXIS_YZ
+            origin = about_xy if about_xy is not None else BEAM_LOAD_AXIS_YZ
             resultants = BeamResultantVector.from_named(
                 N=self._N,
                 Vy=self._Vy,
@@ -454,10 +465,10 @@ class SectionLinearStaticRunner:
                 Mz=self._Mz,
                 T=self._T_load,
                 frame=FRAME_SECTION_YZ,
-                about_yz=origin,
+                about_xy=origin,
             )
-        elif about_yz is not None:
-            resultants = resultants.transported_to(float(about_yz[0]), float(about_yz[1]))
+        elif about_xy is not None:
+            resultants = resultants.transported_to(float(about_xy[0]), float(about_xy[1]))
 
         channel = str(self._load_channel or "thinwall").strip()
         sfv = self._section_force_vector_in
@@ -521,7 +532,7 @@ class SectionLinearStaticRunner:
             f = beam_resultants_to_nodal_load(
                 asm.node_meta,
                 resultants,
-                about_yz=resultants.about_yz,
+                about_xy=resultants.about_xy,
                 ndof=ndof,
                 L_x=self._L_x,
             )
@@ -582,7 +593,7 @@ class SectionLinearStaticRunner:
             assert self.resultants is not None
             self.compute_section_deformation_average_1a(
                 node_meta=self.assembly.node_meta,
-                about_yz=self.resultants.about_yz,
+                about_xy=self.resultants.about_xy,
                 zones=zones,
                 panel_maps=self.assembly.panel_maps,
             )
@@ -743,7 +754,7 @@ class SectionLinearStaticRunner:
         self,
         *,
         node_meta: Any,
-        about_yz: tuple[float, float] = (0.0, 0.0),
+        about_xy: tuple[float, float] = (0.0, 0.0),
         zones: list[Any] | None = None,
         panel_maps: list[Any] | None = None,
         thickness: float = 1.0,
@@ -762,7 +773,7 @@ class SectionLinearStaticRunner:
             d_global=np.asarray(self.field.d_global, dtype=float),
             node_meta=node_meta,
             ndof=ndof,
-            about_yz=about_yz,
+            about_xy=about_xy,
             zones=zones,
             panel_maps=panel_maps,
             thickness=thickness,

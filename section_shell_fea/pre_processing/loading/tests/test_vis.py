@@ -37,7 +37,7 @@ def _minimal_shell_inputs(*, twist_rad: float = 0.2) -> ShellMeshInputs:
     strip = ShellMidlineStrip(
         label="outer_skin",
         kind="skin",
-        midline_b=ring,
+        midline_twisted_pitch_axis_blade_frame=ring,
         thickness_m=0.01,
         closed=True,
     )
@@ -53,7 +53,7 @@ def test_blade_outline_to_unit_chord_is_unit_chord() -> None:
     # The fixture ring is already the zero-twist outline, so pass twist 0 here;
     # the twisted case is test_blade_outline_to_unit_chord_untwists below.
     shell_inputs = _minimal_shell_inputs(twist_rad=0.0)
-    ring = shell_inputs.midlines[0].midline_b
+    ring = shell_inputs.midlines[0].midline_twisted_pitch_axis_blade_frame
     outline_B = SectionOutlineGeometry.from_closed_contour(ring, ensure_clockwise=True)
     chord_frame, _ = blade_outline_to_unit_chord(
         outline_B, shell_inputs.twist_rad, te_first=False
@@ -70,7 +70,7 @@ def test_blade_outline_to_unit_chord_untwists() -> None:
     """The B→NACA hop must remove the twist, not double it."""
     twist = 0.3
     shell_inputs = _minimal_shell_inputs(twist_rad=twist)
-    ring = np.asarray(shell_inputs.midlines[0].midline_b, dtype=float)
+    ring = np.asarray(shell_inputs.midlines[0].midline_twisted_pitch_axis_blade_frame, dtype=float)
     # Rotate the canonical-B fixture *into* a twisted attitude, then ask the
     # adapter to take it back out; the result must match the untwisted case.
     twisted = rotate_S_to_B(ring, twist)

@@ -122,7 +122,7 @@ def fsdt_periodic_station_hashin(
         resultants = BeamResultantVector.from_named(
             N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
             frame=FRAME_SECTION_YZ,
-            about_yz=BEAM_LOAD_AXIS_YZ,
+            about_xy=BEAM_LOAD_AXIS_YZ,
         )
         sfv = shape_section_force_vector(
             resultants, getattr(shell_inputs, "midlines", None)

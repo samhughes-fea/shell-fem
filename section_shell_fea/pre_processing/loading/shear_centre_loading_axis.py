@@ -1,8 +1,14 @@
-"""Optional shear-centre ``about_yz`` for beam→shell resultant transport.
+"""Optional shear-centre ``about_xy`` for beam→shell resultant transport.
+
+Sectorial shear-centre estimates used when
+``SectionLinearStaticRunner(..., torsion_about_shear_centre=True)`` retags the
+moment reference. Prefer wiring the returned ``(X_*, Y_*)`` into
+``BeamResultantVector.about_xy`` / runner ``about_xy=``.
 
 Production FI defaults to the pitching / load-stacking origin
-(:data:`~blade_structure_utilities.geometry_utilities.section_contract.BEAM_LOAD_AXIS_YZ`) and transports to the
-elastic centroid inside ``run_section_linear_static_from_resultants``.
+(:data:`~blade_structure_utilities.geometry_utilities.section_contract.BEAM_LOAD_AXIS_XY`)
+and transports to the elastic centroid inside
+``run_section_linear_static_from_resultants``.
 
 Opt-in Saint-Venant torsion about the sectorial shear centre uses
 :func:`shear_centre_about_yz_from_panel_topology` (or the lower-level outer-skin
@@ -50,8 +56,8 @@ def shear_centre_about_yz_from_panel_topology(
         )
     m0 = skins[0]
     verts = np.asarray(
-        getattr(m0, "midline_b", None)
-        if getattr(m0, "midline_b", None) is not None
+        getattr(m0, "midline_twisted_pitch_axis_blade_frame", None)
+        if getattr(m0, "midline_twisted_pitch_axis_blade_frame", None) is not None
         else getattr(m0, "points", None),
         dtype=float,
     )

@@ -26,12 +26,12 @@ def _min_dist_cap_interior_vertices_to_webs(shell: object) -> float:
     webs: list[np.ndarray] = []
     for m in shell.midlines:  # type: ignore[attr-defined]
         if m.kind == "web":
-            webs.append(np.asarray(m.midline_b, dtype=float))
+            webs.append(np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float))
     best = float("inf")
     for m in shell.midlines:  # type: ignore[attr-defined]
         if m.kind != "cap":
             continue
-        pts = np.asarray(m.midline_b, dtype=float)
+        pts = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         if pts.shape[0] < 3:
             continue
         for p in pts[1:-1]:

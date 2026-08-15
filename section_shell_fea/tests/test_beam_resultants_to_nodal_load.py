@@ -87,12 +87,12 @@ def test_nodal_load_reconstructs_beam_resultants(named):
     vec = BeamResultantVector.from_named(
         **{k: float(v) for k, v in named.items()},
         frame=FRAME_SECTION_YZ,
-        about_yz=BEAM_LOAD_AXIS_YZ,
+        about_xy=BEAM_LOAD_AXIS_YZ,
     )
     ndof = int(asm.cache.n_dof_node)
     f = beam_resultants_to_nodal_load(asm.node_meta, vec, ndof=ndof)
     back = integrate_nodal_load_resultants(
-        asm.node_meta, f, about_yz=BEAM_LOAD_AXIS_YZ, ndof=ndof,
+        asm.node_meta, f, about_xy=BEAM_LOAD_AXIS_YZ, ndof=ndof,
     )
     np.testing.assert_allclose(back.R, vec.R, rtol=1e-6, atol=1e-6)
 
@@ -100,7 +100,7 @@ def test_nodal_load_reconstructs_beam_resultants(named):
 def test_linear_static_cascade_reaches_quaternary():
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
     vec = BeamResultantVector.from_named(
-        My=1e3, frame=FRAME_SECTION_YZ, about_yz=BEAM_LOAD_AXIS_YZ,
+        My=1e3, frame=FRAME_SECTION_YZ, about_xy=BEAM_LOAD_AXIS_YZ,
     )
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
@@ -139,12 +139,12 @@ def test_torsion_about_shear_centre_opt_in_reconstructs_T():
         load_channel="equipollent",
     ).execute()
     assert static.resultants is not None
-    assert static.resultants.about_yz == pytest.approx((y_sc, z_sc), rel=0, abs=1e-9)
+    assert static.resultants.about_xy == pytest.approx((y_sc, z_sc), rel=0, abs=1e-9)
     assert static.assembly is not None and static.f_nodal is not None
     back = integrate_nodal_load_resultants(
         static.assembly.node_meta,
         static.f_nodal,
-        about_yz=static.resultants.about_yz,
+        about_xy=static.resultants.about_xy,
         ndof=int(static.assembly.cache.n_dof_node),
     )
     np.testing.assert_allclose(back.T, 50.0, rtol=1e-5, atol=1e-5)
@@ -156,7 +156,7 @@ def test_torsion_about_shear_centre_opt_in_reconstructs_T():
         load_channel="equipollent",
     ).execute()
     assert static_default.resultants is not None
-    assert static_default.resultants.about_yz == BEAM_LOAD_AXIS_YZ
+    assert static_default.resultants.about_xy == BEAM_LOAD_AXIS_YZ
 
 
 def test_linear_static_from_resultants_rejects_non_fsdt() -> None:

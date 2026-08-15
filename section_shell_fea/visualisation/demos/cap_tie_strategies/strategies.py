@@ -133,7 +133,7 @@ def tie_cap_skin_offset(mesh, thicknesses, *, tol_frac: float | None = None) -> 
     true normal offset — since fixed, so the measured normal gap now matches the
     formula to within 1e-3. What remains is that the section builder **clamps and
     rescales** requested thicknesses to fit the local cavity, so a prediction
-    built from the caller's requested ``t_skin`` is wrong by whatever the clamp
+    built from the caller's requested ``skin_thickness`` is wrong by whatever the clamp
     did, regardless of how good the geometry is. Measuring sidesteps both.
 
     Pass ``tol_frac`` to re-enable the analytic gate (rejecting nodes whose
@@ -142,12 +142,12 @@ def tie_cap_skin_offset(mesh, thicknesses, *, tol_frac: float | None = None) -> 
     """
     out = TieProposal(strategy="S2_cap_skin_offset")
     skins = [(pm.panel_label, np.asarray(pm.yz_nodes, float)) for pm in _panels_of_kind(mesh, "skin")]
-    t_skin = float(thicknesses.get("skin", 0.0))
+    skin_thickness = float(thicknesses.get("skin", 0.0))
     for cap in _panels_of_kind(mesh, "cap"):
         out.caps_seen += 1
         nodes = np.asarray(cap.yz_nodes, float)
         t_cap = float(cap.thickness_m)
-        expected = 0.5 * (t_skin + t_cap)
+        expected = 0.5 * (skin_thickness + t_cap)
         found = 0
         for i, q in enumerate(nodes):
             best = None

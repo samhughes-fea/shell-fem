@@ -255,7 +255,7 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
     resultants = BeamResultantVector.from_named(
         N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
         frame=FRAME_SECTION_YZ,
-        about_yz=BEAM_LOAD_AXIS_YZ,
+        about_xy=BEAM_LOAD_AXIS_YZ,
     )
     cascade = LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(

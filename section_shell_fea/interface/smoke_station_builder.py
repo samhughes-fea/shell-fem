@@ -41,7 +41,7 @@ def build_smoke_shell_station_analysis(
                         ShellMidlineStrip(
                             label="panel",
                             kind="skin",
-                            midline_b=np.array([[0.0, 0.0], [1.0, 0.0]], dtype=float),
+                            midline_twisted_pitch_axis_blade_frame=np.array([[0.0, 0.0], [1.0, 0.0]], dtype=float),
                             thickness_m=0.02,
                         ),
                     ),

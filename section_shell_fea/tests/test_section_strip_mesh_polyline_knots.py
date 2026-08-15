@@ -22,7 +22,7 @@ def _web_polylines_from_shell(shell: object) -> list[np.ndarray]:
     for m in shell.midlines:  # type: ignore[attr-defined]
         if m.kind != "web":
             continue
-        arr = np.asarray(m.midline_b, dtype=float)
+        arr = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         if arr.shape[0] >= 2:
             webs.append(arr)
     return webs
@@ -152,7 +152,7 @@ def test_mitc4_cap_nodes_pin_web_junctions_without_slivers(layout_key: str):
     for m in shell.midlines:  # type: ignore[attr-defined]
         if m.kind != "cap":
             continue
-        arr = np.asarray(m.midline_b, dtype=float)
+        arr = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         yz = cap_mesh[m.label]
 
         assert np.allclose(yz[0], arr[0], atol=1e-12, rtol=0.0), (layout_key, m.label)

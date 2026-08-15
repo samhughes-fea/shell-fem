@@ -1,19 +1,20 @@
 """Primary/assembled kinematics add-on 1a: thickness×arc section deformation average.
 
 Weighted average of nodal curvilinear-strip (**C**) DOFs about the pitch /
-load-stacking origin (:data:`BEAM_LOAD_AXIS_YZ` by default). Lives under
+load-stacking origin (:data:`BEAM_LOAD_AXIS_XY` by default). Lives under
 Primary/assembled — does not replace secondary→quaternary for FI.
 """
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import BEAM_LOAD_AXIS_YZ
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import BEAM_LOAD_AXIS_XY
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.traction_face_load import (
     _skin_node_pairs,
 )
@@ -33,7 +34,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
 class SectionDeformationAverage1a:
     """Thickness×arc weighted section-average kinematics (Primary/Global 1a)."""
 
-    about_yz: tuple[float, float]
+    about_xy: tuple[float, float]
     """Moment / pitch reference used for the average metadata."""
     mean_local_dof: NDArray[np.float64]
     """Length-6 average ``[u_x, u_s, w, β_s, β_x, β_z]`` in curvilinear **C**."""
@@ -41,6 +42,16 @@ class SectionDeformationAverage1a:
     """Length-2 average **B**-plane displacement ``(u_y, u_z)`` from ``u_s, w``."""
     weight_sum: float
     n_pairs: int
+
+    @property
+    def about_yz(self) -> tuple[float, float]:
+        """Deprecated alias of :attr:`about_xy`."""
+        warnings.warn(
+            "SectionDeformationAverage1a.about_yz is deprecated; use about_xy",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.about_xy
 
 
 def _panel_thickness(panel: Any) -> float:
@@ -85,7 +96,7 @@ def compute_section_deformation_average_1a(
     d_global: NDArray[np.float64],
     node_meta: Any,
     ndof: int = 6,
-    about_yz: tuple[float, float] = BEAM_LOAD_AXIS_YZ,
+    about_xy: tuple[float, float] = BEAM_LOAD_AXIS_XY,
     zones: list[Any] | None = None,
     panel_maps: list[Any] | None = None,
     thickness: float = 1.0,
@@ -95,12 +106,12 @@ def compute_section_deformation_average_1a(
     Skin node-pairs (bottom+top) share the midline. Pair weight is ``t·ds``
     where ``ds`` is the local arc spacing along the ordered pair sequence.
     """
-    origin = (float(about_yz[0]), float(about_yz[1]))
+    origin = (float(about_xy[0]), float(about_xy[1]))
     locs, tangents, gn_pairs = _skin_node_pairs(node_meta)
     n = len(gn_pairs)
     if n == 0:
         return SectionDeformationAverage1a(
-            about_yz=origin,
+            about_xy=origin,
             mean_local_dof=np.zeros(6, dtype=float),
             mean_uyz=np.zeros(2, dtype=float),
             weight_sum=0.0,
@@ -150,7 +161,7 @@ def compute_section_deformation_average_1a(
         acc_uyz += wi * np.array([uy, uz], dtype=float)
 
     return SectionDeformationAverage1a(
-        about_yz=origin,
+        about_xy=origin,
         mean_local_dof=acc / w_sum,
         mean_uyz=acc_uyz / w_sum,
         weight_sum=w_sum,

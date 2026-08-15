@@ -131,11 +131,11 @@ def test_combined_rhs_equals_beam_plus_traction() -> None:
     resultants = BeamResultantVector.from_named(
         N=0.0, Vy=0.0, Vz=0.0, My=1.0e3, Mz=0.0, T=12.0,
         frame=FRAME_SECTION_YZ,
-        about_yz=BEAM_LOAD_AXIS_YZ,
+        about_xy=BEAM_LOAD_AXIS_YZ,
     )
     tf, pts = _synthetic_traction()
     f_beam = beam_resultants_to_nodal_load(
-        asm.node_meta, resultants, about_yz=resultants.about_yz, ndof=ndof, L_x=1.0,
+        asm.node_meta, resultants, about_xy=resultants.about_xy, ndof=ndof, L_x=1.0,
     )
     f_tr = traction_face_loads(
         asm.node_meta,

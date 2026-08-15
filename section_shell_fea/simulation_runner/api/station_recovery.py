@@ -180,7 +180,7 @@ def build_fsdt_station_analysis(
     resultants = BeamResultantVector.from_named(
         N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
         frame=FRAME_SECTION_YZ,
-        about_yz=BEAM_LOAD_AXIS_YZ,
+        about_xy=BEAM_LOAD_AXIS_YZ,
     )
     from blade_structure_utilities.load_utilities.section_loads import (
         shape_section_force_vector_from_panel_topology,

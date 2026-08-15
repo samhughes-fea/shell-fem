@@ -209,10 +209,10 @@ def _channel_cap_share(mesh) -> dict[str, float]:
     skins = [pm for pm in mesh.panel_meshes if pm.kind == "skin" and pm.yz_nodes.size]
     if not skins:
         return {}
-    t_skin = float(np.median([pm.thickness_m for pm in skins]))
+    skin_thickness = float(np.median([pm.thickness_m for pm in skins]))
     return {
         pm.panel_label.split(":", 1)[1]: float(pm.thickness_m)
-        / max(float(pm.thickness_m) + t_skin, 1e-30)
+        / max(float(pm.thickness_m) + skin_thickness, 1e-30)
         for pm in caps
     }
 

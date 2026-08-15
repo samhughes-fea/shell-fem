@@ -4,7 +4,7 @@ Statically equivalent cut loads: transport R to the skin weighted centre,
 distribute like the CCX outboard-ring algorithm in curvilinear strip frame **C**
 DOFs ``[u_x, u_s, w, ...]`` (≡ **E** on each facet; see
 ``geometry_utilities.coordinate_frames``), so net force and moments about the
-requested ``about_yz`` are recovered by equipollence.
+requested ``about_xy`` are recovered by equipollence.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ def beam_resultants_to_nodal_load(
     node_meta: Any,
     resultants: BeamResultantVector | NDArray[np.float64],
     *,
-    about_yz: tuple[float, float] | None = None,
+    about_xy: tuple[float, float] | None = None,
     ndof: int = 6,
     L_x: float = 1.0,
     thickness: float = 1.0,
@@ -71,22 +71,22 @@ def beam_resultants_to_nodal_load(
 
     Forces and couples are applied about the skin ``t·ds`` weighted centre so
     net force produces no parasitic moment there; ``resultants`` are first
-    transported from ``about_yz`` to that centre (equipollent). Reconstructing
-    about the original ``about_yz`` recovers ``R``.
+    transported from ``about_xy`` to that centre (equipollent). Reconstructing
+    about the original ``about_xy`` recovers ``R``.
     """
     if isinstance(resultants, BeamResultantVector):
-        origin = about_yz if about_yz is not None else resultants.about_yz
+        origin = about_xy if about_xy is not None else resultants.about_xy
         vec0 = (
             resultants
-            if resultants.about_yz == (float(origin[0]), float(origin[1]))
+            if resultants.about_xy == (float(origin[0]), float(origin[1]))
             else resultants.transported_to(float(origin[0]), float(origin[1]))
         )
     else:
-        origin = about_yz if about_yz is not None else BEAM_LOAD_AXIS_YZ
+        origin = about_xy if about_xy is not None else BEAM_LOAD_AXIS_YZ
         vec0 = BeamResultantVector(
             R=np.asarray(resultants, dtype=float).ravel(),
             frame=FRAME_SECTION_YZ,
-            about_yz=(float(origin[0]), float(origin[1])),
+            about_xy=(float(origin[0]), float(origin[1])),
         )
 
     n_gdof = int(node_meta.n_nodes) * int(ndof)
@@ -165,7 +165,7 @@ def integrate_nodal_load_resultants(
     node_meta: Any,
     f_global: NDArray[np.float64],
     *,
-    about_yz: tuple[float, float] = BEAM_LOAD_AXIS_YZ,
+    about_xy: tuple[float, float] = BEAM_LOAD_AXIS_YZ,
     ndof: int = 6,
 ) -> BeamResultantVector:
     """Reconstruct net ``(N, Vy, Vz, My, Mz, T)`` from a nodal load vector.
@@ -174,7 +174,7 @@ def integrate_nodal_load_resultants(
     bottom/top layers are not double-counted.
     """
     locs, tangents, gn_pairs = _skin_node_pairs(node_meta)
-    y0, z0 = float(about_yz[0]), float(about_yz[1])
+    y0, z0 = float(about_xy[0]), float(about_xy[1])
     N = Vy = Vz = My = Mz = T = 0.0
     for i, (gb, gt) in enumerate(gn_pairs):
         t = tangents[i]
@@ -199,7 +199,7 @@ def integrate_nodal_load_resultants(
     return BeamResultantVector.from_named(
         N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
         frame=FRAME_SECTION_YZ,
-        about_yz=(y0, z0),
+        about_xy=(y0, z0),
     )
 
 

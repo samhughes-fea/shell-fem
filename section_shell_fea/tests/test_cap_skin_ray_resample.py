@@ -38,7 +38,7 @@ def _cap_endpoints_after_split_only(airfoil, layout_key: str) -> dict[str, tuple
     out: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     for m in split:
         if m.kind == "cap":
-            arr = np.asarray(m.midline_b, dtype=float)
+            arr = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
             out[m.label] = (arr[0].copy(), arr[-1].copy())
     return out
 
@@ -55,7 +55,7 @@ def _cap_endpoints_before_split(airfoil, layout_key: str) -> dict[str, tuple[np.
     out: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     for m in strips:
         if m.kind == "cap":
-            arr = np.asarray(m.midline_b, dtype=float)
+            arr = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
             out[m.label] = (arr[0].copy(), arr[-1].copy())
     return out
 
@@ -83,18 +83,18 @@ def test_split_skin_moves_only_nonweb_cap_endpoints_to_skin(layout_key, airfoil)
     _validate_strips(split)
 
     web_polys = [
-        np.asarray(m.midline_b, dtype=float)
+        np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         for m in split
-        if m.kind == "web" and np.asarray(m.midline_b, dtype=float).shape[0] >= 2
+        if m.kind == "web" and np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float).shape[0] >= 2
     ]
-    skin_pts = np.vstack([np.asarray(m.midline_b, dtype=float) for m in split if m.kind == "skin"])
+    skin_pts = np.vstack([np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float) for m in split if m.kind == "skin"])
     before = {
-        m.label: np.asarray(m.midline_b, dtype=float)
+        m.label: np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         for m in strips
         if m.kind == "cap"
     }
     after = {
-        m.label: np.asarray(m.midline_b, dtype=float)
+        m.label: np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         for m in split
         if m.kind == "cap"
     }
@@ -137,7 +137,7 @@ def test_cap_endpoints_unchanged_after_skin_ray_resample(airfoil, layout_key):
     for m in shell.midlines:
         if m.kind != "cap":
             continue
-        arr = np.asarray(m.midline_b, dtype=float)
+        arr = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         e0, e1 = ends_split[m.label]
         # x3 normalisation may reverse the strip; endpoint *set* must match.
         got = {tuple(np.round(arr[0], 12)), tuple(np.round(arr[-1], 12))}
@@ -164,7 +164,7 @@ def test_cap_interior_segments_nondegenerate(airfoil, layout_key):
     for m in shell.midlines:
         if m.kind != "cap":
             continue
-        pts = np.asarray(m.midline_b, dtype=float)
+        pts = np.asarray(m.midline_twisted_pitch_axis_blade_frame, dtype=float)
         if pts.shape[0] < 2:
             continue
         d = np.linalg.norm(np.diff(pts, axis=0), axis=1)
@@ -193,7 +193,7 @@ def test_cap_resample_disabled_preserves_midline_count(airfoil):
     )
     _validate_strips(strips)
     split = _split_skin_at_junctions(strips)
-    n_pts_split = {m.label: np.asarray(m.midline_b).shape[0] for m in split if m.kind == "cap"}
+    n_pts_split = {m.label: np.asarray(m.midline_twisted_pitch_axis_blade_frame).shape[0] for m in split if m.kind == "cap"}
 
     shell = shell_mesh_inputs_from_section(
         section,
@@ -205,4 +205,4 @@ def test_cap_resample_disabled_preserves_midline_count(airfoil):
     )
     for m in shell.midlines:
         if m.kind == "cap":
-            assert np.asarray(m.midline_b).shape[0] == n_pts_split[m.label]
+            assert np.asarray(m.midline_twisted_pitch_axis_blade_frame).shape[0] == n_pts_split[m.label]
