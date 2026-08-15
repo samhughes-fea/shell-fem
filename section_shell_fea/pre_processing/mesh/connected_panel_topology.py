@@ -25,6 +25,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
     assign_global_nodes_hybrid_kind_crossing,
     assign_global_nodes_independent,
     assign_global_nodes_shared,
+    build_shared_cluster_frame_rotations,
 )
 
 
@@ -43,6 +44,9 @@ class ConnectedPanelTopology:
     cluster_layer_rot_node: dict[tuple[int, str], int]
     endpoint_cluster_node: dict[tuple[int, str, str], int]
     endpoint_cluster_rot_node: dict[tuple[int, str, str], int]
+    # Study-only shared_cluster_frame: (pi, which) -> (ts, tn, ns, nn)
+    endpoint_frame_R: dict[tuple[int, str], tuple[float, float, float, float]] | None = None
+    shared_cluster_frame_cids: tuple[int, ...] = ()
 
 
 def build_connected_panel_maps(
@@ -89,9 +93,20 @@ def build_connected_panel_maps(
     cluster_layer_rot_node: dict[tuple[int, str], int] = {}
     endpoint_cluster_node: dict[tuple[int, str, str], int] = {}
     endpoint_cluster_rot_node: dict[tuple[int, str, str], int] = {}
+    endpoint_frame_R: dict[tuple[int, str], tuple[float, float, float, float]] | None = None
+    shared_cluster_frame_cids: tuple[int, ...] = ()
 
     if interface_constraint_mode == "shared":
         next_global_node = assign_global_nodes_shared(panel_maps, clusters)
+    elif interface_constraint_mode == "shared_cluster_frame":
+        # Shared node IDs (production topology) + panel→cluster frame rotations
+        # for kind-crossing ∩ non-collinear cusps only (applied at Ke scatter).
+        next_global_node = assign_global_nodes_shared(panel_maps, clusters)
+        frame = build_shared_cluster_frame_rotations(
+            panel_maps, zones, clusters, cluster_is_collinear_flags
+        )
+        endpoint_frame_R = frame["endpoint_frame_R"]  # type: ignore[assignment]
+        shared_cluster_frame_cids = tuple(frame["cids"])  # type: ignore[assignment]
     elif interface_constraint_mode == "hybrid_collinear":
         basis = assign_global_nodes_hybrid_collinear(
             panel_maps, clusters, cluster_is_collinear_flags
@@ -132,6 +147,8 @@ def build_connected_panel_maps(
         cluster_layer_rot_node=cluster_layer_rot_node,
         endpoint_cluster_node=endpoint_cluster_node,
         endpoint_cluster_rot_node=endpoint_cluster_rot_node,
+        endpoint_frame_R=endpoint_frame_R,
+        shared_cluster_frame_cids=shared_cluster_frame_cids,
     )
 
 

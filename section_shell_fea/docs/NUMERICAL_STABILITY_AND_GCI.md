@@ -360,3 +360,4 @@ Membrane / mid-σ peaks remain unfiltered. Interior series stay diagnostic.
 | 2026-08 | Bay-foot densify on `SS:bay_0` start (n=6) flat at ~17.9% skin GCI; 3-way non-collinear cusp; keep shared/band=3. |
 | 2026-08 | Stability package: `CI_WATCH_KEYS` + `--keys watch`, scorecard JSON/MD (magnitude vs Roache), smoke CI contract, family confidence bands; study-only `hybrid_kind_crossing`. |
 | 2026-08 | `hybrid_kind_crossing` CI-watch scorecard 1/5 magnitude (`3D-CN` cleared); keep shared; no Phase B promote. |
+| 2026-08 | Residual-4 deep-dive (HKC peak migration vs Defect K); `shared_cluster_frame` watch scorecard 0/5 — keep shared. |

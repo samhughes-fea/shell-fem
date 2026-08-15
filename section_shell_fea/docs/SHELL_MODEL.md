@@ -277,6 +277,18 @@ stay production **shared**. Caps remain `skin_offset`.
   Phase B entry (40/40 magnitude) **not met** → **keep `shared`**; leave mode
   study-only. See [GCI_OUTLIER_DIAGNOSIS.md](GCI_OUTLIER_DIAGNOSIS.md).
 
+### `shared_cluster_frame` (study-only; not production)
+
+Production **shared** node IDs (no TB virtual refs). For kind-crossing ∩
+non-collinear clusters only, endpoint Ke/Fe are congruence-transformed into the
+cluster ``t_ref`` frame (`build_shared_cluster_frame_rotations` /
+`apply_shared_cluster_frame_to_cache`). Caps stay `skin_offset`.
+
+- **Intent:** Defect-K frame correction without TB peak relocation.
+- **Status:** CI watch scorecard (`gci_study_mitc4_scf/`) — trust/mesh 5/5;
+  membrane magnitude **0/5** (regresses mid-σ on several keys). **Do not promote.**
+  Default remains `shared`. See [GCI_OUTLIER_DIAGNOSIS.md](GCI_OUTLIER_DIAGNOSIS.md).
+
 ### `transformed_basis` (non-collinear-correct; not production default)
 
 Each panel gets **unique endpoint nodes**.  Displacement compatibility is enforced via

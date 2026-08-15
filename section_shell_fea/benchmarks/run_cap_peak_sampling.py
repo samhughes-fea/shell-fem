@@ -50,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
             "shared_rotated",
             "hybrid_collinear",
             "hybrid_kind_crossing",
+            "shared_cluster_frame",
         ),
         default="shared",
         help="Junction constraint mode (default: shared)",

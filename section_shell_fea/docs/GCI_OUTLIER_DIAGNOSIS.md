@@ -137,6 +137,75 @@ regressed on several layouts (e.g. `5D-CN` gov 19.6% → 157%). **Keep productio
 default. Next joint physics must beat this scorecard without Hashin/gov
 regressions on the Phase B2 residual set.
 
+## Residual-4 deep-dive (why HKC helped only `3D-CN`)
+
+Evidence: `visualisation/output/residual4_diagnosis/residual4_summary.json`
+(cap-peak at `frac∈{0.005,0.0035}` under `shared` vs `hybrid_kind_crossing`,
+plus GCI matrix from shared / HKC / TB watch studies).
+
+### Peak ownership (finest rung `frac=0.0035`)
+
+| Layout | Shared skin `|N12|` locus | HKC locus | Notes |
+|--------|---------------------------|-----------|-------|
+| 4D-CN | `SS:bay_2` e63 **j+e** (raw/int ~1.65×) | `SS:bay_0` e0 **--e** (raw/int ~2.40×) | Peak **migrates**; singularity amplifies |
+| 4D-F | `SS:bay_0` e0 **j+e** (raw/int ~1.04×) | `SS:bay_0` e0 **--e** | Same bay-foot; junction tag cleared |
+| 5D-CN | `SS:bay_3` e53 **j+e** (raw/int ~1.41×) | `SS:bay_0` e0 **--e** (raw/int ~2.20×) | Migrates to bay-foot; mag ↑ |
+| 5D-F | `SS:bay_0` e2 **non-junction** (raw=int) | same panel e2 non-junction | Continuum peak; HKC flat |
+
+### Owning shared clusters (start of peak panel, shared numbering)
+
+| Layout | Cluster members (at peak panel) | collinear | kind-crossing |
+|--------|----------------------------------|-----------|---------------|
+| 4D-CN | `SS:bay_1`+`SS:bay_2`+`web_1` | false | true |
+| 4D-F | `SS:TE`+`SS:bay_0`+`web_3` | false | true |
+| 5D-CN | `SS:bay_2`+`SS:bay_3`+`web_1` | false | true |
+| 5D-F | n/a for finest peak (not junction-owned) | — | — |
+
+### GCI matrix (skin `|N12|` / mid-σ / Hashin / gov)
+
+| Layout | shared N12 | HKC N12 | TB N12 | shared gov | HKC gov |
+|--------|------------|---------|--------|------------|---------|
+| 4D-CN | 20.2% | **30.3%** | 6.6% | 12.3% | **62.4%** |
+| 4D-F | 12.4% | 10.7% | 4.2% | 3.3% | 4.8% |
+| 5D-CN | 17.9% | **29.8%** | 21.6% | 19.6% | **157%** |
+| 5D-F | 21.6% | 21.7% | 0.7% | 96.4% | 52.2% |
+
+### Formulation implication
+
+Residual is **mixed**:
+
+1. **Defect-K shared-frame mismatch** at kind-crossing ∩ non-collinear cusps
+   dominates `4D-CN` / `4D-F` / `5D-CN` under production `shared` (junction +
+   endpoint band ownership).
+2. **Peak migration / singularity relocation** under TB-style hybrids (HKC)
+   clears the junction tag but often **amplifies** raw GCI and Hashin/gov —
+   so HKC is not a safe promote path.
+3. **`5D-F`** on the finest rung is already a **non-junction** continuum peak;
+   kinematics flips do not address its `|N12|` residual the same way.
+
+Therefore the next spike should keep **shared node IDs** (avoid TB peak
+relocation) while correcting the **cluster-frame mismatch** at kind-crossing ∩
+non-collinear cusps only → study-only **`shared_cluster_frame`**.
+
+## `shared_cluster_frame` spike (CI watch) — do not promote
+
+Study mode: shared node numbering + Ke congruence into cluster ``t_ref`` on
+kind-crossing ∩ non-collinear cusps only. CLI:
+`--keys watch --gates ci --interface shared_cluster_frame`. Evidence:
+`visualisation/output/gci_study_mitc4_scf/` (`stability_scorecard.md`).
+
+| Check | Result |
+|-------|--------|
+| Trust / mesh | **5/5** |
+| CI membrane magnitude | **0/5** (no watch key cleared) |
+| Notable regress | `5D-CN` mid-σ skin **130%**; `3D-CN` mid-σ web **92%** |
+
+Phase B entry **not met**. Hashin/gov also fail study magnitude on several keys.
+**Keep production `shared`**; leave `shared_cluster_frame` study-only; do not
+densify; do not flip default. Endpoint Ke-frame congruence alone is insufficient
+for the residual-4 set — further shared-compatible work needs a different
+mechanism (still without soft penalties / interior gates / densify-as-fix).
+
 ## Junction-band densify spike (CI watch, 2026-08) — do not fold
 
 Study: `visualisation/output/gci_study_mitc4_junction_band/`

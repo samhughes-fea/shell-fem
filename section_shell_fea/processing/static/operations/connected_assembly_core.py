@@ -280,6 +280,112 @@ def assign_global_nodes_hybrid_kind_crossing(
     return assign_global_nodes_hybrid_tb_clusters(panel_maps, clusters, use_tb)
 
 
+def build_shared_cluster_frame_rotations(
+    panel_maps: list[PanelGlobalMap],
+    zones: list,
+    clusters: list[list[tuple[int, str, np.ndarray]]],
+    cluster_is_collinear_flags: dict[int, bool],
+) -> dict[str, object]:
+    """Panel→cluster 2-D frame rotations for kind-crossing ∩ non-collinear cusps.
+
+    Study-only ``shared_cluster_frame``: numbering stays production ``shared``;
+    these rotations are applied as Ke congruence transforms so endpoint DOFs are
+    interpreted in the cluster ``t_ref`` frame without allocating TB virtual refs.
+    """
+    from ....pre_processing.mesh.shell_mesh_map import normal_2d, panel_end_tangent
+
+    endpoint_frame_R: dict[tuple[int, str], tuple[float, float, float, float]] = {}
+    cids: list[int] = []
+    for cid, cluster in enumerate(clusters):
+        if bool(cluster_is_collinear_flags.get(cid, False)):
+            continue
+        if not cluster_is_kind_crossing(cluster, panel_maps):
+            continue
+        if len(cluster) < 1:
+            continue
+        t_mats = [
+            np.outer(
+                panel_end_tangent(np.asarray(zones[pi].nodes, dtype=float), which),
+                panel_end_tangent(np.asarray(zones[pi].nodes, dtype=float), which),
+            )
+            for pi, which, _ in cluster
+        ]
+        M = np.sum(np.stack(t_mats, axis=0), axis=0)
+        evals, evecs = np.linalg.eigh(M)
+        t_ref = np.asarray(evecs[:, int(np.argmax(evals))], dtype=float)
+        if float(np.linalg.norm(t_ref)) < 1e-12:
+            t_ref = np.array([1.0, 0.0])
+        if float(t_ref[0]) < 0.0:
+            t_ref = -t_ref
+        t_ref = t_ref / max(float(np.linalg.norm(t_ref)), 1e-12)
+        n_ref = normal_2d(t_ref)
+        cids.append(int(cid))
+        for pi, which, _ in cluster:
+            t_p = panel_end_tangent(np.asarray(zones[pi].nodes, dtype=float), which)
+            n_p = normal_2d(t_p)
+            ts, tn = float(np.dot(t_p, t_ref)), float(np.dot(t_p, n_ref))
+            ns, nn = float(np.dot(n_p, t_ref)), float(np.dot(n_p, n_ref))
+            endpoint_frame_R[(int(pi), str(which))] = (ts, tn, ns, nn)
+    return {"endpoint_frame_R": endpoint_frame_R, "cids": cids}
+
+
+def apply_shared_cluster_frame_to_cache(
+    cache: Any,
+    panel_maps: list[PanelGlobalMap],
+    endpoint_frame_R: dict[tuple[int, str], tuple[float, float, float, float]],
+) -> int:
+    """Congruence-transform Ke/Fe at flagged endpoints (panel → cluster frame).
+
+    For each element corner that sits on a flagged ``(panel, start|end)``, the
+    local ``(U_S, W)`` and ``BETA_S`` blocks are mapped by the 2-D rotation so
+    shared global DOFs are interpreted in the cluster ``t_ref`` frame.
+    Returns the number of element matrices touched.
+    """
+    if not endpoint_frame_R:
+        return 0
+    n_dof = int(cache.n_dof_node)
+    touched = 0
+    for stiff, force in zip(cache.stiffness_objects, cache.force_objects):
+        pm = panel_maps[int(stiff.panel_index)]
+        n = len(pm.s_nodes)
+        if n == 0:
+            continue
+        i0, i1, i2, i3 = pm.elements[int(stiff.local_element_index)]
+        corner_locals = (int(i0), int(i1), int(i2), int(i3))
+        T = np.eye(4 * n_dof, dtype=float)
+        any_r = False
+        for corner_i, li in enumerate(corner_locals):
+            # Bottom strip: 0..n-1; top strip: n..2n-1
+            if li == 0 or li == n:
+                which = "start"
+            elif li == n - 1 or li == 2 * n - 1:
+                which = "end"
+            else:
+                continue
+            R = endpoint_frame_R.get((int(pm.panel_index), which))
+            if R is None:
+                continue
+            ts, tn, ns, nn = R
+            base = corner_i * n_dof
+            # q_panel = R_block q_cluster for (U_S, W); T maps cluster → panel.
+            # U_S=1, W=2 in connected_assembly_core DOF layout.
+            T[base + U_S, base + U_S] = ts
+            T[base + U_S, base + W] = tn
+            T[base + W, base + U_S] = ns
+            T[base + W, base + W] = nn
+            # Tangential rotation: project by tangent alignment (no rot companion).
+            T[base + BETA_S, base + BETA_S] = ts
+            any_r = True
+        if not any_r:
+            continue
+        ke = np.asarray(stiff.K_e, dtype=float)
+        fe = np.asarray(force.F_e, dtype=float)
+        stiff.K_e = T.T @ ke @ T
+        force.F_e = T.T @ fe
+        touched += 1
+    return touched
+
+
 def build_cluster_basis_constraints(
     panel_maps: list[PanelGlobalMap],
     zones: list,
@@ -551,6 +657,8 @@ __all__ = [
     "assign_global_nodes_hybrid_collinear",
     "assign_global_nodes_hybrid_kind_crossing",
     "assign_global_nodes_hybrid_tb_clusters",
+    "build_shared_cluster_frame_rotations",
+    "apply_shared_cluster_frame_to_cache",
     "cluster_is_kind_crossing",
     "build_cluster_basis_constraints",
     "build_cluster_basis_supports",

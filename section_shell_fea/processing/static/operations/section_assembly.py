@@ -113,6 +113,15 @@ def assemble_section_from_zones(
         zones_outboard=zones_out_list,
         phase_collector=phase_collector if phase_collector is not None else _NULL_PHASE_COLLECTOR,
     )
+    mode = str(interface_constraint_mode or "shared")
+    if mode == "shared_cluster_frame":
+        from .connected_assembly_core import apply_shared_cluster_frame_to_cache
+
+        apply_shared_cluster_frame_to_cache(
+            cache,
+            topology.panel_maps,
+            getattr(topology, "endpoint_frame_R", None) or {},
+        )
     n_gdof = topology.next_global_node * int(cache.n_dof_node)
     K_global, f_global, _diag = assemble_section_system(cache, n_gdof)
     node_meta = collect_global_node_meta(
@@ -121,7 +130,6 @@ def assemble_section_from_zones(
     # Cluster-basis junctions allocate unique endpoints + virtual refs; attach
     # frame-mapping MPCs here so transformed_basis / shared_rotated /
     # hybrid_* (TB-flagged clusters only) are solvable.
-    mode = str(interface_constraint_mode or "shared")
     _hybrid_modes = ("hybrid_collinear", "hybrid_kind_crossing")
     if mode in ("transformed_basis", "shared_rotated", *_hybrid_modes) or str(
         getattr(topology, "effective_mode", "")

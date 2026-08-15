@@ -79,12 +79,14 @@ def main(argv: list[str] | None = None) -> int:
             "shared_rotated",
             "hybrid_collinear",
             "hybrid_kind_crossing",
+            "shared_cluster_frame",
         ),
         default="shared",
         help=(
             "Junction constraint mode (default: shared production; "
             "hybrid_collinear = study-only shared collinear / TB non-collinear; "
-            "hybrid_kind_crossing = study-only TB on kind-crossing∩non-collinear)"
+            "hybrid_kind_crossing = study-only TB on kind-crossing∩non-collinear; "
+            "shared_cluster_frame = study-only shared IDs + cluster-frame Ke)"
         ),
     )
     parser.add_argument(

@@ -532,42 +532,41 @@ def _append_gci_gate(
     detail: str,
     limit: float,
 ) -> None:
-    """Fail on non-monotonic GCI or fine-grid GCI above ``limit``."""
-    if detail == "gci_non_monotonic":
-        fails.append(
-            GateFailure(
-                layout,
-                kind,
-                f"{metric}_gci_fine",
-                float(gci) if np.isfinite(gci) else float("nan"),
-                float(limit),
-                "gci_non_monotonic",
-            )
-        )
+    """Fail on fine-grid GCI above ``limit``, or on a GCI that is undefined.
+
+    Classification is delegated to :func:`classify_gci_fail` rather than decided
+    here, so the gate and the stability scorecard cannot disagree about what
+    counts as a GCI failure.
+
+    A non-monotonic triple is **not** a failure on its own. Roache's GCI assumes
+    monotonic convergence, so when the fine-grid GCI is far below the limit the
+    triple is noise and the extrapolation simply does not apply — the classifier
+    calls that ``roache_applicability``. This gate previously failed on
+    ``gci_non_monotonic`` unconditionally, which rejected cells that were
+    converged to `2e-4` against a limit of `0.1`.
+    """
+    # Local import avoids circular import with stability_scorecard (which imports
+    # CI_* constants from this module).
+    from .stability_scorecard import classify_gci_fail
+
+    classification = classify_gci_fail(
+        gci_fine=float(gci),
+        gci_ok=bool(ok),
+        detail=str(detail or ""),
+        limit=float(limit),
+    )
+    if classification is None or classification == "roache_applicability":
         return
-    if not ok:
-        fails.append(
-            GateFailure(
-                layout,
-                kind,
-                f"{metric}_gci_fine",
-                float(gci) if np.isfinite(gci) else float("nan"),
-                float(limit),
-                detail or "gci_undefined",
-            )
+    fails.append(
+        GateFailure(
+            layout,
+            kind,
+            f"{metric}_gci_fine",
+            float(gci) if np.isfinite(gci) else float("nan"),
+            float(limit),
+            "asme_roache_gci" if classification == "magnitude" else "gci_undefined",
         )
-        return
-    if np.isfinite(gci) and gci > float(limit):
-        fails.append(
-            GateFailure(
-                layout,
-                kind,
-                f"{metric}_gci_fine",
-                float(gci),
-                float(limit),
-                "asme_roache_gci",
-            )
-        )
+    )
 
 
 def evaluate_layout_gates(
@@ -929,6 +928,7 @@ def run_grid_independence_study(
         "shared_rotated",
         "hybrid_collinear",
         "hybrid_kind_crossing",
+        "shared_cluster_frame",
     )
     if iface not in _allowed_iface:
         raise ValueError(
