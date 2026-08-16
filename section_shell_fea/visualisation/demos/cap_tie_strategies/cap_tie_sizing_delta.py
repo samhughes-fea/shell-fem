@@ -45,7 +45,7 @@ LAYOUTS = ["0B", "1C-CN", "2B-CN", "2C-CN", "2D-CN", "3D-F", "5C-F", "5D-F"]
 STATIONS = [(0.2, 4.0e7), (0.6, 2.0e7)]
 LOADS = {"M_flapwise": 5.0e5, "V_flapwise": 1.0e5, "M_edgewise": 2.0e5}
 _FI_KEYS = ("fi_skin", "fi_spar", "fi_web")
-_DVS = ("t_skin", "t_spar", "t_web")
+_DVS = ("skin_thickness", "spar_cap_thickness", "shear_web_thickness")
 
 
 class _Iso:
@@ -138,8 +138,8 @@ def main() -> int:
                 r = pair[mode]
                 print(f"{tag:16s} {mode[:6]:6s} {_fmt(r['max_fi'])} "
                       f"{_fmt(r['fi']['fi_skin'])} {_fmt(r['fi']['fi_spar'])} "
-                      f"{_fmt(r['fi']['fi_web'])} {_fmt(r['dv']['t_skin'])} "
-                      f"{_fmt(r['dv']['t_spar'])} {_fmt(r['EI_flap'], 10, 4)} "
+                      f"{_fmt(r['fi']['fi_web'])} {_fmt(r['dv']['skin_thickness'])} "
+                      f"{_fmt(r['dv']['spar_cap_thickness'])} {_fmt(r['EI_flap'], 10, 4)} "
                       f"{r['govern']:>7s} {str(r['pass']):>5s}")
             rows.append((tag, pair["none"], pair["skin_offset"]))
 
@@ -159,8 +159,8 @@ def main() -> int:
         ("max_fi_hashin", lambda r: r["max_fi"]),
         ("fi_spar", lambda r: r["fi"]["fi_spar"]),
         ("fi_skin", lambda r: r["fi"]["fi_skin"]),
-        ("t_spar", lambda r: r["dv"]["t_spar"]),
-        ("t_skin", lambda r: r["dv"]["t_skin"]),
+        ("t_spar", lambda r: r["dv"]["spar_cap_thickness"]),
+        ("t_skin", lambda r: r["dv"]["skin_thickness"]),
         ("EI_flap", lambda r: r["EI_flap"]),
     ):
         ratios = [
