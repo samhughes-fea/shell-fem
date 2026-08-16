@@ -187,7 +187,7 @@ def test_1a_cn_skin_mesh_endpoints_match_panel_polyline(airfoil):
     shell = shell_mesh_inputs_from_section(
         section, twist_rad=0.0, layout_key=layout_key, n_web_samples=20, n_cap_samples=40
     )
-    zones, _, _, _ = bind_shell_material_zones(shell)
+    zones, *_ = bind_shell_material_zones(shell, allow_demo_laminates=True)
     mesh = build_section_strip_mesh(shell, n_elements_per_panel=5, endpoint_tol=1e-6)
 
     for pi, pm in enumerate(mesh.panel_meshes):

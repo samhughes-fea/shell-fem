@@ -189,7 +189,7 @@ Pass conditions for documented face semantics (`panel_x3_orientation_ok`):
 |--------|---------|----------|
 | \(\mathbf{c}\) | Cavity / skin-polygon centroid | `cavity_point_from_strips` |
 | \(\mathbf{p}_{\mathrm{skin}}\) | Nearest outer-skin midline point | `nearest_skin_point` |
-| \(\mathbf{p}_{\mathrm{LE}}\) | Leading-edge point (B-frame) | `ShellMeshInputs.leading_edge_b` |
+| \(\mathbf{p}_{\mathrm{LE}}\) | Leading-edge point (B-frame) | `ShellMeshInputs.leading_edge_twisted_pitch_axis_blade_frame` |
 | Normalize + assert | Reverse midline if needed, then fail hard | `normalize_and_assert_panel_x3_conventions` · called from `shell_mesh_inputs_from_strips` |
 
 ### FSDT interface shear (optional tertiary branch)

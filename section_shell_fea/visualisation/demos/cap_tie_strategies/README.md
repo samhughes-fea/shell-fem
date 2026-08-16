@@ -61,7 +61,7 @@ went from 0.859 to 6.7e-5, and the measured normal gap is now
 
 **2. Requested thicknesses are not the thicknesses used.** The section builder
 clamps and rescales `skin_thickness` / `cap_height` to fit the local cavity — for
-example a requested `t_skin=0.001` becoming `0.0025`. Any prediction built from
+example a requested `skin_thickness=0.001` becoming `0.0025`. Any prediction built from
 the *caller's* requested values is wrong by whatever the clamp did, no matter how
 good the geometry is.
 

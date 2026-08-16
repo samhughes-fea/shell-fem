@@ -183,7 +183,7 @@ check; recovery-bundle `y_sc`/`z_sc` historically mislabelled the elastic centro
 
 **Approach:** `blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector.BeamResultantVector`
 — a single immutable vector carrying canonical `BEAM_IO_ORDER` storage, a frame
-tag, and `about_yz`. Handoffs use `transported_to` (full \(M'=M+r\times F\)),
+tag, and `about_xy`. Handoffs use `transported_to` (full \(M'=M+r\times F\)),
 `rotated`, and `to_mode_conjugate` (named projection). Production FI prefers
 `BeamResultantVector` into `run_section_linear_static_from_resultants`.
 See [SHELL_MODEL.md](SHELL_MODEL.md) § Multi-scale boundary conditions.
@@ -192,8 +192,8 @@ See [SHELL_MODEL.md](SHELL_MODEL.md) § Multi-scale boundary conditions.
 
 - ~~Saint-Venant twist-about-shear-centre torsion mode~~ **Promoted as opt-in
   (2026-07):** ``run_section_linear_static_from_resultants(...,
-  torsion_about_shear_centre=True)`` sets ``about_yz`` to the sectorial shear
-  centre via ``shear_centre_about_yz_from_pipeline_b``. Default product path
+  torsion_about_shear_centre=True)`` sets ``about_xy`` to the sectorial shear
+  centre via ``shear_centre_about_yz_from_panel_topology``. Default product path
   unchanged. **Not** a Channel-A periodic ``K6`` revive.
 - Bending–shear gradient coupling \(\partial M/\partial x=V\) inside a historical
   prismatic unit cell (bimoment already out of scope above).

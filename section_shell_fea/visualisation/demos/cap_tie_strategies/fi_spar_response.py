@@ -264,12 +264,12 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
         # Same node arrays; only the cap's scalar thickness is rebound, and the
         # same spar_cap_thickness selects the laminate so geometry and material agree.
         si_t, mesh_t = _retimed_cap_thickness(shell_inputs, mesh, spar_cap_thickness)
-        zones, booms, webs_geom, n_cells = shell_material_zones_from_mesh_inputs(
+        zones, webs_geom, n_cells = shell_material_zones_from_mesh_inputs(
             si_t, component_materials=mats,
             skin_thickness=SKIN_THICKNESS, spar_cap_thickness=spar_cap_thickness, shear_web_thickness=SHEAR_WEB_THICKNESS,
         )
         topo = ShellPanelTopology(
-            shell_inputs=si_t, zones=list(zones), booms=list(booms),
+            shell_inputs=si_t, zones=list(zones),
             webs_geom=list(webs_geom), n_cells=int(n_cells), section=section,
         )
         runner = SectionLinearStaticRunner(

@@ -42,9 +42,9 @@ its strips. Measured on NACA 2412, chord 1.0, `2D-CN`, zero twist:
 
 | field | value | chord lies on |
 |---|---|---|
-| `leading_edge_b` | `(0.0000, -0.3330)` | col 1 — canonical B, \(-f_{pivot}c\) |
-| `trailing_edge_b` | `(-0.0000, +0.6667)` | col 1 — canonical B, \((1-f_{pivot})c\) |
-| `midline_b` | col0 extent ~thickness, col1 extent ~chord | **col 1** — canonical B via `chord_to_blade` |
+| `leading_edge_twisted_pitch_axis_blade_frame` | `(0.0000, -0.3330)` | col 1 — canonical B, \(-f_{pivot}c\) |
+| `trailing_edge_twisted_pitch_axis_blade_frame` | `(-0.0000, +0.6667)` | col 1 — canonical B, \((1-f_{pivot})c\) |
+| `midline_twisted_pitch_axis_blade_frame` | col0 extent ~thickness, col1 extent ~chord | **col 1** — canonical B via `chord_to_blade` |
 
 The endpoints and strips both go through `chord_to_blade` (swap + pivot shift +
 rotation). Historical note: an earlier emit used bare `rotate_chord_to_blade`
@@ -79,7 +79,7 @@ NACA 2412, chord 1.0, `C` family, zero twist, via `AirfoilSDF.from_naca`:
 |---|---|---|---|
 | `AirfoilSDF.vertices` (raw NACA) | 1.0000 | 0.1216 | col0 |
 | `section.components_unrotated` | 0.9880 | 0.0770 | col0 |
-| `midline_b` (emitted) | 0.1186 | 0.9880 | **col1 — canonical B** |
+| `midline_twisted_pitch_axis_blade_frame` (emitted) | 0.1186 | 0.9880 | **col1 — canonical B** |
 
 `chord_to_blade` is `naca_to_S ∘ rotate_S_to_B`, so its input must be **raw
 NACA**; fed that, it is correct. `tests/test_section_frame_canon.py` and

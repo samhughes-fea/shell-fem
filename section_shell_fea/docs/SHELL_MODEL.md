@@ -113,7 +113,7 @@ thin-wall / diagnostic helpers.
 
 **Beam resultant handoff:** prefer
 [`BeamResultantVector`](../../contract/beam_resultant_vector.py) (canonical
-`BEAM_IO_ORDER`, frame tag, `about_yz`) into
+`BEAM_IO_ORDER`, frame tag, `about_xy`) into
 `SectionLinearStaticRunner(panel_topology=..., resultants=...).execute()`.
 See [LOAD_APPLICATION_DOUBLE_COUNTING.md](LOAD_APPLICATION_DOUBLE_COUNTING.md) for
 exclusive beam vs face-traction ownership, and [DEFERRED_RESEARCH.md](DEFERRED_RESEARCH.md)
@@ -538,7 +538,7 @@ in the Defect K harness) for intra-edge variability inspection without re-solvin
 | Load Channel A/B provenance + single periodic free set | **Complete** | [LOAD_APPLICATION_DOUBLE_COUNTING.md](LOAD_APPLICATION_DOUBLE_COUNTING.md) |
 | Theory support | **FSDT production**; CCX opt-in validation; HSDT removed | [ELEMENT_AGNOSTIC_ARCHITECTURE.md](ELEMENT_AGNOSTIC_ARCHITECTURE.md) |
 | Parked research | `transformed_basis` K6, Defect K, CCX reaction-K6 MPC redesign, F2.1 shell-seeded strip K6 | [DEFERRED_RESEARCH.md](DEFERRED_RESEARCH.md) |
-| Beam resultant handoff | `BeamResultantVector` (order + frame + `about_yz`) | `blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector` |
+| Beam resultant handoff | `BeamResultantVector` (order + frame + `about_xy`) | `blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector` |
 
 Do **not** schedule parked research into optimiser constraints. Verification commands and the
 recorded gate counts live in [NEXT_STEPS_PERF_AND_MAINTAINABILITY.md](NEXT_STEPS_PERF_AND_MAINTAINABILITY.md)

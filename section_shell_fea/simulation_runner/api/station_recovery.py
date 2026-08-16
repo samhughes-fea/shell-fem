@@ -92,7 +92,7 @@ def _bundle_from_linear_static(
             break
     return SectionShellRecoveryBundle(
         zones=zones,
-        booms=getattr(panel_topology, "booms", []),
+        booms=[],  # thin-wall recovery slot; bind no longer emits booms
         webs_geom=getattr(panel_topology, "webs_geom", []),
         q_tot=[],
         sig_p=[],

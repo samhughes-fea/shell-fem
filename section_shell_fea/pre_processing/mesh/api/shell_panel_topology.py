@@ -28,13 +28,12 @@ from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs 
 class ShellPanelTopology:
     """Output of :func:`build_shell_panel_topology` / ``shell_panel_topology_from_shell_inputs``.
 
-    ``section`` is optional (viz / SDF plots only). The solve path must use
-    ``shell_inputs`` polylines — no SDF re-evaluation after the contract handoff.
+``section`` is optional (viz / SDF plots only). The solve path must use
+``shell_inputs`` polylines — no SDF re-evaluation after the contract handoff.
     """
 
     shell_inputs: ShellMeshInputs
     zones: tuple[MaterialZone, ...]
-    booms: tuple[Any, ...]
     webs_geom: tuple[Any, ...]
     n_cells: int
     section: SectionMidlineHost | None = None
@@ -135,23 +134,29 @@ def build_shell_panel_topology(
     )
     strips = build_shell_strip_topology(raw)
     from blade_structure_utilities.geometry_utilities.coordinate_frames import (
-        chord_to_blade,
+        naca_to_twisted_pitch_axis_blade_frame,
     )
 
     le_S = np.asarray(airfoil_sdf.leading_edge, dtype=float).reshape(1, 2)
     te_S = np.asarray(airfoil_sdf.trailing_edge, dtype=float).reshape(1, 2)
     le_b = tuple(
-        float(v) for v in chord_to_blade(le_S, float(twist_rad), float(chord_m))[0]
+        float(v)
+        for v in naca_to_twisted_pitch_axis_blade_frame(
+            le_S, float(twist_rad), float(chord_m)
+        )[0]
     )
     te_b = tuple(
-        float(v) for v in chord_to_blade(te_S, float(twist_rad), float(chord_m))[0]
+        float(v)
+        for v in naca_to_twisted_pitch_axis_blade_frame(
+            te_S, float(twist_rad), float(chord_m)
+        )[0]
     )
     shell_inputs = shell_mesh_inputs_from_strips(
         strips,
         chord_m=float(chord_m),
         twist_rad=float(twist_rad),
-        leading_edge_b=le_b,  # type: ignore[arg-type]
-        trailing_edge_b=te_b,  # type: ignore[arg-type]
+        leading_edge_twisted_pitch_axis_blade_frame=le_b,  # type: ignore[arg-type]
+        trailing_edge_twisted_pitch_axis_blade_frame=te_b,  # type: ignore[arg-type]
     )
     return shell_panel_topology_from_shell_inputs(
         shell_inputs,
@@ -178,16 +183,16 @@ def shell_panel_topology_from_shell_inputs(
     """
     from blade_structure_utilities.material_utilities.section_bind import bind_shell_material_zones
 
-    zones, booms, webs_geom, n_cells = bind_shell_material_zones(
+    zones, webs_geom, n_cells = bind_shell_material_zones(
         shell_inputs,
         skin_lam=skin_lam,
         web_lam=web_lam,
         cap_lam=cap_lam,
+        allow_demo_laminates=True,
     )
     return ShellPanelTopology(
         shell_inputs=shell_inputs,
         zones=tuple(zones),
-        booms=tuple(booms),
         webs_geom=tuple(webs_geom),
         n_cells=int(n_cells),
         section=section,

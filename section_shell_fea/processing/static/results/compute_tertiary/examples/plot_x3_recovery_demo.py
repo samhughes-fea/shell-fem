@@ -344,8 +344,8 @@ def plot_panel_face_semantics(
     section = build_section_view(af, layout, twist_angle_rad=0.0)
     shell = shell_mesh_inputs_from_section(section, twist_rad=0.0, layout_key=key)
     strips = shell.midlines
-    le = np.asarray(shell.leading_edge_b, dtype=float)
-    te = np.asarray(shell.trailing_edge_b, dtype=float)
+    le = np.asarray(shell.leading_edge_twisted_pitch_axis_blade_frame, dtype=float)
+    te = np.asarray(shell.trailing_edge_twisted_pitch_axis_blade_frame, dtype=float)
 
     # RGB kind palette (blue skin / red cap / green web)
     kind_style = {
@@ -384,7 +384,7 @@ def plot_panel_face_semantics(
     def _panel_description(s) -> str:
         """Short human label for the panel-id legend."""
         raw = str(s.label)
-        xy = np.asarray(s.midline_b, dtype=float)
+        xy = np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)
         mid = np.mean(xy, axis=0)
         if s.kind == "skin":
             side = "upper" if float(mid[1]) >= 0.0 else "lower"
@@ -399,13 +399,13 @@ def plot_panel_face_semantics(
 
     web_strips_all = [s for s in strips if s.kind == "web"]
     web_y_means = [
-        float(np.mean(np.asarray(s.midline_b, dtype=float)[:, 0])) for s in web_strips_all
+        float(np.mean(np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)[:, 0])) for s in web_strips_all
     ]
     y_fore = min(web_y_means) if web_y_means else 0.0
     y_aft = max(web_y_means) if web_y_means else 0.0
 
     def _web_role(s) -> str:
-        y_m = float(np.mean(np.asarray(s.midline_b, dtype=float)[:, 0]))
+        y_m = float(np.mean(np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)[:, 0]))
         if len(web_y_means) <= 1:
             return str(s.label)
         if abs(y_m - y_fore) <= 1e-9:
@@ -418,7 +418,7 @@ def plot_panel_face_semantics(
     member_lines: list = []
     panel_id_rows: list[tuple[int, str, str, bool]] = []  # i, kind, description, labeled
     for i, s in enumerate(strips):
-        xy = np.asarray(s.midline_b, dtype=float)
+        xy = np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)
         st = kind_style.get(s.kind, dict(color="0.4", lw=1.2, zorder=1))
         # Same index as strip-mesh panel_index; hide stub labels from labellines
         keep = s.kind in ("cap", "web") or _arc_length(xy) >= min_label_arc
@@ -440,7 +440,7 @@ def plot_panel_face_semantics(
         if not skin_strips:
             return None
         if cap_strips:
-            cap_xy = np.vstack([np.asarray(c.midline_b, dtype=float) for c in cap_strips])
+            cap_xy = np.vstack([np.asarray(c.midline_twisted_pitch_axis_blade_frame, dtype=float) for c in cap_strips])
             x_lo, x_hi = float(cap_xy[:, 0].min()), float(cap_xy[:, 0].max())
         else:
             x_lo, x_hi = 0.25, 0.55
@@ -450,7 +450,7 @@ def plot_panel_face_semantics(
 
         best: tuple[float, NDArray[np.float64], NDArray[np.float64]] | None = None
         for skin in skin_strips:
-            pts = np.asarray(skin.midline_b, dtype=float)
+            pts = np.asarray(skin.midline_twisted_pitch_axis_blade_frame, dtype=float)
             if pts.shape[0] < 2:
                 continue
             for j in range(pts.shape[0] - 1):
@@ -487,12 +487,12 @@ def plot_panel_face_semantics(
             stations.append((frame[0], frame[1], c_o, c_i))
 
     for strip in sorted(cap_strips, key=lambda s: (s.surface != "upper", s.surface or "")):
-        m, n_hat = mid_segment_frame(strip.midline_b)
+        m, n_hat = mid_segment_frame(strip.midline_twisted_pitch_axis_blade_frame)
         c_o, c_i = face_colors["cap"]
         stations.append((m, n_hat, c_o, c_i))
 
-    for strip in sorted(web_strips, key=lambda s: float(np.mean(s.midline_b[:, 0]))):
-        m, n_hat = mid_segment_frame(strip.midline_b)
+    for strip in sorted(web_strips, key=lambda s: float(np.mean(s.midline_twisted_pitch_axis_blade_frame[:, 0]))):
+        m, n_hat = mid_segment_frame(strip.midline_twisted_pitch_axis_blade_frame)
         c_o, c_i = face_colors["web"]
         stations.append((m, n_hat, c_o, c_i))
 
@@ -549,7 +549,7 @@ def plot_panel_face_semantics(
         lab = str(ln.get_label())
         if not (lab.startswith("P") and lab[1:].isdigit()):
             continue
-        xy = np.asarray(strips[int(lab[1:])].midline_b, dtype=float)
+        xy = np.asarray(strips[int(lab[1:])].midline_twisted_pitch_axis_blade_frame, dtype=float)
         if xy.shape[0] == 0:
             continue
         line_items.append((ln, xy, _arc_length(xy)))
@@ -716,7 +716,7 @@ def plot_panel_face_semantics(
         ])
 
     # Tight padded limits in section-plot coords (h=Y_B, v=X_B).
-    pts = np.vstack([np.asarray(s.midline_b, dtype=float) for s in strips])
+    pts = np.vstack([np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float) for s in strips])
     h_all, v_all = section_hv(pts)
     xmin, xmax = float(h_all.min()), float(h_all.max())
     ymin, ymax = float(v_all.min()), float(v_all.max())

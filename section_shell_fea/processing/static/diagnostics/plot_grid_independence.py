@@ -547,15 +547,15 @@ def _draw_shell_geometry(ax, shell: Any, *, title: str) -> None:
     }
     midlines = list(getattr(shell, "midlines", []) or [])
     for strip in midlines:
-        pts = np.asarray(getattr(strip, "midline_b", None), dtype=float)
+        pts = np.asarray(getattr(strip, "midline_twisted_pitch_axis_blade_frame", None), dtype=float)
         if pts.ndim != 2 or pts.shape[0] < 2:
             continue
         st = styles.get(str(getattr(strip, "kind", "other")), styles["other"])
         h, v = section_plot_axes(pts)
         ax.plot(h, v, zorder=2, **st)
 
-    le = getattr(shell, "leading_edge_b", None)
-    te = getattr(shell, "trailing_edge_b", None)
+    le = getattr(shell, "leading_edge_twisted_pitch_axis_blade_frame", None)
+    te = getattr(shell, "trailing_edge_twisted_pitch_axis_blade_frame", None)
     if le is not None and te is not None:
         ends = np.asarray([le, te], dtype=float)
         if ends.shape == (2, 2):

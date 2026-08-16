@@ -4,7 +4,7 @@ Contract tests for the ShellMidlineStrip → ShellMeshInputs → MITC4 mesh pipe
 Verifies the public handoff contract established in PR1:
 
   shell_mesh_inputs_from_section(section, ...) → ShellMeshInputs
-  bind_shell_material_zones(shell_inputs)    → panels (ordered skin → caps → webs)
+  bind_shell_material_zones(shell_inputs, allow_demo_laminates=True) → zones (skin → caps → webs)
   build_section_strip_mesh(shell_inputs, ...)   → SectionStripMesh
 
 Key invariants checked:
@@ -60,7 +60,7 @@ def _build_pipeline(airfoil, layout_key: str, twist_rad: float = 0.0):
     shell_inputs = shell_mesh_inputs_from_section(
         section, twist_rad=twist_rad, layout_key=layout_key, n_cap_samples=40
     )
-    zones, _, _, _ = bind_shell_material_zones(shell_inputs)
+    zones, *_ = bind_shell_material_zones(shell_inputs, allow_demo_laminates=True)
     mesh = build_section_strip_mesh(shell_inputs, n_elements_per_panel=4, endpoint_tol=1e-6)
     return shell_inputs, zones, mesh
 
@@ -515,7 +515,7 @@ def test_solver_and_strip_mesh_agree_on_panel_element_counts(airfoil) -> None:
         target_element_length_m=h_local,
         min_elements_per_panel=MIN_ELEMENTS_PER_PANEL,
     )
-    zones, _, _, _ = bind_shell_material_zones(shell_inputs)
+    zones, *_ = bind_shell_material_zones(shell_inputs, allow_demo_laminates=True)
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
     _K, _f, _nm, panel_maps, *_rest = assemble_global_shell(
         zones,
