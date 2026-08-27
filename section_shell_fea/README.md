@@ -1,7 +1,6 @@
 # `section_shell_fea` — FE worker
 
 **Package:** `blade_structure_utilities.fem_utilities.section_shell_fea`  
-**Former name:** `fem_utilities.section_shell_model`  
 **Role:** FE **worker** only — apply precomputed loads, assemble, solve, cascade.
 
 Apply a precomputed `SectionForceVector` (SFV) to nodal loads, form MITC4
@@ -292,7 +291,7 @@ Campaign `.log` dumps live in orchestration (`section_selection`), not here.
 
 | Claim | Today |
 |-------|-------|
-| Renamed from `section_shell_model` | Package path `fem_utilities/section_shell_fea` |
+| Canonical package path | `fem_utilities/section_shell_fea` |
 | Apply SFV only | `section_force_vector_to_nodal_load`; Channel B staging in `section_loads` |
 | No orchestration modes | No sizing/fatigue APIs on the runner |
 | CCX quarantined | Opt-in `register_calculix_ccx_backend()`; not production theory |
