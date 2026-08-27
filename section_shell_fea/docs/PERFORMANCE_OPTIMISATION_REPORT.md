@@ -58,7 +58,7 @@ flowchart LR
 | `shell_runtime_prepass` | 16× per run (parallel when `section_solve_n_workers > 1`) | `orchestration/precompute/shell_runtime.py` |
 | `section_shell_fea` stage | 16× if enabled (parallel v2 loop) | `orchestration/precompute/stages_pkg/shell.py` |
 | `shell_fi_batch` (optimiser) | **every `evaluate()`** × 16 stations (parallel pool) | `section_optimisation/engine/shell_fi_eval.py` |
-| Iteration snapshots | 1× per snapshot when enabled (default off) | `main_precompute.py` `ITERATION_PIPELINE_SNAPSHOTS` |
+| Iteration snapshots | 1× per snapshot when enabled (default off) | `scripts/main_precompute.py` `ITERATION_PIPELINE_SNAPSHOTS` |
 
 Per-stage wall time is recorded in `<job>/runtime.json` (`section_shell_fea_s`, `shell_runtime_prepass_s`, `section_optimisation_s`).
 
