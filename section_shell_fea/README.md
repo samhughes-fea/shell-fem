@@ -211,7 +211,7 @@ Cap-peak sampling CSVs: [`visualisation/output/cap_peak_sampling/`](visualisatio
 
 **Large-package layout** (exception to the uniform `api/`+`types/`+domain-homes
 shell used by smaller spine workers — see
-[WORKER_PACKAGE_TEMPLATE.md](../../../docs/conventions/WORKER_PACKAGE_TEMPLATE.md)):
+[WORKER_PACKAGE_TEMPLATE.md](../../../docs/conventions/api/WORKER_PACKAGE_TEMPLATE.md)):
 
 | # | Home | Owns |
 |---|------|------|
