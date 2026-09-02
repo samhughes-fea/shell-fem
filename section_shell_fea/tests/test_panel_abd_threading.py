@@ -1,4 +1,4 @@
-"""Panel ABD is computed once per panel per assembly cache miss."""
+﻿"""Panel ABD is computed once per panel per assembly cache miss."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import assemble_global_shell
 from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh
 
@@ -36,3 +36,4 @@ def test_assembly_calls_panel_abd_once_per_panel() -> None:
 
     n_valid = sum(1 for p in zones if len(np.asarray(p.s, dtype=float)) >= 2)
     assert call_count == n_valid, f"expected one ABD build per valid panel, got {call_count} for {n_valid} panels"
+

@@ -5,9 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.containers.types import SectionLoadsJobConfig
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.containers.types import DistributedStationLoadSpec, StationAeroContext
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.builders.station_load_builder import build_station_load_field
+from blade_structure_utilities.load_utilities.section_loads.surface_traction.station_load import (
+    DistributedStationLoadSpec,
+    SectionLoadsJobConfig,
+    StationAeroContext,
+    build_station_load_field,
+)
 from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import ShellMeshInputs
 from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
 

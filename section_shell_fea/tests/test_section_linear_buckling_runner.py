@@ -1,4 +1,4 @@
-"""SectionLinearBucklingRunner: P→S cascade + station fold from static secondary."""
+﻿"""SectionLinearBucklingRunner: Pâ†’S cascade + station fold from static secondary."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     ShellTheory,
     ShellStationProvenance,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.buckling.operations.solve_eigen import (
@@ -96,7 +96,7 @@ def test_assessment_bi_from_lambda() -> None:
 
 
 def test_eigen_product_compressive_panel() -> None:
-    """Direct compressive N11 smoke: real positive λ and BI = 1/λ_min."""
+    """Direct compressive N11 smoke: real positive Î» and BI = 1/Î»_min."""
     abd = _isotropic_abd()
     inp = ShellPanelBucklingInput(
         panel_label="comp",
@@ -240,3 +240,4 @@ def test_enable_buckling_attaches_to_station_analysis() -> None:
     )
     assert analysis.buckling is not None
     assert analysis.buckling.station_id == "buck-attach"
+

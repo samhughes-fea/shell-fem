@@ -1,4 +1,4 @@
-"""Tier 3: per-plate outer/mid/inner strains/stresses, rotated **E → M**.
+r"""Tier 3: per-plate outer/mid/inner strains/stresses, rotated **E → M**.
 
 CLPT models a laminate as a **stack of thin plates**. This module evaluates the
 same plane-stress recovery on every plate at outer, mid, and inner faces in

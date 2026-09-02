@@ -25,7 +25,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
     SectionLinearStaticRunner,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.containers.types import (
+from blade_structure_utilities.load_utilities.section_loads.surface_traction.station_load import (
     DistributedStationLoadSpec,
     IncidentAeroSpec,
     LoadFieldProvenance,
@@ -185,18 +185,37 @@ def test_resolve_missing_load_data_raises() -> None:
 
 def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, SectionStationLoadField]:
     """Build a shell panel topology section + load field whose traction points match skin pairs."""
+    from blade_structure_utilities.geometry_utilities.section_geometry import (
+        AirfoilSDF,
+        build_section_geometry,
+        resolve_system_type,
+    )
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.traction_face_load import (
         _skin_node_pairs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-        build_shell_panel_topology,
+        shell_panel_topology_from_shell_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (
         assemble_global_shell,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh
+    from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import (
+        shell_mesh_inputs_from_geometry_result,
+    )
 
-    panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    airfoil = AirfoilSDF.from_naca("2412", n_points=200, chord=1.0)
+    layout = resolve_system_type("1B-CN")
+    geometry_result = build_section_geometry(
+        layout,
+        airfoil,
+        skin_thickness=0.005,
+        spar_cap_thickness=0.008,
+        shear_web_thickness=0.006,
+        outputs=("midlines",),
+    )
+    shell_inputs = shell_mesh_inputs_from_geometry_result(geometry_result)
+    panel_topology = shell_panel_topology_from_shell_inputs(shell_inputs)
     zones = list(panel_topology.zones)
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
     mesh = build_section_strip_mesh(panel_topology.shell_inputs, n_elements_per_panel=6)

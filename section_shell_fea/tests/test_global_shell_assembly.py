@@ -1,4 +1,4 @@
-"""Direct regression on the single global shell assembly (``engine/global_shell_assembly.py``).
+﻿"""Direct regression on the single global shell assembly (``engine/global_shell_assembly.py``).
 
 This 1,000+-line assembly spine had no direct test; here we lock its structural
 contract (K_global shape/symmetry, load-vector shape, per-panel maps) and the MPC
@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import scipy.sparse as sp
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.fem_config import MITC4_DEFAULTS
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (
     assemble_global_shell,
@@ -60,7 +60,7 @@ def test_assemble_global_shell_is_symmetric() -> None:
 
 
 def test_assemble_global_shell_element_count_scales_dofs() -> None:
-    """More elements per panel ⇒ strictly more global DOFs (mesh refinement wiring)."""
+    """More elements per panel â‡’ strictly more global DOFs (mesh refinement wiring)."""
     zones, zeros, mesh4 = _panels_and_mesh(n_elements_per_panel=4)
     _panels2, zeros2, mesh8 = _panels_and_mesh(n_elements_per_panel=8)
     _K4, _f4, nm4, _, *_abd4 = assemble_global_shell(
@@ -110,3 +110,4 @@ def test_assembly_only_fast_path_is_deterministic() -> None:
     diff = (K_a.tocsr() - K_b.tocsr())
     scale = max(float(abs(K_a).max()), 1.0)
     assert float(abs(diff).max()) / scale < 1e-12
+

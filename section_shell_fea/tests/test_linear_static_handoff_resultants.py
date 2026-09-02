@@ -1,8 +1,8 @@
-"""Linear-static cascade handoff exposes nested secondary resultants."""
+﻿"""Linear-static cascade handoff exposes nested secondary resultants."""
 
 from __future__ import annotations
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
@@ -61,3 +61,4 @@ def test_station_analysis_sees_cascade_shell_resultants() -> None:
         station_id="handoff-test",
     )
     assert len(analysis.shell_resultants) > 0
+

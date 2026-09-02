@@ -1,4 +1,4 @@
-"""Linear-static face-traction RHS: conservation, combined load, cascade FI."""
+﻿"""Linear-static face-traction RHS: conservation, combined load, cascade FI."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.lo
     applied_force_resultant_yz,
     traction_face_loads,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
@@ -175,3 +175,4 @@ def test_linear_static_traction_cascade_reaches_quaternary_fi() -> None:
     assert np.isfinite(fi)
     assert cascade.used_traction is True
     assert cascade.quaternary is not None
+

@@ -1,11 +1,11 @@
-"""End-to-end: SectionLinearStaticRunner.solve() always runs all four result tiers."""
+﻿"""End-to-end: SectionLinearStaticRunner.solve() always runs all four result tiers."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (
     _NDOF_NODE,
@@ -127,3 +127,4 @@ def test_runner_secondary_gaussian_nodal_via_solve_kwargs():
         scale = float(np.max(np.abs(elem_nx[i])))
         tol = max(1.0, 5.0 * abs(float(row.N11)), 0.15 * scale)
         assert abs(float(np.nanmean(elem_nx[i])) - float(row.N11)) < tol
+

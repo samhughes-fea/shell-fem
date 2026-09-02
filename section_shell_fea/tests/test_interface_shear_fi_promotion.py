@@ -94,7 +94,8 @@ def test_four_tier_bridge_interlaminar_matches_row_fsdt():
     p = _ply(1e-3)
     lam = LaminateDefinition(plies=[(p, 0.0), (p, 0.0)])
     rows = [_row(qx=200.0, qy=0.0, t=2e-3)]
-    bundle_fi = compute_quaternary_fi_from_panel_rows([[rows[0]]], [lam])
+    with pytest.warns(DeprecationWarning):
+        bundle_fi = compute_quaternary_fi_from_panel_rows([[rows[0]]], [lam])
     fi_q = float(bundle_fi.quaternary.hashin_fi.interlaminar[0])
     fi_row, _nr, mode = interlaminar_fi_from_row_fsdt(rows[0], lam, s_il=6e6)
     assert mode == "interface"

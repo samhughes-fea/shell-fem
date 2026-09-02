@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.containers.types import (
+from blade_structure_utilities.load_utilities.section_loads.surface_traction.station_load import (
     DistributedStationLoadSpec,
     IncidentAeroSpec,
     LoadFieldProvenance,

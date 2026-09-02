@@ -1,11 +1,11 @@
-"""Station linear-static facade: execute → get_results → quaternary FI."""
+﻿"""Station linear-static facade: execute â†’ get_results â†’ quaternary FI."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.station_recovery import (
@@ -130,3 +130,4 @@ def test_build_fsdt_station_analysis_omits_deprecated_k6() -> None:
     )
     assert analysis.buckling is None
     assert analysis.constitutive.K6 is None
+

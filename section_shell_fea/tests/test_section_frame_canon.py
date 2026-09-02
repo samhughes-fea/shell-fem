@@ -1,16 +1,16 @@
-"""The coordinate-frames canon, asserted on the FE worker.
+﻿"""The coordinate-frames canon, asserted on the FE worker.
 
 Companion to ``mesh_utilities/section_mesh/tests/test_section_plane_canon.py``,
-which pins the geometry→mesh handoff. This file pins the FE side of the same
+which pins the geometryâ†’mesh handoff. This file pins the FE side of the same
 seam, for the same reason that file gives: every orientation test in the package
 is a dot product *within* one frame, and so is blind to a consistent
 relabelling. These are cross-frame checks.
 
 Covers, per ``geometry_utilities/coordinate_frames/README.md``:
 
-* section arrays reaching the FE worker are canonical **B** — chord-long in
+* section arrays reaching the FE worker are canonical **B** â€” chord-long in
   :math:`Y_B`, thin in :math:`X_B`;
-* the B→NACA adapter used for XFOIL untwists and reads the chord off the right
+* the Bâ†’NACA adapter used for XFOIL untwists and reads the chord off the right
   column;
 * Hashin FI is evaluated in **M**, never in **E**;
 * the canon transforms are not reimplemented inside the package;
@@ -35,7 +35,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.lo
     blade_outline_to_unit_chord,
     blade_to_naca_rotation,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
 )
 from blade_structure_utilities.load_utilities.section_loads import (
@@ -75,7 +75,7 @@ class TestPanelArraysAreCanonicalB:
 
 
 class TestXfoilChordAdapter:
-    """``outline_frames`` is the one B→NACA hop; it must untwist, not re-twist."""
+    """``outline_frames`` is the one Bâ†’NACA hop; it must untwist, not re-twist."""
 
     def _ring_B(self) -> np.ndarray:
         pivot = 0.333
@@ -112,7 +112,7 @@ class TestXfoilChordAdapter:
         assert float(np.abs(coords[i_thick, 1])) == pytest.approx(0.1, abs=1e-6)
 
     def test_rotation_matrix_is_the_canonical_one(self):
-        """The adapter matrix must be ``rotate_B_to_S`` + swap, not a local 2×2."""
+        """The adapter matrix must be ``rotate_B_to_S`` + swap, not a local 2Ã—2."""
         twist = 0.27
         pts_B = np.array([[0.3, -0.4], [-0.2, 0.9], [0.0, 0.0]], dtype=float)
         got = pts_B @ blade_to_naca_rotation(twist)
@@ -181,7 +181,7 @@ class TestFailureIndexIsEvaluatedInM:
             assert fi_out[0, pi] != pytest.approx(_fi(sig_E, pi), rel=1e-3)
 
     def test_zero_deg_plies_are_frame_agnostic(self):
-        """0° plies: E ≡ M, so the rotation must be a no-op."""
+        """0Â° plies: E â‰¡ M, so the rotation must be a no-op."""
         from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.results.api.fi_recovery import (
             hashin_fi_per_ply_from_rows_batch,
         )
@@ -299,7 +299,7 @@ class TestSectionPlotContract:
         assert ax.xaxis_inverted(), "leading edge must render on the RHS"
 
     def test_drawn_extents_are_chord_horizontal(self, tmp_path):
-        """The 90°-rotated rendering would put the chord on the vertical axis."""
+        """The 90Â°-rotated rendering would put the chord on the vertical axis."""
         pytest.importorskip("matplotlib")
         from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
             build_section_strip_mesh,
@@ -325,7 +325,7 @@ class TestFlapEdgeMapReachesTheRightAxis:
     ``blade_resultants_to_shell_channels`` maps ``Mz <- flap`` / ``My <- edge``,
     and ``beam_resultants_to_nodal_load`` turns those into axial couples about
     the stored columns. Whether that lands on the flapwise or the edgewise axis
-    depends entirely on the section frame — and no existing load test can see
+    depends entirely on the section frame â€” and no existing load test can see
     it, because each is self-consistent within whatever frame it is handed.
 
     This is the assertion that was missing when the strips carried the swapped
@@ -390,10 +390,11 @@ class TestFlapEdgeMapReachesTheRightAxis:
         assert r_x > 0.5, f"expected axial load to track X_B; |corr(X_B)|={r_x:.4f}"
 
     def test_edgewise_moment_produces_edgewise_bending(self):
-        """M_edgewise: the mirror image — axial load varies with Y_B only."""
+        """M_edgewise: the mirror image â€” axial load varies with Y_B only."""
         pos, fx = self._axial_node_loads(M_edgewise=1.0e5)
         r_x, r_y = self._abs_corr(pos, fx)
         assert r_x == pytest.approx(0.0, abs=1e-9), (
             f"an edgewise moment leaked into flapwise bending: |corr(X_B)|={r_x:.4f}"
         )
         assert r_y > 0.5, f"expected axial load to track Y_B; |corr(Y_B)|={r_y:.4f}"
+

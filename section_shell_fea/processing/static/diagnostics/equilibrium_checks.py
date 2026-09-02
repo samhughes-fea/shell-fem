@@ -142,7 +142,7 @@ def _interface_traction_residuals(
     n_ref: np.ndarray | None = None,
     scale_floor: float = 1.0,
 ) -> dict[str, float]:
-    """
+    r"""
     Compute physically correct interface traction residuals.
 
     Each panel's curvilinear frame **C** has \(x\) = span (common to all panels)

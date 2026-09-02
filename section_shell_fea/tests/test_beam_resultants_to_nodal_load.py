@@ -1,4 +1,4 @@
-"""Phase 0: R→f nodal equivalence and linear-static full-cascade smoke."""
+﻿"""Phase 0: Râ†’f nodal equivalence and linear-static full-cascade smoke."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.lo
     beam_resultants_to_nodal_load,
     integrate_nodal_load_resultants,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
@@ -169,3 +169,4 @@ def test_linear_static_from_resultants_rejects_non_fsdt() -> None:
             load_channel="equipollent",
             shell_theory=ShellTheory.CALCULIX_CCX,
         ).execute()
+

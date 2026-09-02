@@ -1,11 +1,11 @@
-"""Parity: formulation-cache assembly matches legacy inline scatter."""
+﻿"""Parity: formulation-cache assembly matches legacy inline scatter."""
 
 from __future__ import annotations
 
 import numpy as np
 import scipy.sparse as sp
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory import build_formulation_cache
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.mitc4.element import mitc4_stiffness
@@ -128,3 +128,4 @@ def test_formulation_cache_matches_legacy_inline_assembly():
     diff_f = float(np.max(np.abs(f_legacy - f_new)))
     assert diff_k < 1e-10, f"K mismatch max={diff_k}"
     assert diff_f < 1e-10, f"f mismatch max={diff_f}"
+

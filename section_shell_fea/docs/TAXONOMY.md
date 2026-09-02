@@ -2,7 +2,7 @@
 
 Canonical glossary for the FE geometry and constitutive hierarchy used by
 `section_shell_fea`. Layout family codes (`SystemType{X}{Y}-{Z}`) live in
-[`blade_structure_utilities/geometry_utilities/section_geometry/docs/system_type_xyz_taxonomy.md`](../../blade_structure_utilities/geometry_utilities/section_geometry/docs/system_type_xyz_taxonomy.md)
+[`../../blade_structure_utilities/geometry_utilities/section_geometry/docs/reference/system_type_xyz_taxonomy.md`](../../blade_structure_utilities/geometry_utilities/section_geometry/docs/reference/system_type_xyz_taxonomy.md)
 and answer a different question; this document covers station → element.
 
 Results tiers (primary → quaternary) are documented in

@@ -98,7 +98,7 @@ def test_dispatch_routes_fsdt_to_periodic_hashin(monkeypatch) -> None:
 
 def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None:
     """Usable load-field traction must use linear-static station runner execute()."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.containers.types import (
+    from blade_structure_utilities.load_utilities.section_loads.surface_traction.station_load import (
         DistributedStationLoadSpec,
         IncidentAeroSpec,
         LoadFieldProvenance,

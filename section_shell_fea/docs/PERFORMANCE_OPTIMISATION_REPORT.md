@@ -6,7 +6,7 @@
 > [LINEAR_STATIC_MAIN_TRACK_PHASE0.md](LINEAR_STATIC_MAIN_TRACK_PHASE0.md).
 > Paths citing `engine/`, `api/periodic`, or `section_optimisation` are archaeology.
 
-Status/review document for computational-efficiency work on `blade_precompute/section_shell_fea` and its orchestration / optimisation call paths. For methodology and element formulation see [SHELL_MODEL.md](SHELL_MODEL.md). For a well-optimised sibling package to emulate, see [section_geometry/docs/PERFORMANCE_WORK_SUMMARY.md](../../section_geometry/docs/PERFORMANCE_WORK_SUMMARY.md).
+Status/review document for computational-efficiency work on `blade_precompute/section_shell_fea` and its orchestration / optimisation call paths. For methodology and element formulation see [SHELL_MODEL.md](SHELL_MODEL.md). For a well-optimised sibling package to emulate, see [../../section_geometry/docs/reports/PERFORMANCE_WORK_SUMMARY.md](../../section_geometry/docs/reports/PERFORMANCE_WORK_SUMMARY.md).
 
 ## Goal
 
@@ -262,4 +262,4 @@ That module and the clamped Path B FE entry were deleted; production uses
 - [PERIODIC_CCX_HOMOGENIZATION.md](PERIODIC_CCX_HOMOGENIZATION.md) — CalculiX validation and recovery notes
 - [DEFERRED_RESEARCH.md](DEFERRED_RESEARCH.md) — out-of-scope policy and deferred backlog
 - [materials PERFORMANCE_OPTIMISATION_REPORT.md](../../materials/docs/PERFORMANCE_OPTIMISATION_REPORT.md) — laminate fingerprint memos
-- [section_geometry PERFORMANCE_WORK_SUMMARY.md](../../section_geometry/docs/PERFORMANCE_WORK_SUMMARY.md) — optimisation patterns to adopt
+- [section_geometry PERFORMANCE_WORK_SUMMARY.md](../../section_geometry/docs/reports/PERFORMANCE_WORK_SUMMARY.md) — optimisation patterns to adopt

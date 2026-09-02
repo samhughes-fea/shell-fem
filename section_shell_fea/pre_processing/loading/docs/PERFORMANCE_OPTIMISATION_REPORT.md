@@ -1,6 +1,6 @@
 # section_loads — performance optimisation report
 
-Status/review document for computational-efficiency work on `blade_precompute/section_loads` and its orchestration / utility dependencies (`blade_structure_utilities.load_utilities.section_loads.surface_traction`). For methodology see [README.md](../README.md). For a well-optimised sibling package to emulate, see [section_geometry/docs/PERFORMANCE_WORK_SUMMARY.md](../../section_geometry/docs/PERFORMANCE_WORK_SUMMARY.md).
+Status/review document for computational-efficiency work on `blade_precompute/section_loads` and its orchestration / utility dependencies (`blade_structure_utilities.load_utilities.section_loads.surface_traction`). For methodology see [README.md](../README.md). For a well-optimised sibling package to emulate, see [../../section_geometry/docs/reports/PERFORMANCE_WORK_SUMMARY.md](../../section_geometry/docs/reports/PERFORMANCE_WORK_SUMMARY.md).
 
 ## Goal
 
@@ -367,5 +367,5 @@ For linear interpolation onto fixed panel stations, `np.interp` suffices (alread
 
 - [section_loads README.md](../README.md) — methodology and API
 - [orchestration PERFORMANCE_OPTIMISATION_REPORT.md](../../orchestration/docs/PERFORMANCE_OPTIMISATION_REPORT.md) — `StationSectionCache`, final-pass policy
-- [section_geometry PERFORMANCE_WORK_SUMMARY.md](../../section_geometry/docs/PERFORMANCE_WORK_SUMMARY.md) — optimisation patterns to adopt
+- [section_geometry PERFORMANCE_WORK_SUMMARY.md](../../section_geometry/docs/reports/PERFORMANCE_WORK_SUMMARY.md) — optimisation patterns to adopt
 - [orchestration/precompute/__init__.py](../../orchestration/precompute/__init__.py) — stage order and worker hierarchy

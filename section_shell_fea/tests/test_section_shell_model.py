@@ -1,4 +1,4 @@
-"""Tests for section_shell_fea MVP (numpy + pytest)."""
+﻿"""Tests for section_shell_fea MVP (numpy + pytest)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 
 def _panel_topology_vlasov_fixture(naca_code: str, web_x_positions: list[float]):
     """Package shell panel topology panels + multicell airfoil for Vlasov oracle tests."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
     from blade_structure_utilities.fem_utilities.section_shell_fea.io.job_outputs import (
         airfoil_polygon_to_multicell_airfoil,
     )
@@ -42,7 +42,7 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
     from blade_structure_utilities.material_utilities.laminate import clpt_recovery_from_laminate
     from blade_structure_utilities.material_utilities.failure import hashin_fi
     from blade_structure_utilities.material_utilities.laminate import laminate_definition_from_legacy
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
         LinearStaticCascadeResult,
     )
@@ -117,7 +117,7 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
 
 
 def test_hashin_fi_golden_pure_shear_envelope():
-    """Known τ12 in material axes → (τ/S)² (all four Hashin mode FIs match)."""
+    """Known Ï„12 in material axes â†’ (Ï„/S)Â² (all four Hashin mode FIs match)."""
     from blade_structure_utilities.material_utilities.failure import hashin_fi
 
     S12 = 45.0e6
@@ -134,7 +134,7 @@ def test_hashin_fi_golden_pure_shear_envelope():
 
 
 def test_six_series_airfoil_converted_for_multicell_geometry() -> None:
-    """Spanwise six-series polygon must be resampled to [upper; lower] LE→TE."""
+    """Spanwise six-series polygon must be resampled to [upper; lower] LEâ†’TE."""
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca import airfoil_vertices_from_spanwise
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.sectorial_warping import (
         open_outline_from_airfoil,
@@ -167,7 +167,7 @@ def test_six_series_airfoil_converted_for_multicell_geometry() -> None:
 # ---------------------------------------------------------------------------
 
 def test_mitc4_stiffness_shape_and_symmetry():
-    """20×20 stiffness must be symmetric and positive semi-definite (after BCs)."""
+    """20Ã—20 stiffness must be symmetric and positive semi-definite (after BCs)."""
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.mitc4.element import mitc4_stiffness  # noqa: E402
 
     E, nu, t = 70e9, 0.33, 0.005
@@ -190,7 +190,7 @@ def test_mitc4_stiffness_shape_and_symmetry():
     # After pinning rigid-body DOFs: 6 eigenvalues should be near zero (mechanisms)
     eigvals = np.linalg.eigvalsh(K)
     n_near_zero = int(np.sum(np.abs(eigvals) < 1e-3 * eigvals[-1]))
-    assert n_near_zero >= 6, f"Expected ≥6 near-zero eigenvalues, got {n_near_zero}"
+    assert n_near_zero >= 6, f"Expected â‰¥6 near-zero eigenvalues, got {n_near_zero}"
 
 
 def test_mitc4_edge_resultants_uniform_membrane_matches_centroid():
@@ -273,7 +273,7 @@ def test_vlasov_zero_bimoment_gives_zero_stress():
 
 def test_mitc4_integration_no_placeholders():
     """Linear-static MITC4 solve: all resultant provenance must be MITC4 or DERIVED."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology  # noqa: E402
+    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology  # noqa: E402
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (  # noqa: E402
         LinearStaticCascadeResult,
     )
@@ -323,8 +323,8 @@ def test_mitc4_integration_no_placeholders():
 
 def test_vlasov_nonzero_bimoment_activates_stress():
     """
-    B=1e3 → sigma_omega non-zero for at least one skin panel.
-    B=0   → sigma_omega zero everywhere.
+    B=1e3 â†’ sigma_omega non-zero for at least one skin panel.
+    B=0   â†’ sigma_omega zero everywhere.
     Scaling: sigma_omega scales linearly with B.
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
@@ -343,7 +343,7 @@ def test_vlasov_nonzero_bimoment_activates_stress():
     max_sig_1 = max(float(np.max(np.abs(sig))) for sig in vlasov_1.sigma_omega if len(sig))
     assert max_sig_1 > 0.0, "B=1e3 must give non-zero sigma_omega on at least one panel"
 
-    # Linear scaling: B=2e3 → sigma_omega twice as large
+    # Linear scaling: B=2e3 â†’ sigma_omega twice as large
     vlasov_2 = compute_section_vlasov(
         air, panels, B=2e3, dB_dx=0.0, webs_geom=list(webs_geom)
     )
@@ -354,7 +354,7 @@ def test_vlasov_nonzero_bimoment_activates_stress():
 
 
 def test_vlasov_nonzero_dBdx_activates_warping_shear():
-    """dB_dx=1e3 with B=0 → q_omega non-zero on at least one skin panel."""
+    """dB_dx=1e3 with B=0 â†’ q_omega non-zero on at least one skin panel."""
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
 
     air, panels, webs_geom = _panel_topology_vlasov_fixture("2412", [0.35])
@@ -367,7 +367,7 @@ def test_vlasov_nonzero_dBdx_activates_warping_shear():
 
 
 # ---------------------------------------------------------------------------
-# Vlasov Batho helpers (also used by multi-cell I_ω checks)
+# Vlasov Batho helpers (also used by multi-cell I_Ï‰ checks)
 # ---------------------------------------------------------------------------
 
 class _FakeLam:
@@ -387,7 +387,7 @@ class _FakePanel:
 
 
 def _box_airfoil(n: int = 6, width: float = 1.0, height: float = 0.5) -> np.ndarray:
-    """Rectangular box as airfoil (upper + lower surface, LE→TE each)."""
+    """Rectangular box as airfoil (upper + lower surface, LEâ†’TE each)."""
     x = np.linspace(0.0, width, n)
     upper = np.column_stack([x, np.full(n, height / 2.0)])
     lower = np.column_stack([x, np.full(n, -height / 2.0)])
@@ -551,7 +551,7 @@ def test_equilibrium_tiered_thresholds_skin_skin_vs_skin_web():
     assert checks_skin_web[0]["reaction_pass_nx"]
 
 def test_linear_static_returns_active_transverse_shear_fields():
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
         LinearStaticCascadeResult,
     )
@@ -636,7 +636,7 @@ def test_equilibrium_secondary_prefers_interface_field_set():
     assert chk["orientation"] == "opposite"
     assert chk["resultant_dNx_rel"] < 1e-12
     assert chk["resultant_dNxy_rel"] < 1e-12
-    # Field-set available but no edge-traction set — falls back to field-fallback mode.
+    # Field-set available but no edge-traction set â€” falls back to field-fallback mode.
     assert chk["nxy_compare_mode"] == "field-fallback"
     assert chk["resultant_dNx_rel_centroid"] > 0.5
 
@@ -644,8 +644,8 @@ def test_equilibrium_secondary_prefers_interface_field_set():
 def test_equilibrium_strict_skin_web_maps_components():
     # p0 "end" (normal_sign=+1): Tx=2, Ts=5, t_i=[1,0]
     # p1 "start" (normal_sign=-1): Tx=-2, Ts=-5, t_j=[1,0] (collinear)
-    # dTx = 2 + (-2) = 0  →  dTx_rel = 0
-    # dT_yz = 5*[1,0] + (-5)*[1,0] = [0,0]  →  dT_yz_rel = 0
+    # dTx = 2 + (-2) = 0  â†’  dTx_rel = 0
+    # dT_yz = 5*[1,0] + (-5)*[1,0] = [0,0]  â†’  dT_yz_rel = 0
     p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
     p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="Web @ 0.35c")
     checks = check_panel_equilibrium(
@@ -676,8 +676,8 @@ def test_equilibrium_strict_skin_web_maps_components():
 def test_equilibrium_strict_skin_skin_uses_tx_component():
     # p0 "end" (normal_sign=+1): Tx=3, Ts=8, t_i=[1,0]
     # p1 "end" (normal_sign=+1): Tx=-3, Ts=8, t_j=[-1,0]  (panels converge)
-    # dTx = 3 + (-3) = 0  →  dTx_rel = 0
-    # dT_yz = 8*[1,0] + 8*[-1,0] = [0,0]  →  dT_yz_rel = 0
+    # dTx = 3 + (-3) = 0  â†’  dTx_rel = 0
+    # dT_yz = 8*[1,0] + 8*[-1,0] = [0,0]  â†’  dT_yz_rel = 0
     p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
     p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="LSkin")
     checks = check_panel_equilibrium(
@@ -870,9 +870,9 @@ def test_traction_compare_pure_Nx_invariant():
 
 def test_traction_compare_90deg_junction():
     """At a 90-degree corner, dTx is exact and dT_yz has known analytical magnitude."""
-    # p0: [0,0]->[1,0] ("end"), t_i=[1,0], Tx=5, Ts=0  → vector traction in X: 5, in YZ: [0,0]
-    # p1: [1,0]->[1,1] ("start"), t_j=[0,1], Tx=-5, Ts=0 → X: -5, YZ: [0,0]
-    # dTx = 5+(-5) = 0, dT_yz = 0*[1,0]+0*[0,1] = [0,0]  → both zero.
+    # p0: [0,0]->[1,0] ("end"), t_i=[1,0], Tx=5, Ts=0  â†’ vector traction in X: 5, in YZ: [0,0]
+    # p1: [1,0]->[1,1] ("start"), t_j=[0,1], Tx=-5, Ts=0 â†’ X: -5, YZ: [0,0]
+    # dTx = 5+(-5) = 0, dT_yz = 0*[1,0]+0*[0,1] = [0,0]  â†’ both zero.
     p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
     p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="Web")
     diag = [
@@ -897,8 +897,8 @@ def test_traction_compare_90deg_junction():
     assert chk["dTx_rel"] < 1e-10
     assert chk["dT_yz_rel"] < 1e-10
     # Now add a nonzero Ts component to check the Y,Z magnitude formula.
-    # p0: Ts=3.0 → YZ traction = 3*[1,0] = [3,0]
-    # p1: Ts=-4.0 → YZ traction = (-4)*[0,1] = [0,-4]
+    # p0: Ts=3.0 â†’ YZ traction = 3*[1,0] = [3,0]
+    # p1: Ts=-4.0 â†’ YZ traction = (-4)*[0,1] = [0,-4]
     # dT_yz = [3,0]+[0,-4] = [3,-4], magnitude = 5.0
     diag2 = [
         {
@@ -923,7 +923,7 @@ def test_traction_compare_90deg_junction():
 
 def test_transformed_basis_rotation_identity_for_collinear_panels():
     """
-    For two collinear panels (ŝ_i = ŝ_j) the 2-D rotation matrix must be identity:
+    For two collinear panels (Å_i = Å_j) the 2-D rotation matrix must be identity:
       u_s_s = 1*u_s_m + 0*w_m,  w_s = 0*u_s_m + 1*w_m.
     Verify this directly from _build_basis_transform_constraints.
     """
@@ -936,8 +936,8 @@ def test_transformed_basis_rotation_identity_for_collinear_panels():
         def __init__(self, nodes):
             self.nodes = nodes
 
-    # Two collinear panels along y-axis: [0,0]→[1,0] and [1,0]→[2,0]
-    # Both have tangent ŝ = [1,0], normal n̂ = [0,1].
+    # Two collinear panels along y-axis: [0,0]â†’[1,0] and [1,0]â†’[2,0]
+    # Both have tangent Å = [1,0], normal nÌ‚ = [0,1].
     n_s = 3  # 3 s-nodes per panel
     pm0 = _PanelGlobalMap(
         s_nodes=np.linspace(0, 1, n_s),
@@ -973,7 +973,7 @@ def test_transformed_basis_rotation_identity_for_collinear_panels():
         terms_w = dict(constraints[_dof(gn_s, _W)])
         assert np.isclose(terms_w.get(_dof(gn_m, _W), 0.0), 1.0, atol=1e-12)
         assert np.isclose(terms_w.get(_dof(gn_m, _U_S), 0.0), 0.0, atol=1e-12)
-        # β_s_s = 1*β_s_m
+        # Î²_s_s = 1*Î²_s_m
         terms_bs = dict(constraints[_dof(gn_s, _BETA_S)])
         assert np.isclose(terms_bs.get(_dof(gn_m, _BETA_S), 0.0), 1.0, atol=1e-12)
 
@@ -1192,9 +1192,9 @@ def test_cluster_traction_equilibrium_cluster_frame():
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.equilibrium_checks import check_cluster_equilibrium
 
     # Build 3 synthetic panels meeting at (0, 0):
-    # panel 0: horizontal skin, from (-1, 0) to (0, 0) — tangent (1, 0)
-    # panel 1: horizontal skin, from (0, 0) to (1, 0) — tangent (1, 0)
-    # panel 2: vertical web,    from (0, 0) to (0, -1) — tangent (0, -1)
+    # panel 0: horizontal skin, from (-1, 0) to (0, 0) â€” tangent (1, 0)
+    # panel 1: horizontal skin, from (0, 0) to (1, 0) â€” tangent (1, 0)
+    # panel 2: vertical web,    from (0, 0) to (0, -1) â€” tangent (0, -1)
     class _Panel:
         def __init__(self, nodes, label=""):
             self.nodes = np.array(nodes, dtype=float)
@@ -1229,3 +1229,4 @@ def test_cluster_traction_equilibrium_cluster_frame():
     cc = three_way[0]
     assert cc["Tx_rel_cluster"] < 1e-10, f"Tx residual not zero: {cc['Tx_rel_cluster']}"
     assert cc["T_yz_rel_cluster"] < 1e-10, f"T_yz residual not zero: {cc['T_yz_rel_cluster']}"
+
