@@ -144,16 +144,18 @@ class SectionLinearStaticRunner:
     """Classical FEM facade: bound MaterialZones + external force vector → Ke/Fe → cascade.
 
     Use-case agnostic (no sizing/fatigue modes). Constitutive bind
-    (``bind_shell_material_zones``) and external force-vector shaping
-    (``BeamResultantVector`` → ``SectionForceVector``) happen **outside** this
-    worker. Thinwall path requires ``section_force_vector=``; the runner only
-    applies external → global ``f``, forms ``Ke``/``Fe``, assembles, BCs, solves,
-    and fills P→S→T→Q via :meth:`execute` / :meth:`get_results`::
+    (``SectionBindRunner``) and external force-vector shaping
+    (``SectionLoadsRunner`` / ``BeamResultantVector`` → ``SectionForceVector``)
+    happen **outside** this worker. Thinwall path requires
+    ``section_force_vector=``; the runner only applies external → global ``f``,
+    forms ``Ke``/``Fe``, assembles, BCs, solves, and fills P→S→T→Q via
+    :meth:`execute` / :meth:`get_results`::
 
-        sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
+        # L4: frozen zones on panel_topology + frozen SFV from SectionLoadsRunner
         static = SectionLinearStaticRunner(
             panel_topology=panel_topology,
             resultants=resultants,
+            section_strip_mesh=section_strip_mesh,
             section_force_vector=sfv,
             load_channel="thinwall",
         ).execute()

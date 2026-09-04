@@ -171,6 +171,9 @@ def shell_panel_topology_from_shell_inputs(
     shell_inputs: ShellMeshInputs,
     *,
     section: SectionMidlineHost | None = None,
+    zones: tuple[MaterialZone, ...] | list[MaterialZone] | None = None,
+    webs_geom: tuple[Any, ...] | list[Any] | None = None,
+    n_cells: int | None = None,
     skin_lam: LaminateLike | None = None,
     web_lam: LaminateLike | None = None,
     cap_lam: LaminateLike | None = None,
@@ -180,10 +183,33 @@ def shell_panel_topology_from_shell_inputs(
     Contract-first seam: ``shell_inputs`` carries ``ShellMidlineStrip`` polylines.
     ``section`` is optional and only for viz (SDF plots); the FE solve must not
     re-evaluate SDF.
+
+    **Production path:** pass frozen ``zones`` (+ optional ``webs_geom`` /
+    ``n_cells``) from ``SectionBindRunner`` / orchestration. FE must not own
+    assignment policy on the L4 seam.
+
+    **Named demo helper:** when ``zones`` is omitted, this function calls
+    ``bind_shell_material_zones(..., allow_demo_laminates=True)`` for tests /
+    examples / CCX convenience — not a second L4 sequencer.
     """
+    if zones is not None:
+        zone_tuple = tuple(zones)
+        if webs_geom is None:
+            webs_geom = ()
+        if n_cells is None:
+            n_web = sum(1 for z in zone_tuple if str(getattr(z, "kind", "")) == "web")
+            n_cells = int(n_web) + 1
+        return ShellPanelTopology(
+            shell_inputs=shell_inputs,
+            zones=zone_tuple,
+            webs_geom=tuple(webs_geom),
+            n_cells=int(n_cells),
+            section=section,
+        )
+
     from blade_structure_utilities.material_utilities.section_bind import bind_shell_material_zones
 
-    zones, webs_geom, n_cells = bind_shell_material_zones(
+    bound_zones, bound_webs, bound_cells = bind_shell_material_zones(
         shell_inputs,
         skin_lam=skin_lam,
         web_lam=web_lam,
@@ -192,9 +218,9 @@ def shell_panel_topology_from_shell_inputs(
     )
     return ShellPanelTopology(
         shell_inputs=shell_inputs,
-        zones=tuple(zones),
-        webs_geom=tuple(webs_geom),
-        n_cells=int(n_cells),
+        zones=tuple(bound_zones),
+        webs_geom=tuple(bound_webs),
+        n_cells=int(bound_cells),
         section=section,
     )
 

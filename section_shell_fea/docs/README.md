@@ -15,6 +15,7 @@ do not flatten or relocate them.
 | Which figure proves mesh / GCI? | [`ladder_governing_fi.png`](../visualisation/output/gci_study_mitc4/plots/ladder_governing_fi.png) — [NUMERICAL_STABILITY_AND_GCI.md](NUMERICAL_STABILITY_AND_GCI.md) |
 | MITC4 / FSDT assumptions; frames **C ≡ E** | [SHELL_MODEL.md](SHELL_MODEL.md), [TAXONOMY.md](TAXONOMY.md) |
 | Non-ownership (geometry / mesh / bind / SFV shaping) | [../README.md §1](../README.md#1-purpose--ownership), coexistence doc below |
+| Domain-row ownership (FE-rows) | [`reference/FE_ROW_OWNERSHIP_MATRIX.md`](reference/FE_ROW_OWNERSHIP_MATRIX.md) · [`../graphify-out/`](../graphify-out/) |
 
 ---
 
@@ -22,6 +23,7 @@ do not flatten or relocate them.
 
 | Doc | Role |
 |-----|------|
+| [reference/FE_ROW_OWNERSHIP_MATRIX.md](reference/FE_ROW_OWNERSHIP_MATRIX.md) | FE-API / FE-PREP / FE-SOLVE / FE-CASCADE / FE-BUCK / FE-ADAPTER / FE-CCX |
 | [TAXONOMY.md](TAXONOMY.md) | Station → section → strip → MaterialZone → element |
 | [SECTION_SOLVE_STAGES.md](SECTION_SOLVE_STAGES.md) | Prepare → assemble → constrain → reduce(`T`) → solve → P→S→T→Q |
 | [SHELL_MODEL.md](SHELL_MODEL.md) | MITC4/FSDT model, BC modes, acceptance metrics, handoff contract |

@@ -12,7 +12,7 @@ This package implements the **handoff layer** between global/section thin-wall r
 |-------|---------|----------------|
 | Implicit solids (offsets, clips, capsule, unions) | `section_geometry` | SDF subcomponents (`OuterSkin`, `ShearWeb`, `SparCap`, …). |
 | Mid-surface locus as explicit polyline | `section_geometry` | `midline_polyline()` in chord frame; geometrically consistent with the SDF recipe (typically not level-set marching of `__call__`). |
-| Chord (S) → blade (B) for shell export | `coordinate_frames.chord_to_blade` (via `section_geometry.interface.shell_midline_export.build_shell_midline_strips`) | Swap + pitch pivot + twist; strips are canonical B. |
+| Chord (S) → blade (B) for shell export | `coordinate_frames.chord_to_blade` (via `section_geometry.midlines.shell_midline_export.build_shell_midline_strips`) | Swap + pitch pivot + twist; strips are canonical B. |
 | Neutral strip record (polyline + thickness + role) | `blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip` | `ShellMidlineStrip` — **no** `Panel`, laminates, or `n_elements`; FE-agnostic. |
 | Strip list from `MultiCellSection` | `section_geometry` worker / `shell_midline_export` | Prefer `build_section_geometry(..., outputs=("midlines",))` → topology-prepared strips; legacy `build_shell_midline_strips` still available. |
 | `ShellMeshInputs` + strip Q4 mesh | `mesh_utilities.section_mesh` | `shell_mesh_inputs_from_geometry_result` / `build_section_strip_mesh` — **default** `TARGET_ELEMENT_LENGTH_FRAC = 0.012`. Production passes `SectionStripMesh` into the runner (no remesh-on-execute). |

@@ -74,7 +74,7 @@ Empty mesh units are 4-node shell quads in `SectionStripMesh` / `StripPanelMesh`
 Outer skin is two SDF solids — `outer_skin_SS` (suction / camber-upper) and
 `outer_skin_PS` (pressure / camber-lower). Midline export emits one open
 half-ring per side. [`build_shell_strip_topology` /
-`split_skin_at_junctions`](../../../geometry_utilities/section_geometry/interface/shell_strip_topology.py)
+`split_skin_at_junctions`](../../../geometry_utilities/section_geometry/topology/shell_strip_topology.py)
 then splits each side at **web feet** into nested arcs:
 
 ```text

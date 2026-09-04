@@ -29,7 +29,8 @@ Canonical import: `blade_structure_utilities.fem_utilities.section_shell_fea`.
 | **Consumers** | Import the FE barrel / runner only; import `section_bind` / `section_loads` barrels for types — never deep home paths |
 
 Ownership index: [`docs/COEXISTENCE_IMPLICIT_SHELL.md`](../../docs/COEXISTENCE_IMPLICIT_SHELL.md).  
-Docs index: [`docs/README.md`](docs/README.md).
+Docs index: [`docs/README.md`](docs/README.md).  
+**FE-rows:** [`docs/reference/FE_ROW_OWNERSHIP_MATRIX.md`](docs/reference/FE_ROW_OWNERSHIP_MATRIX.md) · live [`graphify-out/`](graphify-out/).
 
 ## Table of contents
 
@@ -240,10 +241,17 @@ from blade_structure_utilities.fem_utilities.section_shell_fea import (
     CascadeBin,
     DiagnosticsBin,
     SectionLinearStaticRunner,
+    ShellPanelTopology,
+    extract_shell_full_element_results,
 )
 
 bin: CascadeBin = (
-    SectionLinearStaticRunner(panel_topology=..., resultants=...)
+    SectionLinearStaticRunner(
+        panel_topology=panel_topology,  # pre-bound zones
+        resultants=resultants,
+        section_strip_mesh=section_strip_mesh,
+        section_force_vector=sfv,  # frozen SFV from section_loads
+    )
     .execute()
     .get_results()
 )
@@ -255,7 +263,7 @@ bin: CascadeBin = (
 Also: `SectionLinearBucklingRunner` (prestress → eigen) for buckling campaigns.
 
 Pass a precomputed `section_force_vector=` when the caller shaped SFV outside FE.
-Do **not** shape loads or bind laminates inside this worker.
+Do **not** shape loads or bind laminates inside this worker on the L4 seam.
 
 ---
 

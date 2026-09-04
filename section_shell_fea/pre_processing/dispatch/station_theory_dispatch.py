@@ -55,6 +55,8 @@ def fsdt_periodic_station_hashin(
     Mz: float,
     T: float,
     section_strip_mesh: Any,
+    section_force_vector: Any | None = None,
+    panel_topology: Any | None = None,
     load_field: Any | None = None,
     n_elements_per_panel: int | None = None,
     target_element_length_m: float | None = None,
@@ -66,6 +68,10 @@ def fsdt_periodic_station_hashin(
     (same free set as beam loads). Beam-only stations use the cascade without
     Channel B overlay. Requires ``section_strip_mesh=`` (density is owned
     outside FE; dispatch builds the mesh once before calling this helper).
+
+    Thinwall path requires a frozen ``section_force_vector=`` shaped outside FE.
+    Prefer ``panel_topology=`` with pre-bound zones; omitted topology may
+    demo-bind via ``shell_panel_topology_from_shell_inputs``.
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.interface.traction_load_adapter import (
         traction_points_from_load_field,
@@ -93,9 +99,10 @@ def fsdt_periodic_station_hashin(
             "pass a prebuilt section_strip_mesh= instead."
         )
 
-    panel_topology = shell_panel_topology_from_shell_inputs(
-        shell_inputs, section=section_view
-    )
+    if panel_topology is None:
+        panel_topology = shell_panel_topology_from_shell_inputs(
+            shell_inputs, section=section_view
+        )
     traction_field = None
     traction_points = None
     used_traction = False
@@ -108,24 +115,11 @@ def fsdt_periodic_station_hashin(
     # Default Channel C (thinwall). When usable face traction is present, use
     # Channel B alone (do not stack tip-integrated V with matching face traction).
     load_channel = "surface_traction" if used_traction else "thinwall"
-    sfv = None
-    if load_channel == "thinwall":
-        from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
-            BEAM_LOAD_AXIS_YZ,
-            BeamResultantVector,
-            FRAME_SECTION_YZ,
-        )
-        from blade_structure_utilities.load_utilities.section_loads import (
-            shape_section_force_vector,
-        )
-
-        resultants = BeamResultantVector.from_named(
-            N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
-            frame=FRAME_SECTION_YZ,
-            about_xy=BEAM_LOAD_AXIS_YZ,
-        )
-        sfv = shape_section_force_vector(
-            resultants, getattr(shell_inputs, "midlines", None)
+    sfv = section_force_vector
+    if load_channel == "thinwall" and sfv is None:
+        raise ValueError(
+            "section_force_vector is required for thinwall; shape SFV with "
+            "section_loads outside FE (FE applies frozen SFV only)."
         )
     strip_mesh = section_strip_mesh
     static = SectionLinearStaticRunner(
@@ -177,6 +171,14 @@ def fsdt_periodic_station_hashin(
 
 
 def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResult:
+    from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+        BEAM_LOAD_AXIS_YZ,
+        BeamResultantVector,
+        FRAME_SECTION_YZ,
+    )
+    from blade_structure_utilities.load_utilities.section_loads import (
+        shape_section_force_vector,
+    )
     from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         build_section_strip_mesh,
     )
@@ -189,6 +191,24 @@ def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResu
         target_element_length_m=request.target_element_length_m,
         min_elements_per_panel=request.min_elements_per_panel,
     )
+    # Named FE-PREP convenience: registry path still shapes SFV here so
+    # fsdt_periodic_station_hashin itself only applies a frozen vector.
+    # Production L4 must shape via SectionLoadsRunner before the runner.
+    sfv = None
+    if request.load_field is None and request.shell_inputs is not None:
+        resultants = BeamResultantVector.from_named(
+            N=request.N,
+            Vy=request.Vy,
+            Vz=request.Vz,
+            My=request.My,
+            Mz=request.Mz,
+            T=request.T,
+            frame=FRAME_SECTION_YZ,
+            about_xy=BEAM_LOAD_AXIS_YZ,
+        )
+        sfv = shape_section_force_vector(
+            resultants, getattr(request.shell_inputs, "midlines", None)
+        )
     return StationTheorySolveResult(
         fsdt_periodic_extra=fsdt_periodic_station_hashin(
             request.section_view,
@@ -200,6 +220,7 @@ def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResu
             Mz=request.Mz,
             T=request.T,
             section_strip_mesh=strip_mesh,
+            section_force_vector=sfv,
             load_field=request.load_field,
         )
     )

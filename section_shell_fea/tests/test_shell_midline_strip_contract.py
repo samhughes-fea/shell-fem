@@ -31,9 +31,8 @@ import pytest
 # still catching any wrong-strip assignment.
 _GEOM_TOL_M = 1e-10
 
-# Layout keys exercised in the parametrize matrix (excludes airfoil_sdf_only
-# 0A/0B and invalid 1D-*).
-_LAYOUT_KEYS = ["2D-F", "2D-CN", "1A-CN", "3C-F", "5D-CN"]
+# Layout keys exercised in the parametrize matrix (includes zero-web 0A/0B).
+_LAYOUT_KEYS = ["0A", "0B", "2D-F", "2D-CN", "1A-CN", "3C-F", "5D-CN"]
 
 
 @pytest.fixture(scope="session")

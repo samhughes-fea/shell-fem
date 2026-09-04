@@ -228,13 +228,30 @@ def test_buckling_panel_track_still_available() -> None:
 
 
 def test_enable_buckling_attaches_to_station_analysis() -> None:
+    from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+        BEAM_LOAD_AXIS_YZ,
+        FRAME_SECTION_YZ,
+        BeamResultantVector,
+    )
+    from blade_structure_utilities.load_utilities.section_loads import (
+        shape_section_force_vector_from_panel_topology,
+    )
+
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    resultants = BeamResultantVector.from_named(
+        My=1.0e3,
+        frame=FRAME_SECTION_YZ,
+        about_xy=BEAM_LOAD_AXIS_YZ,
+    )
+    sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
     analysis = build_fsdt_station_analysis(
         panel_topology.section,
         panel_topology.shell_inputs,
         z_station=0.35,
         My=1.0e3,
         section_strip_mesh=_strip_mesh(panel_topology),
+        section_force_vector=sfv,
+        panel_topology=panel_topology,
         station_id="buck-attach",
         enable_buckling=True,
     )

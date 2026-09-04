@@ -51,13 +51,30 @@ def test_linear_handoff_all_panel_results_nonempty_for_my() -> None:
 
 
 def test_station_analysis_sees_cascade_shell_resultants() -> None:
+    from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+        BEAM_LOAD_AXIS_YZ,
+        FRAME_SECTION_YZ,
+        BeamResultantVector,
+    )
+    from blade_structure_utilities.load_utilities.section_loads import (
+        shape_section_force_vector_from_panel_topology,
+    )
+
     panel_topology = _pb()
+    resultants = BeamResultantVector.from_named(
+        My=1.0e3,
+        frame=FRAME_SECTION_YZ,
+        about_xy=BEAM_LOAD_AXIS_YZ,
+    )
+    sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
     analysis = build_fsdt_station_analysis(
         panel_topology.section,
         panel_topology.shell_inputs,
         z_station=0.35,
         My=1.0e3,
         section_strip_mesh=_strip_mesh(panel_topology),
+        section_force_vector=sfv,
+        panel_topology=panel_topology,
         station_id="handoff-test",
     )
     assert len(analysis.shell_resultants) > 0

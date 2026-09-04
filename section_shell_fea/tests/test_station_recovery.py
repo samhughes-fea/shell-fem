@@ -86,6 +86,29 @@ def test_execute_requires_section_strip_mesh() -> None:
         SectionLinearStaticRunner(panel_topology=_pb(), My=1.0e3).execute()
 
 
+def _sfv_for(panel_topology, *, N=0.0, Vy=0.0, Vz=0.0, My=0.0, Mz=0.0, T=0.0):
+    from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+        BEAM_LOAD_AXIS_YZ,
+        FRAME_SECTION_YZ,
+        BeamResultantVector,
+    )
+    from blade_structure_utilities.load_utilities.section_loads import (
+        shape_section_force_vector_from_panel_topology,
+    )
+
+    resultants = BeamResultantVector.from_named(
+        N=N,
+        Vy=Vy,
+        Vz=Vz,
+        My=My,
+        Mz=Mz,
+        T=T,
+        frame=FRAME_SECTION_YZ,
+        about_xy=BEAM_LOAD_AXIS_YZ,
+    )
+    return shape_section_force_vector_from_panel_topology(resultants, panel_topology)
+
+
 def test_build_fsdt_station_analysis_unknown_fi_track_raises() -> None:
     panel_topology = _pb()
     mesh = _strip_mesh(panel_topology, n_elements_per_panel=4)
@@ -97,6 +120,7 @@ def test_build_fsdt_station_analysis_unknown_fi_track_raises() -> None:
             N=1.0e5,
             My=3.0e4,
             section_strip_mesh=mesh,
+            section_force_vector=_sfv_for(panel_topology, N=1.0e5, My=3.0e4),
             fi_track="not_a_track",  # type: ignore[arg-type]
         )
 
@@ -112,6 +136,7 @@ def test_build_fsdt_station_analysis_periodic_track_removed() -> None:
             N=1.0e5,
             My=3.0e4,
             section_strip_mesh=mesh,
+            section_force_vector=_sfv_for(panel_topology, N=1.0e5, My=3.0e4),
             fi_track="periodic",  # type: ignore[arg-type]
         )
 
@@ -125,6 +150,8 @@ def test_build_fsdt_station_analysis_omits_deprecated_k6() -> None:
         z_station=0.35,
         My=1.0e3,
         section_strip_mesh=mesh,
+        section_force_vector=_sfv_for(panel_topology, My=1.0e3),
+        panel_topology=panel_topology,
         station_id="linear-static-no-k6",
         enable_buckling=False,
     )

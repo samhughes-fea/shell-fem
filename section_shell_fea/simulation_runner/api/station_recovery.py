@@ -137,6 +137,7 @@ def build_fsdt_station_analysis(
     shell_inputs: Any,
     *,
     z_station: float,
+    section_force_vector: Any,
     N: float = 1.0,
     Vy: float = 0.0,
     Vz: float = 0.0,
@@ -147,6 +148,7 @@ def build_fsdt_station_analysis(
     target_element_length_m: float | None = None,
     min_elements_per_panel: int | None = None,
     section_strip_mesh: Any | None = None,
+    panel_topology: ShellPanelTopology | None = None,
     station_id: str = "station-0",
     provenance: ShellStationProvenance | None = None,
     fi_track: FiTrack = "linear_static",
@@ -155,7 +157,13 @@ def build_fsdt_station_analysis(
     """Main-track station analysis for recovery prepass (linear-static).
 
     Omits Saint-Venant ``K6`` on the constitutive handoff (deprecated).
-    Requires ``section_strip_mesh=`` (density is owned outside FE).
+    Requires ``section_strip_mesh=`` (density is owned outside FE) and a frozen
+    ``section_force_vector=`` shaped by ``section_loads`` / L4 — this helper
+    must not call ``shape_section_force_vector*``.
+
+    Prefer ``panel_topology=`` with pre-bound zones from orchestration. When
+    omitted, ``shell_panel_topology_from_shell_inputs`` may demo-bind (named
+    convenience leak, not the L4 seam).
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.interface.station_analysis_builder import (
         build_station_analysis_from_shell_bundle,
@@ -166,10 +174,17 @@ def build_fsdt_station_analysis(
             f"unknown fi_track={fi_track!r}; expected 'linear_static' "
             "(Channel-A fi_track='periodic' has been removed)."
         )
+    if section_force_vector is None:
+        raise ValueError(
+            "section_force_vector is required; shape SFV with "
+            "section_loads.SectionLoadsRunner / shape_section_force_vector* "
+            "outside FE (FE applies frozen SFV only)."
+        )
 
-    panel_topology = shell_panel_topology_from_shell_inputs(
-        shell_inputs, section=section_view
-    )
+    if panel_topology is None:
+        panel_topology = shell_panel_topology_from_shell_inputs(
+            shell_inputs, section=section_view
+        )
     strip_mesh = _require_section_strip_mesh(
         section_strip_mesh=section_strip_mesh,
         n_elements_per_panel=n_elements_per_panel,
@@ -182,17 +197,12 @@ def build_fsdt_station_analysis(
         frame=FRAME_SECTION_YZ,
         about_xy=BEAM_LOAD_AXIS_YZ,
     )
-    from blade_structure_utilities.load_utilities.section_loads import (
-        shape_section_force_vector_from_panel_topology,
-    )
-
-    sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         resultants=resultants,
         section_strip_mesh=strip_mesh,
         load_channel="thinwall",
-        section_force_vector=sfv,
+        section_force_vector=section_force_vector,
     ).execute()
     bundle = _bundle_from_linear_static(panel_topology, static)
     if enable_buckling:
