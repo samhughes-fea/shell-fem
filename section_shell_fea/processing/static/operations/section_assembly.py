@@ -8,7 +8,6 @@ topology → formulation cache → scatter-add → threaded ABD.
 
 from __future__ import annotations
 
-import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -189,40 +188,9 @@ def assemble_section_from_zones(
     )
 
 
-def assemble_section_from_panels(
-    *args: Any,
-    panels: Sequence[MaterialZone] | list[Any] | None = None,
-    panels_outboard: Sequence[MaterialZone] | list[Any] | None = None,
-    **kwargs: Any,
-) -> SectionAssemblyResult:
-    """Deprecated alias of :func:`assemble_section_from_zones`.
-
-    Accepts legacy positional ``panels`` or keyword ``panels=`` /
-    ``panels_outboard=``.
-    """
-    warnings.warn(
-        "assemble_section_from_panels is deprecated; use assemble_section_from_zones "
-        "(and zones= / zones_outboard= kwargs).",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    zones = panels
-    if zones is None and args:
-        zones = args[0]
-        args = args[1:]
-    if zones is None:
-        raise TypeError("assemble_section_from_panels requires zones/panels")
-    if "zones_outboard" not in kwargs and panels_outboard is not None:
-        kwargs["zones_outboard"] = panels_outboard
-    if "zones_outboard" not in kwargs and "panels_outboard" in kwargs:
-        kwargs["zones_outboard"] = kwargs.pop("panels_outboard")
-    return assemble_section_from_zones(zones, *args, **kwargs)
-
-
 __all__ = [
     "SectionAssemblyResult",
     "assemble_section_from_zones",
-    "assemble_section_from_panels",
     "assemble_section_system",
     "scatter_element_fe",
 ]
