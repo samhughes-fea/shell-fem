@@ -71,7 +71,7 @@ def fsdt_periodic_station_hashin(
 
     Thinwall path requires a frozen ``section_force_vector=`` shaped outside FE.
     Prefer ``panel_topology=`` with pre-bound zones; omitted topology may
-    demo-bind via ``shell_panel_topology_from_shell_inputs``.
+    demo-bind via ``shell_panel_topology_from_shell_inputs(..., allow_demo_bind=True)``.
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.interface.traction_load_adapter import (
         traction_points_from_load_field,
@@ -101,7 +101,7 @@ def fsdt_periodic_station_hashin(
 
     if panel_topology is None:
         panel_topology = shell_panel_topology_from_shell_inputs(
-            shell_inputs, section=section_view
+            shell_inputs, section=section_view, allow_demo_bind=True
         )
     traction_field = None
     traction_points = None

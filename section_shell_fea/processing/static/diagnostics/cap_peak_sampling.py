@@ -303,7 +303,7 @@ def analyze_cap_peak_rung(
 
     resultants = BeamResultantVector.from_named(**dict(load))
     runner = SectionLinearStaticRunner(
-        panel_topology=shell_panel_topology_from_shell_inputs(shell),
+        panel_topology=shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True),
         section_strip_mesh=mesh,
         resultants=resultants,
         section_force_vector=shape_section_force_vector(resultants, shell.midlines),

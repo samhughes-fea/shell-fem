@@ -320,7 +320,7 @@ def build_capped_catalogue_fixture(
     strip = build_section_strip_mesh(
         shell, target_element_length_frac=target_element_length_frac, endpoint_tol=1e-6
     )
-    zones = list(shell_panel_topology_from_shell_inputs(shell).zones)
+    zones = list(shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True).zones)
     nx, nxy = _synthetic_loads(zones)
     return zones, nx, nxy, strip, shell
 
@@ -348,7 +348,7 @@ def run_mitc4_kind_peaks_from_shell(
     )
 
     load = dict(load or {"T": 5.0e3, "Vy": 2.0e4, "Mz": 1.0e4})
-    topo = shell_panel_topology_from_shell_inputs(shell)
+    topo = shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True)
     resultants = BeamResultantVector.from_named(**load)
     runner = SectionLinearStaticRunner(
         panel_topology=topo,

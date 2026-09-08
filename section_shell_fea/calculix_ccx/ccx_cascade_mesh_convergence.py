@@ -119,7 +119,7 @@ def run_ccx_cascade_at_frac(
     n_elem_mesh = {k: report.per_kind[k].n_elements for k in report.per_kind}
     h_m = float(frac) * float(chord)
 
-    topo = shell_panel_topology_from_shell_inputs(shell)
+    topo = shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True)
     zones = list(topo.zones)
     resultants = BeamResultantVector.from_named(**load)
     sfv = shape_section_force_vector(resultants, shell.midlines, L_x=float(l_x))

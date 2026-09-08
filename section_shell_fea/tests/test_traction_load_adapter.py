@@ -215,7 +215,7 @@ def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, Section
         outputs=("midlines",),
     )
     shell_inputs = shell_mesh_inputs_from_geometry_result(geometry_result)
-    panel_topology = shell_panel_topology_from_shell_inputs(shell_inputs)
+    panel_topology = shell_panel_topology_from_shell_inputs(shell_inputs, allow_demo_bind=True)
     zones = list(panel_topology.zones)
     zeros = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
     mesh = build_section_strip_mesh(panel_topology.shell_inputs, n_elements_per_panel=6)

@@ -43,7 +43,7 @@ def main() -> int:
         naca_dat=kw.get("naca_dat"),
     )
     mesh = build_section_strip_mesh(shell, target_element_length_frac=FRAC)
-    topo_shell = shell_panel_topology_from_shell_inputs(shell)
+    topo_shell = shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True)
     zones = list(topo_shell.zones)
     conn = build_connected_panel_maps(
         zones,

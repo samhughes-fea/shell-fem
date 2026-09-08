@@ -109,7 +109,7 @@ def _cluster_at_panel_end(layout: str, panel_label: str, which: str, frac: float
         naca_dat=kw.get("naca_dat"),
     )
     mesh = build_section_strip_mesh(shell, target_element_length_frac=frac)
-    zones = list(shell_panel_topology_from_shell_inputs(shell).zones)
+    zones = list(shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True).zones)
     conn = build_connected_panel_maps(
         zones,
         endpoint_tol=1e-6,

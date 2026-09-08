@@ -164,6 +164,7 @@ def build_shell_panel_topology(
         skin_lam=skin_lam,
         web_lam=web_lam,
         cap_lam=cap_lam,
+        allow_demo_bind=True,
     )
 
 
@@ -177,6 +178,7 @@ def shell_panel_topology_from_shell_inputs(
     skin_lam: LaminateLike | None = None,
     web_lam: LaminateLike | None = None,
     cap_lam: LaminateLike | None = None,
+    allow_demo_bind: bool = False,
 ) -> ShellPanelTopology:
     """Build a :class:`ShellPanelTopology` from already-materialised mesh inputs.
 
@@ -188,9 +190,11 @@ def shell_panel_topology_from_shell_inputs(
     ``n_cells``) from ``SectionBindRunner`` / orchestration. FE must not own
     assignment policy on the L4 seam.
 
-    **Named demo helper:** when ``zones`` is omitted, this function calls
+    **Named demo helper (quarantined):** when ``zones`` is omitted, pass
+    ``allow_demo_bind=True`` to call
     ``bind_shell_material_zones(..., allow_demo_laminates=True)`` for tests /
-    examples / CCX convenience — not a second L4 sequencer.
+    examples / CCX convenience — not a second L4 sequencer. Omitting zones
+    without the flag raises.
     """
     if zones is not None:
         zone_tuple = tuple(zones)
@@ -206,6 +210,19 @@ def shell_panel_topology_from_shell_inputs(
             n_cells=int(n_cells),
             section=section,
         )
+
+    if not allow_demo_bind:
+        raise ValueError(
+            "shell_panel_topology_from_shell_inputs requires frozen zones= from "
+            "SectionBindRunner / orchestration. Demo-bind is quarantined: pass "
+            "allow_demo_bind=True only for tests, examples, or CCX convenience."
+        )
+
+    warnings.warn(
+        "shell_panel_topology_from_shell_inputs demo-bind path "
+        "(allow_demo_bind=True) is a named FE leak; prefer frozen zones=.",
+        stacklevel=2,
+    )
 
     from blade_structure_utilities.material_utilities.section_bind import bind_shell_material_zones
 

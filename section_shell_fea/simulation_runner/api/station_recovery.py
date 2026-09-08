@@ -162,8 +162,8 @@ def build_fsdt_station_analysis(
     must not call ``shape_section_force_vector*``.
 
     Prefer ``panel_topology=`` with pre-bound zones from orchestration. When
-    omitted, ``shell_panel_topology_from_shell_inputs`` may demo-bind (named
-    convenience leak, not the L4 seam).
+    omitted, ``shell_panel_topology_from_shell_inputs(..., allow_demo_bind=True)``
+    may demo-bind (named convenience leak, not the L4 seam).
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.interface.station_analysis_builder import (
         build_station_analysis_from_shell_bundle,
@@ -183,7 +183,7 @@ def build_fsdt_station_analysis(
 
     if panel_topology is None:
         panel_topology = shell_panel_topology_from_shell_inputs(
-            shell_inputs, section=section_view
+            shell_inputs, section=section_view, allow_demo_bind=True
         )
     strip_mesh = _require_section_strip_mesh(
         section_strip_mesh=section_strip_mesh,

@@ -82,7 +82,7 @@ def _build(frac: float):
         section, twist_rad=twist, layout_key=LAYOUT, n_web_samples=20, n_cap_samples=80
     )
     mesh = build_section_strip_mesh(shell, target_element_length_frac=frac, endpoint_tol=1e-6)
-    return shell_panel_topology_from_shell_inputs(shell), mesh
+    return shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True), mesh
 
 
 def _peak_n12_by_kind(runner) -> dict[str, float]:

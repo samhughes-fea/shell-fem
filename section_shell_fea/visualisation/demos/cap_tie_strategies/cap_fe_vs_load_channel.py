@@ -98,7 +98,7 @@ def _build(layout_key: str, chord: float, twist_deg: float):
     mesh = build_section_strip_mesh(
         shell, target_element_length_frac=0.012, endpoint_tol=1e-6
     )
-    return shell_panel_topology_from_shell_inputs(shell), mesh, shell
+    return shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True), mesh, shell
 
 
 def _fe_nxy_by_label(runner, kind: str) -> dict[str, float]:
