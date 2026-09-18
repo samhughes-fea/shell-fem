@@ -498,12 +498,26 @@ def _render_elemental_fringe_job(job: dict[str, Any]) -> str:
 def run_elemental_fringe_jobs(
     jobs: Sequence[dict[str, Any]],
     *,
-    workers: int = 1,
+    workers: int | None = None,
 ) -> None:
-    """Render fringe jobs serially or via a process pool."""
+    """Render fringe jobs serially or via a process pool.
+
+    ``workers``:
+      - ``None`` or ``<= 0`` — auto-allocate via ``allocate_core_budget``
+      - ``>= 1`` — explicit override (``1`` forces serial)
+    """
     if not jobs:
         return
-    n_workers = max(1, int(workers))
+    if workers is None or int(workers) <= 0:
+        from blade_structure_utilities.parallel_utilities.core_budget import (
+            allocate_core_budget,
+        )
+
+        n_workers = allocate_core_budget(
+            n_outer_tasks=max(1, len(jobs))
+        ).outer_workers
+    else:
+        n_workers = max(1, int(workers))
     if n_workers == 1 or len(jobs) == 1:
         canvas = FringeCanvas(figsize=tuple(jobs[0].get("figsize") or (8.0, 5.0)))
         try:

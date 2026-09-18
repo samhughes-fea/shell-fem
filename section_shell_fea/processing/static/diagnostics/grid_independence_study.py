@@ -266,7 +266,7 @@ def load_cotide_station_recipe(
 
     from blade_structure_inputs import BladeStructureInputs
     from blade_structure_precompute.module.internal_force import InternalForce
-    from blade_structure_precompute.module.scale import Scale
+    from blade_structure_precompute.examples._shared.scaled_geometry import analysis_geometry_from_blade
     from blade_structure_utilities.geometry_utilities.coordinate_frames import (
         blade_resultants_to_shell_channels,
     )
@@ -284,11 +284,7 @@ def load_cotide_station_recipe(
     ).load()
     bg = inputs.blade_geometry
     ld = inputs.loading
-    scale = Scale(
-        blade_geometry=bg,
-        sampling_distribution_parameters=inputs.sampling_distribution_parameters,
-    )
-    scale.execute()
+    scale = analysis_geometry_from_blade(bg, inputs.sampling_distribution_parameters)
     ifu = InternalForce(scaling=scale, loading=ld)
     ifu.execute()
     wc = ifu.get_worst_curves_dict()
