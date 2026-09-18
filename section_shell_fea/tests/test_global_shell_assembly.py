@@ -1,4 +1,4 @@
-﻿"""Direct regression on the single global shell assembly (``engine/global_shell_assembly.py``).
+"""Direct regression on the single global shell assembly (``engine/global_shell_assembly.py``).
 
 This 1,000+-line assembly spine had no direct test; here we lock its structural
 contract (K_global shape/symmetry, load-vector shape, per-panel maps) and the MPC

@@ -1,4 +1,4 @@
-﻿"""Linear-static cascade handoff exposes nested secondary resultants."""
+"""Linear-static cascade handoff exposes nested secondary resultants."""
 
 from __future__ import annotations
 

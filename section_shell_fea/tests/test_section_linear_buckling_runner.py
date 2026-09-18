@@ -1,4 +1,4 @@
-﻿"""SectionLinearBucklingRunner: Pâ†’S cascade + station fold from static secondary."""
+"""SectionLinearBucklingRunner: Pâ†’S cascade + station fold from static secondary."""
 
 from __future__ import annotations
 

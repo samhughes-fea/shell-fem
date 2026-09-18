@@ -1,4 +1,4 @@
-﻿"""Panel ABD is computed once per panel per assembly cache miss."""
+"""Panel ABD is computed once per panel per assembly cache miss."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-﻿"""Parity: formulation-cache assembly matches legacy inline scatter."""
+"""Parity: formulation-cache assembly matches legacy inline scatter."""
 
 from __future__ import annotations
 

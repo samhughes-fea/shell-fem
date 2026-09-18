@@ -1,4 +1,4 @@
-﻿"""Phase 0: Râ†’f nodal equivalence and linear-static full-cascade smoke."""
+"""Phase 0: Râ†’f nodal equivalence and linear-static full-cascade smoke."""
 
 from __future__ import annotations
 

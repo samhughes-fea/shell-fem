@@ -1,4 +1,4 @@
-﻿"""Station linear-static facade: execute â†’ get_results â†’ quaternary FI."""
+"""Station linear-static facade: execute â†’ get_results â†’ quaternary FI."""
 
 from __future__ import annotations
 

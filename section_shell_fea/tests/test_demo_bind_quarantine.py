@@ -1,4 +1,4 @@
-﻿"""Quarantine contract for FE demo-bind named leak."""
+"""Quarantine contract for FE demo-bind named leak."""
 
 from __future__ import annotations
 

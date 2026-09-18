@@ -1,4 +1,4 @@
-﻿"""Tests for section_shell_fea MVP (numpy + pytest)."""
+"""Tests for section_shell_fea MVP (numpy + pytest)."""
 
 from __future__ import annotations
 

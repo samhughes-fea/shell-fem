@@ -1,4 +1,4 @@
-﻿"""Linear-static face-traction RHS: conservation, combined load, cascade FI."""
+"""Linear-static face-traction RHS: conservation, combined load, cascade FI."""
 
 from __future__ import annotations
 

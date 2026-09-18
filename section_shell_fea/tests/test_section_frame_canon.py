@@ -1,4 +1,4 @@
-﻿"""The coordinate-frames canon, asserted on the FE worker.
+"""The coordinate-frames canon, asserted on the FE worker.
 
 Companion to ``mesh_utilities/section_mesh/tests/test_section_plane_canon.py``,
 which pins the geometryâ†’mesh handoff. This file pins the FE side of the same

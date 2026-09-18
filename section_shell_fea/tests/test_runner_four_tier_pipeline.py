@@ -1,4 +1,4 @@
-﻿"""End-to-end: SectionLinearStaticRunner.solve() always runs all four result tiers."""
+"""End-to-end: SectionLinearStaticRunner.solve() always runs all four result tiers."""
 
 from __future__ import annotations
 
