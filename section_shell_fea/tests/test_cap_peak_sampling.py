@@ -151,3 +151,39 @@ def test_cotide_2b_cn_locator_smoke(cotide_recipe):
     assert cap_h.location.local_element_index >= 0
     # Cap-bearing layout with skin_offset should emit ties.
     assert row.n_cap_tie_links > 0
+
+
+def test_wp41_cap_tie_mode_stays_skin_offset():
+    """WP4.1: production cap ties stay skin_offset; no mesher default change."""
+    import inspect
+
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.cascade_mesh_convergence import (
+        run_cascade_at_frac,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.defect_k_mesh_sweep import (
+        MODES,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.grid_independence_study import (
+        cap_tie_mode_for_layout,
+    )
+
+    assert cap_tie_mode_for_layout("2B-CN") == "skin_offset"
+    assert cap_tie_mode_for_layout("2D-F") == "skin_offset"
+    sig = inspect.signature(run_cascade_at_frac)
+    assert sig.parameters["cap_tie_mode"].default == "skin_offset"
+    assert "shared" in MODES
+
+
+def test_wp42_production_gate_keeps_max_p95_is_diagnostic():
+    """WP4.2: production Hashin gate remains max; p95 is measurement only."""
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.cap_peak_sampling import (
+        STATISTICS,
+    )
+
+    assert STATISTICS[0] == "max"
+    assert "p95" in STATISTICS
+    assert "interior_max" in STATISTICS
+    vals = [0.2, 0.4, 0.9, 1.8]
+    stats = percentile_stats(vals)
+    assert stats["max"] == 1.8
+    assert stats["p95"] < stats["max"]
