@@ -14,6 +14,12 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
+    equipollent_section_force_vector,
+)
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+    BEAM_LOAD_AXIS_YZ,
+    FRAME_SECTION_YZ,
+    BeamResultantVector,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.buckling.operations.solve_eigen import (
     solve_panel_linear_buckling_eigen,
@@ -172,10 +178,14 @@ def test_solve_eigen_skips_missing_abd() -> None:
 
 
 def _static_cascade_my(panel_topology, *, My: float = 1.0e3):
+    resultants = BeamResultantVector.from_named(
+        My=My, frame=FRAME_SECTION_YZ, about_xy=BEAM_LOAD_AXIS_YZ,
+    )
     return LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
-            My=My,
+            resultants=resultants,
+            section_force_vector=equipollent_section_force_vector(panel_topology, resultants),
             section_strip_mesh=_strip_mesh(panel_topology),
             load_channel="equipollent",
         ).execute()

@@ -23,8 +23,21 @@ from blade_structure_utilities.geometry_utilities.section_geometry.layout.system
     resolve_system_type,
 )
 
-# .../section_shell_fea/processing/static/diagnostics/ → repo root is parents[6]
-_REPO_ROOT = Path(__file__).resolve().parents[6]
+def discover_cotide_checkout_root(start: Path | None = None) -> Path:
+    """Walk upward from ``start`` (or this file) until ``cotide_data_interfaces`` exists.
+
+    Independent of checkout depth. Raises ``FileNotFoundError`` with the search
+    origin when the data tree is absent.
+    """
+    here = Path(start).resolve() if start is not None else Path(__file__).resolve()
+    if here.is_file():
+        here = here.parent
+    for root in (here, *here.parents):
+        if (root / "cotide_data_interfaces").is_dir():
+            return root
+    raise FileNotFoundError(
+        f"cotide_data_interfaces not found walking upward from {here}"
+    )
 
 from .asme_gci import GciResult, gci_triplet
 from .cascade_mesh_convergence import (
@@ -256,7 +269,7 @@ def load_cotide_station_recipe(
     Default station is max ``|m_YB|`` on the InternalForce worst-case envelope
     (root for the 3.2 m rotor). Thicknesses are structural floors (not sized).
     """
-    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    root = Path(repo_root) if repo_root is not None else discover_cotide_checkout_root()
     rotor = Path(rotor_dir) if rotor_dir is not None else root / "cotide_data_interfaces" / "new_3.2m_rotor"
     naca = Path(naca_dat) if naca_dat is not None else root / "cotide_data_interfaces" / "NACA_63-415.dat"
     if not rotor.is_dir():
@@ -276,7 +289,7 @@ def load_cotide_station_recipe(
         naca_file=naca,
         internal_inputs_dir=root / "blade_structure_inputs",
         structural_system_key="5D-F",
-        component_materials={"skin": 2, "spar": 2, "web": 2},
+        component_materials={"skin": 17, "spar": 17, "web": 17},
         structural_min_t_skin=0.001,
         structural_min_t_spar=0.002,
         structural_min_t_web=0.0015,
@@ -1106,6 +1119,7 @@ __all__ = [
     "CotideStationRecipe",
     "FAST_CI_KEYS",
     "GateFailure",
+    "discover_cotide_checkout_root",
     "CI_KIND_METRICS",
     "INFORMATIONAL_KINDS",
     "KIND_METRICS",

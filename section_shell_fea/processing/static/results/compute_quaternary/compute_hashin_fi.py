@@ -1,18 +1,16 @@
-"""Tier 4: Hashin failure indices from tier 3 ply stresses — in-plane + interlaminar modes.
+"""Tier 4: plane-stress Hashin indices plus FSDT interface-shear diagnostics.
 
 FI-evaluation half of the historical ``api/fi_recovery.hashin_fi_per_ply_from_rows_batch``
 (see PROCESSING_ARCHITECTURE_PROPOSAL.md). Pure consumer of ply-resolved stress —
 no CLT solve, no laminate side-channel beyond strength lookups.
 
-The transverse-shear/delamination (interlaminar) mode was folded in here from the
-standalone ``compute_interlaminar_fi.py`` in Phase 6 (quaternary scope tightening):
-same parabolic-peak-shear formula and ``Q1``/``Q2`` (= **E**-frame
-:math:`Q_1,Q_2`) + thickness inputs, unchanged — relocation, not reformulation.
-It is theory-independent (works from any shell path that supplies those shears).
+Interface shear is a diagnostic reconstruction from ``Q1``/``Q2`` (and optional
+``tau_iface``). It is not a Hashin mode and is not a delamination criterion.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -22,8 +20,117 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 from ..compute_tertiary.provenance import interlaminar_inputs_trusted
 
 
+@dataclass(frozen=True, slots=True)
+class InterfaceShearScreeningResult:
+    """Conservative two-sided ply-interface shear screening result.
+
+    This is not a Hashin mode and does not represent ``sigma_33``-driven
+    delamination or cohesive damage.
+    """
+
+    failure_index: float
+    needs_review: bool
+    recovery_mode: str
+    strength_provenance: str
+    governing_interface: int | None = None
+    governing_side: str | None = None
+    tau13_ratio: float = float("nan")
+    tau23_ratio: float = float("nan")
+
+
+def _material_shear_components(
+    tau_element: NDArray[np.float64],
+    angle_deg: float,
+) -> tuple[float, float]:
+    """Rotate ``[tau_13,tau_23]`` from laminate E axes to ply material axes."""
+    from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+        rotate_transverse_shear_E_to_M,
+    )
+
+    tau = np.asarray(tau_element, dtype=np.float64).reshape(2)
+    tau13, tau23 = rotate_transverse_shear_E_to_M(tau[0], tau[1], float(angle_deg))
+    return float(tau13), float(tau23)
+
+
+def interface_shear_screening_from_tau(
+    tau_iface: NDArray[np.float64],
+    lam: Any,
+    *,
+    trusted: bool = True,
+    allow_s12_fallback: bool = False,
+    recovery_mode: str = "fsdt_interface_parabolic",
+) -> InterfaceShearScreeningResult:
+    """Evaluate each interior interface in both adjacent ply material frames.
+
+    The component criterion is
+    ``(tau_13/S13)**2 + (tau_23/S23)**2``.  Missing authoritative ``S13`` or
+    ``S23`` makes the result unavailable/needs-review; an ``S12`` fallback is
+    available only as explicitly labelled compatibility provenance.
+    """
+    plies = list(getattr(lam, "plies", None) or [])
+    tau = np.asarray(tau_iface, dtype=np.float64)
+    if not trusted:
+        return InterfaceShearScreeningResult(
+            float("nan"), True, recovery_mode, "unavailable"
+        )
+    if tau.shape != (len(plies) + 1, 2) or len(plies) < 2 or not np.all(np.isfinite(tau)):
+        return InterfaceShearScreeningResult(
+            float("nan"), True, recovery_mode, "unavailable"
+        )
+
+    governing: tuple[float, int, str, float, float] | None = None
+    provenance = "authoritative_s13_s23"
+    for interface in range(1, len(plies)):
+        for ply_index, side in ((interface - 1, "lower"), (interface, "upper")):
+            ply, angle = plies[ply_index]
+            s13 = float(getattr(ply, "S13", 0.0) or 0.0)
+            s23 = float(getattr(ply, "S23", 0.0) or 0.0)
+            if s13 <= 0.0 or s23 <= 0.0:
+                if not allow_s12_fallback:
+                    return InterfaceShearScreeningResult(
+                        float("nan"),
+                        True,
+                        recovery_mode,
+                        "missing_s13_s23",
+                        governing_interface=interface,
+                        governing_side=side,
+                    )
+                fallback = float(getattr(ply, "S12", 0.0) or 0.0)
+                if fallback <= 0.0:
+                    return InterfaceShearScreeningResult(
+                        float("nan"),
+                        True,
+                        recovery_mode,
+                        "missing_strength",
+                        governing_interface=interface,
+                        governing_side=side,
+                    )
+                s13 = s13 if s13 > 0.0 else fallback
+                s23 = s23 if s23 > 0.0 else fallback
+                provenance = "compatibility_s12_fallback"
+            tau13, tau23 = _material_shear_components(tau[interface], float(angle))
+            ratio13 = tau13 / s13
+            ratio23 = tau23 / s23
+            failure_index = ratio13 * ratio13 + ratio23 * ratio23
+            candidate = (failure_index, interface, side, ratio13, ratio23)
+            if governing is None or candidate[0] > governing[0]:
+                governing = candidate
+
+    assert governing is not None
+    return InterfaceShearScreeningResult(
+        failure_index=float(governing[0]),
+        needs_review=provenance != "authoritative_s13_s23",
+        recovery_mode=recovery_mode,
+        strength_provenance=provenance,
+        governing_interface=int(governing[1]),
+        governing_side=governing[2],
+        tau13_ratio=float(governing[3]),
+        tau23_ratio=float(governing[4]),
+    )
+
+
 def interlaminar_allowable_pa(ply: Any) -> float:
-    """Interlaminar (delamination) shear allowable [Pa] for a single ply.
+    """Interface-shear allowable [Pa] for a single ply (diagnostic path).
 
     Prefers the real interlaminar shear strength ``S13`` (1-3 / through-thickness
     shear); falls back to in-plane ``S12`` only when ``S13`` is absent (legacy /
@@ -51,21 +158,23 @@ def interlaminar_allowable_from_lam(lam: Any) -> float:
 
 def ply_strength_vectors_from_lam(
     lam: Any,
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
-    """Per-ply ``(Xt, Xc, Yt, Yc, S12)`` strength vectors from a laminate's plies."""
-    xt, xc, yt, yc, s12 = [], [], [], [], []
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    """Per-ply ``(Xt, Xc, Yt, Yc, S12, S23)`` from laminate plies. No silent defaults."""
+    xt, xc, yt, yc, s12, s23 = [], [], [], [], [], []
     for oply, _ in lam.plies:
-        xt.append(float(getattr(oply, "Xt", 1e9) or 1e9))
-        xc.append(float(getattr(oply, "Xc", 1e9) or 1e9))
-        yt.append(float(getattr(oply, "Yt", 1e9) or 1e9))
-        yc.append(float(getattr(oply, "Yc", 1e9) or 1e9))
-        s12.append(float(getattr(oply, "S12", 1e9) or 1e9))
+        xt.append(float(getattr(oply, "Xt", float("nan"))))
+        xc.append(float(getattr(oply, "Xc", float("nan"))))
+        yt.append(float(getattr(oply, "Yt", float("nan"))))
+        yc.append(float(getattr(oply, "Yc", float("nan"))))
+        s12.append(float(getattr(oply, "S12", float("nan"))))
+        s23.append(float(getattr(oply, "S23", float("nan"))))
     return (
         np.asarray(xt, dtype=float),
         np.asarray(xc, dtype=float),
         np.asarray(yt, dtype=float),
         np.asarray(yc, dtype=float),
         np.asarray(s12, dtype=float),
+        np.asarray(s23, dtype=float),
     )
 
 
@@ -78,6 +187,7 @@ def ply_hashin_fi(
     Yt: NDArray[np.float64],
     Yc: NDArray[np.float64],
     S12: NDArray[np.float64],
+    S23: NDArray[np.float64] | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.bool_]]:
     """Per-row, per-ply Hashin envelope FI from ply stress ``(n_rows, n_ply, 3)``.
 
@@ -87,7 +197,7 @@ def ply_hashin_fi(
     ``materials.failure_criteria.hashin_fi`` element-by-element (row, ply).
     """
     modes, needs_review = ply_hashin_fi_modes(
-        sig_ply, trusted_mask, Xt=Xt, Xc=Xc, Yt=Yt, Yc=Yc, S12=S12,
+        sig_ply, trusted_mask, Xt=Xt, Xc=Xc, Yt=Yt, Yc=Yc, S12=S12, S23=S23,
     )
     fi_ft, fi_fc, fi_mt, fi_mc = modes
     fi_out = np.maximum(np.maximum(fi_ft, fi_fc), np.maximum(fi_mt, fi_mc))
@@ -103,6 +213,7 @@ def ply_hashin_fi_modes(
     Yt: NDArray[np.float64],
     Yc: NDArray[np.float64],
     S12: NDArray[np.float64],
+    S23: NDArray[np.float64] | None = None,
 ) -> tuple[
     tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]],
     NDArray[np.bool_],
@@ -149,6 +260,7 @@ def ply_hashin_fi_modes(
             Yt[:n_ply],
             Yc[:n_ply],
             S12[:n_ply],
+            None if S23 is None else S23[:n_ply],
         )
         row_mask = trusted[:, None]
         fi_ft[:, :n_ply] = np.where(row_mask, ft, 0.0)
@@ -257,20 +369,20 @@ def interlaminar_fi_from_row_fsdt(
     peak_factor: float = 1.5,
     shear_operator: Any | None = None,
 ) -> tuple[float, bool, str]:
-    """Production interlaminar FI: FSDT interface ``τ13/τ23`` with scalar fallback.
+    """FSDT interface-shear screen with an explicitly compatible scalar fallback.
 
-    Prefer peak ``hypot(τ13, τ23) / S_il`` from the theory shear operator (default
-    FSDT parabolic interfaces). Fall back to scalar ``peak_factor |Q| / t / S_il``
-    when the laminate is single-ply / free-surface-only (peak ≤ 0), the operator
-    returns no interfaces, or interlaminar inputs are untrusted.
+    Multi-ply laminates are screened at every interface in both adjacent material
+    frames using distinct ``S13``/``S23``.  The scalar ``S_il`` path is retained
+    only for legacy single-ply/free-surface compatibility.
 
     Returns
     -------
     fi, needs_review, recovery_mode
-        ``recovery_mode`` is ``"interface"``, ``"scalar"``, or ``"untrusted"``.
+        ``recovery_mode`` is ``"interface"``, ``"compatibility_scalar"``,
+        ``"unavailable"``, or ``"untrusted"``.
     """
     if s_il <= 0.0:
-        return 0.0, False, "scalar"
+        return float("nan"), True, "unavailable"
     if not interlaminar_inputs_trusted(row):
         return 0.0, True, "untrusted"
 
@@ -282,22 +394,27 @@ def interlaminar_fi_from_row_fsdt(
         tau, nr = op.recover_row(row, lam)
         if nr:
             return 0.0, True, "untrusted"
-        if tau is not None and tau.size > 0:
-            fi_arr, nr_arr, need_fb = interlaminar_fi_from_interface_tau(
-                np.asarray(tau, dtype=float).reshape(1, -1, 2),
-                s_il=s_il,
+        if tau is not None and tau.size > 0 and n_ply >= 2:
+            result = interface_shear_screening_from_tau(
+                np.asarray(tau, dtype=float),
+                lam,
+                trusted=True,
+                recovery_mode=getattr(op, "recovery_mode", "fsdt_interface_parabolic"),
             )
-            if not bool(need_fb[0]):
-                return float(fi_arr[0]), bool(nr_arr[0]), "interface"
+            if np.isfinite(result.failure_index):
+                return result.failure_index, result.needs_review, "interface"
+            return float("nan"), True, "unavailable"
 
     fi_scalar, nr_scalar = interlaminar_fi_from_row(
         row, s_il=s_il, peak_factor=peak_factor,
     )
-    return fi_scalar, nr_scalar, "scalar"
+    return fi_scalar, nr_scalar, "compatibility_scalar"
 
 
 __all__ = [
+    "InterfaceShearScreeningResult",
     "batched_interlaminar_fi",
+    "interface_shear_screening_from_tau",
     "interlaminar_fi_from_interface_tau",
     "interlaminar_fi_from_row",
     "interlaminar_fi_from_row_fsdt",

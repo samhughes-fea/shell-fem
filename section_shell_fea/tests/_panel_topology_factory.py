@@ -60,5 +60,15 @@ def build_shell_panel_topology(
         )
 
 
-__all__ = ["build_shell_panel_topology"]
+def equipollent_section_force_vector(panel_topology: ShellPanelTopology, resultants, *, L_x: float = 1.0):
+    """Shape Channel-A SFV from panel topology midlines (test helper)."""
+    from blade_structure_utilities.load_utilities.section_loads import (
+        equipollent_shape_on_midlines,
+    )
+
+    midlines = panel_topology.shell_inputs.midlines
+    return equipollent_shape_on_midlines(resultants, midlines, L_x=L_x)
+
+
+__all__ = ["build_shell_panel_topology", "equipollent_section_force_vector"]
 

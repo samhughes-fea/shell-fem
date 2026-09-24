@@ -377,7 +377,7 @@ def plot_panel_face_semantics(
         t = (target - s[j]) / den
         return (1.0 - t) * xy[j] + t * xy[j + 1]
 
-    chord = max(float(te[0] - le[0]), 1e-9)
+    chord = max(float(abs(te[1] - le[1])), 1e-9)
     # Skip LE/TE junction stubs — they crowd the outline without aiding face reading
     min_label_arc = 0.06 * chord
 
@@ -387,7 +387,7 @@ def plot_panel_face_semantics(
         xy = np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)
         mid = np.mean(xy, axis=0)
         if s.kind == "skin":
-            side = "upper" if float(mid[1]) >= 0.0 else "lower"
+            side = "upper" if float(mid[0]) >= 0.0 else "lower"
             seg = raw.split("seg")[-1] if "seg" in raw else "?"
             return f"skin {side} seg{seg}"
         if s.kind == "cap":
@@ -399,13 +399,13 @@ def plot_panel_face_semantics(
 
     web_strips_all = [s for s in strips if s.kind == "web"]
     web_y_means = [
-        float(np.mean(np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)[:, 0])) for s in web_strips_all
+        float(np.mean(np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)[:, 1])) for s in web_strips_all
     ]
     y_fore = min(web_y_means) if web_y_means else 0.0
     y_aft = max(web_y_means) if web_y_means else 0.0
 
     def _web_role(s) -> str:
-        y_m = float(np.mean(np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)[:, 0]))
+        y_m = float(np.mean(np.asarray(s.midline_twisted_pitch_axis_blade_frame, dtype=float)[:, 1]))
         if len(web_y_means) <= 1:
             return str(s.label)
         if abs(y_m - y_fore) <= 1e-9:
@@ -444,7 +444,7 @@ def plot_panel_face_semantics(
             x_lo, x_hi = float(cap_xy[:, 0].min()), float(cap_xy[:, 0].max())
         else:
             x_lo, x_hi = 0.25, 0.55
-        chord = max(float(te[0] - le[0]), 1e-9)
+        chord = max(float(abs(te[1] - le[1])), 1e-9)
         x_aft = x_hi + margin_frac * chord
         x_fore = x_lo - margin_frac * chord
 

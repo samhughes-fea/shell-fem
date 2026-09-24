@@ -62,5 +62,22 @@ class ShellPlyResults:
     shear_trusted_mask: np.ndarray | None = None
     """(n_elem,) bool — rows whose \\(Q_1,Q_2\\) (secondary ``Q1``/``Q2``) passed gating."""
 
+    sig_ply_mat_canonical: np.ndarray | None = None
+    """(n_elem, n_ply, 3, 6) dense M-frame stress
+    ``[σ11, σ22, σ33, τ23, τ13, τ12]``. MITC4 stores ``σ33=0`` as a
+    not-modelled weak-form zero; capability is not inferred from the value."""
+
+    stress_capability: np.ndarray | None = None
+    """(6,) object array of capability tags matching canonical stress order."""
+
+    physical_ply_count: np.ndarray | None = None
+    """(n_elem,) physical ply counts; padded columns are storage only."""
+
+    formulation_id: np.ndarray | None = None
+    """(n_elem,) discrete formulation id per row."""
+
+    element_key: np.ndarray | None = None
+    """(n_elem, 3) ``[element_id, panel_index, local_element_index]``."""
+
 
 __all__ = ["FACE_INNER", "FACE_MID", "FACE_OUTER", "ShellPlyResults"]

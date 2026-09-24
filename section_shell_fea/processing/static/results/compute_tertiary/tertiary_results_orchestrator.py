@@ -126,12 +126,27 @@ class ShellTertiaryResultsOrchestrator:
 
         eps_ply_mat = np.zeros((n_rows, n_ply_max, 3, 3), dtype=np.float64)
         sig_ply_mat = np.zeros((n_rows, n_ply_max, 3, 3), dtype=np.float64)
+        sig_canonical = np.zeros((n_rows, n_ply_max, 3, 6), dtype=np.float64)
         tau_iface = np.zeros((n_rows, max(n_iface_max, 0), 2), dtype=np.float64)
+        physical_ply_count = np.zeros(n_rows, dtype=np.int32)
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.registry import (
+            resolve_formulation,
+        )
+
+        formulation_id = str(self.cache.formulation_id)
+        projector = resolve_formulation(formulation_id).projector
+        caps = np.array(projector.project_material_stress(0.0, 0.0, 0.0)[1], dtype=object)
         for i in range(n_rows):
             if eps_ply_per_row[i] is not None:
                 n_ply_i = eps_ply_per_row[i].shape[0]
+                physical_ply_count[i] = n_ply_i
                 eps_ply_mat[i, :n_ply_i] = eps_ply_per_row[i]
                 sig_ply_mat[i, :n_ply_i] = sig_ply_per_row[i]
+                for ip in range(n_ply_i):
+                    for iface in range(3):
+                        s11, s22, t12 = sig_ply_mat[i, ip, iface]
+                        values, _ = projector.project_material_stress(s11, s22, t12)
+                        sig_canonical[i, ip, iface] = values
             if tau_iface_per_row[i] is not None:
                 n_if = tau_iface_per_row[i].shape[0]
                 tau_iface[i, :n_if] = tau_iface_per_row[i]
@@ -144,6 +159,17 @@ class ShellTertiaryResultsOrchestrator:
             trusted_mask=trusted_mask,
             tau_iface=tau_iface if n_iface_max > 0 else None,
             shear_trusted_mask=shear_trusted_mask,
+            sig_ply_mat_canonical=sig_canonical,
+            stress_capability=caps,
+            physical_ply_count=physical_ply_count,
+            formulation_id=np.full(n_rows, formulation_id, dtype=object),
+            element_key=np.column_stack(
+                [
+                    element_index,
+                    panel_index_arr,
+                    np.arange(n_rows, dtype=np.int64),
+                ]
+            ),
         )
         return ShellTertiaryResultSet(
             ply_results=ply_results,
@@ -156,6 +182,8 @@ class ShellTertiaryResultsOrchestrator:
                 "n_ply": n_ply_max,
                 "n_iface": n_iface_max,
                 "shear_recovery_mode": SHEAR_RECOVERY_MODE_FSDT_PARABOLIC,
+                "formulation_id": formulation_id,
+                "analysis_dof_layout_id": str(self.cache.analysis_dof_layout_id),
             },
         )
 

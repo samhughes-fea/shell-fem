@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
     DEFAULT_BC_MODE,
     is_contour_support,
 )

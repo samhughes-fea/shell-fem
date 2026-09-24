@@ -36,5 +36,8 @@ class DiagnosticsBin:
     mesh_n_total_elements: int | None = None
     mesh_el_min_over_h: float | None = None
 
+    # Constraint provenance (modes/counts/tags; never the equation graph).
+    constraint_metadata: dict[str, object] = field(default_factory=dict)
+
 
 __all__ = ["DiagnosticsBin"]

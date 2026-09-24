@@ -62,6 +62,7 @@ from ..processing.static.operations.constrain_global import ConstrainGlobalShell
 from ..processing.static.operations.prepare_local import PrepareLocalShellSystem
 from ..processing.static.operations.reconstruct_field import ReconstructGlobalShellField
 from ..processing.static.operations.reduce_constrained import KrrModifier, ReduceConstrainedShellSystem
+from ..processing.static.operations.solve_constrained import solve_constrained_system
 from ..processing.static.operations.solve_reduced import SolveReducedShellSystem
 # results
 from ..processing.static.results.compute_primary import ShellPrimaryResultsOrchestrator
@@ -161,7 +162,9 @@ class SectionLinearStaticRunner:
         ).execute()
         bin = static.get_results()  # CascadeBin
 
-    Low-level FE path: :meth:`from_cache` / :meth:`from_global` then :meth:`solve`.
+    Compatibility wrappers :meth:`from_cache` / :meth:`from_global` require a
+    complete explicit constraint dict and never infer station policy. Prefer
+    the internal kernel :func:`solve_constrained_system` for low-level tests.
 
     Prefer ``section_strip_mesh=`` from ``mesh_utilities.section_mesh`` so density
     stays outside FE. Remesh-via-density kwargs are rejected — callers (or FE
@@ -260,7 +263,9 @@ class SectionLinearStaticRunner:
         self._interface_constraint_mode = str(interface_constraint_mode)
         self._cap_tie_mode = str(cap_tie_mode or "skin_offset")
         self._bc_mode = str(bc_mode)
-        self.cap_tie_report: Any | None = None
+        self.constraint_set: Any | None = None
+        self.f_element: np.ndarray | None = None
+        self.f_station: np.ndarray | None = None
         self._shell_theory = shell_theory
         self._load_channel = str(load_channel or "thinwall")
         self._shell_midlines = shell_midlines
@@ -278,6 +283,12 @@ class SectionLinearStaticRunner:
         self.section_force_vector: Any | None = None
         self.load_channel_used: str = "thinwall"
 
+    @property
+    def cap_tie_report(self) -> Any | None:
+        """Deprecated view of ``constraint_set.report.cap_tie``."""
+        report = getattr(self.constraint_set, "report", None)
+        return getattr(report, "cap_tie", None)
+
     @classmethod
     def from_global(
         cls,
@@ -293,8 +304,15 @@ class SectionLinearStaticRunner:
         runner.K = K_global
         runner.f = np.asarray(f_global, dtype=float)
         runner.global_sys = GlobalShellSystem(K=K_global, f=runner.f)
-        runner.constraints = constraints
+        runner.constraints = dict(constraints)
         runner.fixed = set(fixed)
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.types import (
+            section_constraint_set_from_solver_inputs,
+        )
+
+        runner.constraint_set = section_constraint_set_from_solver_inputs(
+            constraints, fixed
+        )
         runner.n_gdof = n_gdof
         runner.factor = K_rr_factor
         return runner
@@ -309,8 +327,15 @@ class SectionLinearStaticRunner:
     ) -> SectionLinearStaticRunner:
         runner = cls()
         runner.cache = cache
-        runner.constraints = constraints
+        runner.constraints = dict(constraints)
         runner.fixed = set(fixed)
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.types import (
+            section_constraint_set_from_solver_inputs,
+        )
+
+        runner.constraint_set = section_constraint_set_from_solver_inputs(
+            constraints, fixed
+        )
         runner.n_gdof = n_gdof
         return runner
 
@@ -342,15 +367,11 @@ class SectionLinearStaticRunner:
 
         Returns ``(f_nodal, zones, provenance_tag)``.
         """
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.beam_resultants_to_nodal_load import (
-            beam_resultants_to_nodal_load,
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.compose import (
+            build_section_constraint_set,
         )
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.traction_face_load import (
-            traction_face_loads,
-        )
-        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
-            build_clamp_supports,
-            build_cluster_basis_supports,
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.types import (
+            constraint_equations_to_solver_dict,
         )
         from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
             assemble_section_from_zones,
@@ -403,7 +424,7 @@ class SectionLinearStaticRunner:
         nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
         nxy = [np.zeros_like(a) for a in nx]
         asm = assemble_section_from_zones(
-        zones,
+            zones,
             nx,
             nxy,
             L_x=self._L_x,
@@ -413,48 +434,16 @@ class SectionLinearStaticRunner:
             section_strip_mesh=strip_mesh,
         )
         ndof = int(asm.cache.n_dof_node)
-        mode = str(self._interface_constraint_mode or "shared")
-        if mode in ("transformed_basis", "shared_rotated"):
-            topo = asm.topology
-            fixed = build_cluster_basis_supports(
-                asm.panel_maps,
-                topo.endpoint_cluster_index,
-                topo.cluster_layer_node,
-                topo.cluster_layer_rot_node,
-                ndof=ndof,
-                bc_mode=self._bc_mode,
-            )
-        elif mode in ("hybrid_collinear", "hybrid_kind_crossing"):
-            from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
-                build_hybrid_collinear_supports,
-            )
-
-            topo = asm.topology
-            fixed = build_hybrid_collinear_supports(
-                asm.panel_maps,
-                topo.endpoint_cluster_index,
-                topo.cluster_layer_node,
-                topo.cluster_layer_rot_node,
-                ndof=ndof,
-                bc_mode=self._bc_mode,
-            )
-        else:
-            fixed = build_clamp_supports(asm.panel_maps, ndof=ndof, bc_mode=self._bc_mode)
-        constraints = dict(asm.node_meta.constraints or {})
-
-        if self._cap_tie_mode != "none":
-            from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.cap_tie_constraints import (
-                build_cap_tie_constraints,
-            )
-
-            cap_mpcs, self.cap_tie_report = build_cap_tie_constraints(
-                asm.panel_maps,
-                asm.node_meta,
-                ndof=ndof,
-                mode=self._cap_tie_mode,
-                existing=constraints,
-            )
-            constraints.update(cap_mpcs)
+        constraint_set = build_section_constraint_set(
+            asm,
+            interface_constraint_mode=self._interface_constraint_mode,
+            cap_tie_mode=self._cap_tie_mode,
+            bc_mode=self._bc_mode,
+        )
+        constraints = constraint_equations_to_solver_dict(constraint_set.equations)
+        fixed = set(constraint_set.fixed_dofs)
+        self.constraint_set = constraint_set
+        self.f_element = np.asarray(asm.f_element, dtype=float)
 
         resultants = self._resultants_in
         if resultants is None:
@@ -531,25 +520,30 @@ class SectionLinearStaticRunner:
             if used_traction:
                 used_traction = False
         elif channel_l in equipollent_aliases:
-            f = beam_resultants_to_nodal_load(
+            from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
+                section_force_vector_to_nodal_load,
+            )
+
+            if sfv is None:
+                raise ValueError(
+                    "load_channel='equipollent' requires a precomputed "
+                    "section_force_vector (external force vector / SectionForceVector). "
+                    "Shape BeamResultantVector → SectionForceVector outside the FE worker "
+                    "via load_utilities.section_loads.equipollent_shape_on_midlines; "
+                    "this runner only applies external → global force vector f. "
+                    "beam_resultants_to_nodal_load remains a regression utility, not a "
+                    "second production FE path."
+                )
+            f = section_force_vector_to_nodal_load(
                 asm.node_meta,
-                resultants,
-                about_xy=resultants.about_xy,
+                sfv,
                 ndof=ndof,
                 L_x=self._L_x,
             )
             channel_used = "equipollent"
             provenance_tag = "SectionLinearStaticRunner.execute + equipollent"
             if used_traction:
-                forces = np.asarray(tf.total_forces, dtype=float)
-                f = f + traction_face_loads(
-                    asm.node_meta,
-                    forces,
-                    pts,
-                    ndof=ndof,
-                    L_x=self._L_x,
-                )
-                provenance_tag = provenance_tag + " + face traction"
+                used_traction = False
         else:
             raise ValueError(
                 f"Unknown load_channel={channel!r}; expected "
@@ -559,6 +553,7 @@ class SectionLinearStaticRunner:
         self.assembly = asm
         self.resultants = resultants
         self.f_nodal = f
+        self.f_station = np.asarray(f, dtype=float)
         self.used_traction = used_traction
         self.section_force_vector = sfv
         self.load_channel_used = channel_used
@@ -566,6 +561,17 @@ class SectionLinearStaticRunner:
         self.constraints = constraints
         self.fixed = set(fixed)
         self.n_gdof = int(asm.n_gdof)
+        f_element = (
+            np.asarray(self.f_element, dtype=float)
+            if self.f_element is not None
+            else np.zeros(self.n_gdof, dtype=float)
+        )
+        f_total = f_element + np.asarray(f, dtype=float)
+        self.global_sys = GlobalShellSystem(
+            K=asm.K_global,
+            f=f_total,
+            diagnostics=asm.diagnostics,
+        )
         return f, zones, provenance_tag
 
     def execute(self) -> SectionLinearStaticRunner:
@@ -582,7 +588,6 @@ class SectionLinearStaticRunner:
         f, zones, provenance_tag = self._prepare_station_system()
         assert self.assembly is not None
         self.solve(
-            f_override=f,
             L_x=self._L_x,
             theory="fsdt",
             panel_maps=self.assembly.panel_maps,
@@ -621,14 +626,20 @@ class SectionLinearStaticRunner:
 
     def assemble_global_system(self) -> GlobalShellSystem:
         with self._phase_collector.phase(PHASE_ASSEMBLE_GLOBAL_SYSTEM):
+            if self.global_sys is not None:
+                if self.cache is not None:
+                    self.index_maps.assembly_map = AssembleGlobalShellSystem.build_assembly_map(
+                        self.cache, self.n_gdof
+                    )
+                elif not self.index_maps.assembly_map:
+                    self.index_maps.assembly_map = [
+                        ShellMapEntry(global_dof=d, independent=True) for d in range(self.n_gdof)
+                    ]
+                return self.global_sys
             if self.cache is not None:
                 self.global_sys, self.index_maps.assembly_map = AssembleGlobalShellSystem().run(
                     self.cache, self.n_gdof,
                 )
-            elif self.global_sys is not None:
-                self.index_maps.assembly_map = [
-                    ShellMapEntry(global_dof=d, independent=True) for d in range(self.n_gdof)
-                ]
             else:
                 raise RuntimeError("assemble_global_system requires cache or pre-set global_sys")
         return self.global_sys
@@ -795,10 +806,14 @@ class SectionLinearStaticRunner:
         for the full results cascade.
         """
         self._k_rr_modifier = k_rr_modifier
+        production_rhs_frozen = self.assembly is not None and self.global_sys is not None
         if self.cache is not None:
-            self.prepare_local_system()
-            self.assemble_global_system()
-            if f_override is not None:
+            if self.global_sys is None:
+                self.prepare_local_system()
+                self.assemble_global_system()
+            else:
+                self.assemble_global_system()
+            if f_override is not None and not production_rhs_frozen:
                 self.global_sys = GlobalShellSystem(
                     K=self.global_sys.K,
                     f=np.asarray(f_override, dtype=float),
@@ -807,12 +822,36 @@ class SectionLinearStaticRunner:
         elif self.global_sys is None and self.K is not None and self.f is not None:
             f_vec = self.f if f_override is None else np.asarray(f_override, dtype=float)
             self.global_sys = GlobalShellSystem(K=self.K, f=f_vec)
-        elif f_override is not None and self.global_sys is not None:
+        elif f_override is not None and self.global_sys is not None and not production_rhs_frozen:
             self.global_sys = GlobalShellSystem(
                 K=self.global_sys.K,
                 f=np.asarray(f_override, dtype=float),
                 diagnostics=self.global_sys.diagnostics,
             )
+        if self.constraint_set is not None and self.global_sys is not None:
+            result = solve_constrained_system(
+                self.global_sys,
+                self.constraint_set,
+                self.n_gdof,
+                k_rr_modifier=k_rr_modifier,
+                factor=self.factor,
+            )
+            self.constrained = result.constrained
+            self.reduced = result.reduced
+            self.solved = result.solved
+            self.field = result.field
+            self.index_maps.constraint_map = result.constraint_map
+            self.index_maps.reduction_map = result.reduction_map
+            self.index_maps.reconstruction_map = result.reconstruction_map
+            self.T = result.T
+            self.factor = result.factor
+            self.fixed = set(self.constrained.fixed)
+            self._solver = SolveReducedShellSystem(self.reduced, factor=self.factor)
+            self._solver.last_residual_rel = result.residual_rel
+            self._solver.last_pivot_ratio = result.pivot_ratio
+            self._solver.last_quality_ok = result.quality_ok
+            self._solver.last_quality_reason = result.quality_reason
+            return self.field.d_global
         self.constrain_global_system()
         self.reduce_constrained_system()
         self.solve_reduced_system()
@@ -938,6 +977,19 @@ class SectionLinearStaticRunner:
         strip = self._section_strip_mesh
         if strip is not None:
             diagnostics.mesh_n_total_elements = int(strip.n_total_elements)
+        if self.constraint_set is not None:
+            report = self.constraint_set.report
+            diagnostics.constraint_metadata = {
+                "interface_constraint_mode": report.interface_constraint_mode,
+                "cap_tie_mode": report.cap_tie_mode,
+                "bc_mode": report.bc_mode,
+                "n_junction_equations": int(report.n_junction_equations),
+                "n_cap_tie_equations": int(report.n_cap_tie_equations),
+                "n_fixed_dofs": int(report.n_fixed_dofs),
+                "n_cap_links": int(report.n_cap_links),
+                "n_tie_slave_nodes": len(report.tie_slave_nodes),
+                "n_junction_slave_dofs": len(report.junction_slave_dofs),
+            }
 
         result = SectionLinearStaticResult(
             d_global=np.asarray(self.field.d_global, dtype=float),

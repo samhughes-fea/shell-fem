@@ -19,7 +19,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.lo
     _skin_node_pairs,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import normal_2d
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.analysis_dof_layout import (
     BETA_S,
     BETA_X,
     BETA_ZET,

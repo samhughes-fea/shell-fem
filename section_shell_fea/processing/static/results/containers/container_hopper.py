@@ -48,11 +48,9 @@ class ShellSecondaryResultSet:
 class ShellHashinFiResult:
     """Per-mode Hashin failure-index breakdown (Phase 6 quaternary tightening).
 
-    In-plane modes require **M**-frame mid-face stress. The interlaminar mode
-    uses **E**-frame transverse shear (\\(Q_1,Q_2\\) as ``Q1``/``Q2``, or
-    ``tau_iface``), independent of FSDT vs HSDT origin. Arrays stay distinct
-    for optimiser KS-aggregation. See PROCESSING_ARCHITECTURE_PROPOSAL.md
-    Phase 6.
+    In-plane modes require **M**-frame mid-face stress. ``interface_shear`` is
+    a separate FSDT screening criterion, not a Hashin mode; ``interlaminar`` is
+    retained as its compatibility alias.
 
     ``in_plane`` is the envelope max of the four in-plane modes (governing /
     optimiser scalar). The four mode arrays are stored separately when computed.
@@ -61,7 +59,14 @@ class ShellHashinFiResult:
     in_plane: np.ndarray | None = None
     """(n_elem, n_ply) envelope max of fibre/matrix tension/compression modes."""
     interlaminar: np.ndarray | None = None
-    """(n_elem,) transverse-shear/delamination mode."""
+    """Deprecated compatibility alias of ``interface_shear``."""
+    interface_shear: np.ndarray | None = None
+    """(n_elem,) two-sided material-frame interface-shear criterion."""
+    interface_shear_recovery_mode: np.ndarray | None = None
+    interface_shear_strength_provenance: np.ndarray | None = None
+    interface_shear_governing_interface: np.ndarray | None = None
+    interface_shear_governing_side: np.ndarray | None = None
+    interface_shear_component_ratios: np.ndarray | None = None
     fi_ft: np.ndarray | None = None
     """(n_elem, n_ply) fibre-tension Hashin mode."""
     fi_fc: np.ndarray | None = None
@@ -77,9 +82,9 @@ class ShellQuaternaryResultSet:
     """Failure indices, governing element, and review flags (tier 4).
 
     Pure consumer of :class:`ShellTertiaryResultSet`. Criteria act on **M**
-    stresses: Hashin (composite mid-face), Von Mises (isotropic mid-face),
-    and material-agnostic extreme-fibre max-stress at laminate free surfaces
-    (±h/2, still **M** components from ``sig_ply_mat``).
+    stresses: Hashin (composite outer/inner faces), Von Mises (isotropic mid-face),
+    and material-agnostic extreme-fibre (opt-in) at laminate free surfaces.
+    Interface shear is diagnostic-only and is not a governing criterion.
     """
 
     hashin_fi: ShellHashinFiResult | None = None
@@ -93,6 +98,9 @@ class ShellQuaternaryResultSet:
     governing: dict[str, object] = field(default_factory=dict)
     needs_review: np.ndarray | None = None
     meta: dict[str, object] = field(default_factory=dict)
+    max_utilization_governing: float | None = None
+    formulation_id: str = "MITC4-FSDT"
+    canonical_layout_version: str = "v1"
 
 
 @dataclass

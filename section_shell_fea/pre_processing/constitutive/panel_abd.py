@@ -6,6 +6,50 @@ from typing import Any, Sequence
 
 import numpy as np
 
+from ..containers.formulation_objects import (
+    PanelConstitutiveKind,
+    PanelConstitutiveSpec,
+)
+
+
+def panel_constitutive_spec_from_lam(
+    lam: Any,
+    *,
+    material_kind: PanelConstitutiveKind = "orthotropic",
+    sigma_y_pa: float = float("nan"),
+    sigma_uts_pa: float = float("nan"),
+    sigma_ucs_pa: float = float("nan"),
+    tau_us_pa: float = float("nan"),
+) -> PanelConstitutiveSpec:
+    """Resolve one laminate to the typed ABDAs handoff used by FE."""
+    from blade_structure_utilities.material_utilities.laminate import (
+        LaminateDefinition,
+        laminate_definition_from_legacy,
+    )
+
+    definition = (
+        lam
+        if isinstance(lam, LaminateDefinition)
+        else laminate_definition_from_legacy(lam)
+    )
+    if definition is None:
+        raise TypeError(
+            f"Panel laminate {type(lam).__name__!r} cannot provide canonical ABDAs"
+        )
+    bundle = definition.stiffness_bundle()
+    if bundle.fsdt is None:
+        raise ValueError("live LaminateDefinition must populate bundle.fsdt")
+    return PanelConstitutiveSpec(
+        fsdt=bundle.fsdt,
+        thickness_m=float(definition.total_thickness()),
+        material_kind=material_kind,
+        sigma_y_pa=float(sigma_y_pa),
+        sigma_uts_pa=float(sigma_uts_pa),
+        sigma_ucs_pa=float(sigma_ucs_pa),
+        tau_us_pa=float(tau_us_pa),
+        correction_provenance=bundle.fsdt.provenance,
+    )
+
 
 def panel_abd_tuple_from_lam(lam: Any) -> tuple[np.ndarray, float, float, float, float]:
     """Return ``(ABD 6×6, thickness, nu, E, G_eff)`` for a panel laminate object."""

@@ -147,7 +147,7 @@ def _interface_traction_residuals(
 
     Each panel's curvilinear frame **C** has \(x\) = span (common to all panels)
     and \(\hat{s}\) = contour tangent (panel-specific, in the **B**-frame
-    \((Y_B,Z_B)\) section plane).
+    \((X_B,Y_B)\) section plane).
 
     ``mitc4_edge_shear_traction_integrated`` already applies the outward-normal sign
     (normal_sign = ±1 for start/end edges), so:

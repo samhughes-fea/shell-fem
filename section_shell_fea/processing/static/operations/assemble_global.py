@@ -22,16 +22,19 @@ def _validate_element_contribution(
     fe: np.ndarray,
     *,
     element_id: int,
-    n_dof: int,
+    n_elem_dof: int,
 ) -> None:
     if ke.ndim != 2 or ke.shape[0] != ke.shape[1]:
         raise ValueError(f"element {element_id}: Ke must be square, got {ke.shape}")
     if not np.all(np.isfinite(ke)):
         raise ValueError(f"element {element_id}: Ke contains non-finite values")
-    expected = 4 * n_dof
-    if fe.shape != (expected,):
+    if ke.shape != (n_elem_dof, n_elem_dof):
         raise ValueError(
-            f"element {element_id}: fe shape {fe.shape} != ({expected},)"
+            f"element {element_id}: Ke shape {ke.shape} != ({n_elem_dof}, {n_elem_dof})"
+        )
+    if fe.shape != (n_elem_dof,):
+        raise ValueError(
+            f"element {element_id}: fe shape {fe.shape} != ({n_elem_dof},)"
         )
     if not np.all(np.isfinite(fe)):
         raise ValueError(f"element {element_id}: fe contains non-finite values")
@@ -60,14 +63,14 @@ def assemble_section_system(
     f_global = np.zeros(n_gdof, dtype=float)
 
     for stiff, force in zip(cache.stiffness_objects, cache.force_objects):
-        if validate:
-            _validate_element_contribution(
-                stiff.K_e, force.F_e, element_id=stiff.element_id, n_dof=n_dof
-            )
         g_dofs = stiff.global_dof_indices
         if g_dofs is None:
             raise ValueError(f"element {stiff.element_id}: global_dof_indices not set")
-        n = g_dofs.size
+        n = int(g_dofs.size)
+        if validate:
+            _validate_element_contribution(
+                stiff.K_e, force.F_e, element_id=stiff.element_id, n_elem_dof=n
+            )
         row_chunks.append(np.repeat(g_dofs, n))
         col_chunks.append(np.tile(g_dofs, n))
         val_chunks.append(np.asarray(stiff.K_e, dtype=float).ravel())

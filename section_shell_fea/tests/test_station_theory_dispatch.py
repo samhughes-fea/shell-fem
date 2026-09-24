@@ -196,17 +196,14 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
 
 
 def test_dispatch_routes_ccx_to_thin_wall(monkeypatch) -> None:
-    """CCX is quarantined (Phase 6): dispatch only works after opt-in registration."""
+    """CCX station dispatch is not registered; only the global validation backend is."""
     from blade_structure_utilities.fem_utilities.section_shell_fea.calculix_ccx.register import (
         register_calculix_ccx_backend,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.calculix_ccx import station_dispatch_adapter
 
     register_calculix_ccx_backend()
-    monkeypatch.setattr(station_dispatch_adapter, "ccx_station_solve_from_thin_wall", lambda req: {"solver": "ccx"})
-    res = dispatch_station_theory(_request(ShellTheory.CALCULIX_CCX))
-    assert res.backend_extra == {"solver": "ccx"}
-    assert res.fsdt_periodic_extra is None
+    with pytest.raises(ValueError, match="No station-dispatch handler"):
+        dispatch_station_theory(_request(ShellTheory.CALCULIX_CCX))
 
 
 def test_dispatch_rejects_theory_without_station_dispatch_support(monkeypatch) -> None:

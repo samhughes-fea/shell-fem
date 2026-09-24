@@ -74,7 +74,14 @@ def test_assemble_global_shell_element_count_scales_dofs() -> None:
 
 
 def test_assemble_global_shell_interface_modes_change_junction_topology() -> None:
-    """``shared`` merges junction nodes; ``transformed_basis`` keeps them separate + constrained."""
+    """``shared`` merges junction nodes; ``transformed_basis`` keeps them separate."""
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.compose import (
+        build_section_constraint_set,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
+        assemble_section_from_zones,
+    )
+
     zones, zeros, mesh = _panels_and_mesh(n_elements_per_panel=4)
     _Ks, _fs, nm_shared, _, *_abd = assemble_global_shell(
         zones, zeros, zeros, section_strip_mesh=mesh, interface_constraint_mode="shared",
@@ -83,11 +90,20 @@ def test_assemble_global_shell_interface_modes_change_junction_topology() -> Non
         zones, zeros, zeros, section_strip_mesh=mesh,
         interface_constraint_mode="transformed_basis",
     )
-    # Shared physically collapses coincident junction nodes into one, so it has
-    # strictly fewer global nodes than the constraint-based transformed basis.
     assert nm_shared.n_nodes < nm_tb.n_nodes
-    assert nm_tb.constraints is not None and len(nm_tb.constraints) > 0
     assert not nm_shared.constraints
+    asm_tb = assemble_section_from_zones(
+        zones, zeros, zeros, section_strip_mesh=mesh,
+        interface_constraint_mode="transformed_basis",
+    )
+    cs = build_section_constraint_set(
+        asm_tb,
+        interface_constraint_mode="transformed_basis",
+        cap_tie_mode="none",
+    )
+    assert len(cs.equations) > 0
+    assert asm_tb.node_meta.constraints is not None
+    assert len(asm_tb.node_meta.constraints) > 0
 
 
 def test_assembly_only_fast_path_is_deterministic() -> None:

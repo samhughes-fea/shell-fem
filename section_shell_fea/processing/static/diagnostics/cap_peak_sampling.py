@@ -318,7 +318,11 @@ def analyze_cap_peak_rung(
     owner_count = _kind_owner_counts(panel_maps)
     tie_slaves: set[int] = set()
     n_links = 0
-    if runner.cap_tie_report is not None:
+    constraint_report = getattr(getattr(runner, "constraint_set", None), "report", None)
+    if constraint_report is not None:
+        n_links = int(constraint_report.n_cap_links)
+        tie_slaves = set(int(n) for n in constraint_report.tie_slave_nodes)
+    elif runner.cap_tie_report is not None:
         n_links = int(runner.cap_tie_report.n_links)
         tie_slaves = {int(lk.slave_node) for lk in runner.cap_tie_report.links}
 

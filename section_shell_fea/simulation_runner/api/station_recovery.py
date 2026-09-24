@@ -117,6 +117,7 @@ def _bundle_from_linear_static(
         panel_abd=np.asarray(asm.abd_p, dtype=float),
         panel_thickness_m=np.asarray(asm.t_p, dtype=float),
         panel_G_eff=np.asarray(asm.g_p, dtype=float),
+        panel_constitutive_specs=list(asm.cache.panel_constitutive_specs),
         panel_labels=list(asm.lab_p),
         shell_midline_strips=tuple(getattr(getattr(panel_topology, "shell_inputs", None), "midlines", ()) or ()),
     )

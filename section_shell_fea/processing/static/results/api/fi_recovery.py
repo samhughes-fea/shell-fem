@@ -35,6 +35,8 @@ from ..compute_quaternary.bundle_fi import (
     max_interlaminar_fi_from_quaternary,
 )
 from ..compute_quaternary.compute_hashin_fi import (
+    InterfaceShearScreeningResult,
+    interface_shear_screening_from_tau,
     interlaminar_allowable_from_lam,
     interlaminar_allowable_pa,
     interlaminar_fi_from_interface_tau,
@@ -81,7 +83,7 @@ def hashin_fi_per_ply_from_rows_batch(
     if not np.any(trusted_mask):
         return fi_out, needs_review
 
-    Xt, Xc, Yt, Yc, S12 = _ply_strength_vectors_from_lam(lam)
+    Xt, Xc, Yt, Yc, S12, S23 = _ply_strength_vectors_from_lam(lam)
     T_sig = np.asarray(lam.stiffness_bundle().T_ply, dtype=float)[None, ...]
     for ri in np.flatnonzero(trusted_mask):
         sig_lam = np.asarray(
@@ -98,6 +100,7 @@ def hashin_fi_per_ply_from_rows_batch(
                     Yt[pi : pi + 1],
                     Yc[pi : pi + 1],
                     S12[pi : pi + 1],
+                    S23[pi : pi + 1],
                 )[0]
             )
     return fi_out, needs_review
@@ -120,7 +123,7 @@ def hashin_fi_per_ply_from_row(
         return np.zeros(0, dtype=float), True
     if not clpt_inputs_trusted(row):
         return np.zeros(len(lam.plies), dtype=float), True
-    Xt, Xc, Yt, Yc, S12 = _ply_strength_vectors_from_lam(lam)
+    Xt, Xc, Yt, Yc, S12, S23 = _ply_strength_vectors_from_lam(lam)
     res = solve_station_clpt_shell(
         row, plies,
         Xt=float(Xt[0]), Xc=float(Xc[0]), Yt=float(Yt[0]),
@@ -135,7 +138,7 @@ def hashin_fi_per_ply_from_row(
         fi_out[i] = float(
             hashin_fi(
                 sig3.reshape(1, 3),
-                Xt[i : i + 1], Xc[i : i + 1], Yt[i : i + 1], Yc[i : i + 1], S12[i : i + 1],
+                Xt[i : i + 1], Xc[i : i + 1], Yt[i : i + 1], Yc[i : i + 1], S12[i : i + 1], S23[i : i + 1],
             )[0]
         )
     return fi_out, False
@@ -185,12 +188,14 @@ from ...diagnostics.path_compare import (  # noqa: F401
 
 __all__ = [
     "BundleQuaternaryFi",
+    "InterfaceShearScreeningResult",
     "PathCompareStats",
     "clpt_inputs_trusted",
     "compare_path_resultants",
     "compute_quaternary_fi_from_panel_rows",
     "hashin_fi_from_row",
     "hashin_fi_per_ply_from_row",
+    "interface_shear_screening_from_tau",
     "interlaminar_allowable_from_lam",
     "interlaminar_allowable_pa",
     "interlaminar_fi_from_interface_tau",

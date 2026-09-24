@@ -23,7 +23,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.lo
     _skin_node_pairs,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import normal_2d
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.analysis_dof_layout import (
     U_S,
     U_X,
     W,
@@ -69,10 +69,12 @@ def beam_resultants_to_nodal_load(
 ) -> NDArray[np.float64]:
     """Build / accumulate a statically equivalent nodal load vector from ``R``.
 
-    Forces and couples are applied about the skin ``t·ds`` weighted centre so
-    net force produces no parasitic moment there; ``resultants`` are first
-    transported from ``about_xy`` to that centre (equipollent). Reconstructing
-    about the original ``about_xy`` recovers ``R``.
+    Product channels map onto the section plane as ``F_X = Vz`` along ``y`` and
+    ``F_Y = Vy`` along ``z``, matching ``BeamResultantVector.transported_to``
+    (``T' = T + ΔX Vy − ΔY Vz``). Forces are applied at the skin ``t·ds``
+    weighted centre after an equipollent transport so the compensating torque
+    and the force resultant share that reference; reconstructing about the
+    original ``about_xy`` recovers ``R``.
     """
     if isinstance(resultants, BeamResultantVector):
         origin = about_xy if about_xy is not None else resultants.about_xy
@@ -118,9 +120,10 @@ def beam_resultants_to_nodal_load(
     z0 = z - zc
 
     scale = float(L_x)
+    # Product map: Vz = F_X along y, Vy = F_Y along z.
     fx = float(vec.N) * scale * wn
-    fy = float(vec.Vy) * scale * wn
-    fz = float(vec.Vz) * scale * wn
+    fy = float(vec.Vz) * scale * wn
+    fz = float(vec.Vy) * scale * wn
 
     # Axial couples for (My, Mz) with full planar inertia (incl. Iyz) so
     # cambered sections do not cross-talk My↔Mz.
@@ -191,8 +194,8 @@ def integrate_nodal_load_resultants(
         y, z = float(locs[i, 0]), float(locs[i, 1])
         dy, dz = y - y0, z - z0
         N += fx
-        Vy += fy
-        Vz += fz
+        Vz += fy
+        Vy += fz
         My += fx * dz
         Mz += -fx * dy
         T += dy * fz - dz * fy

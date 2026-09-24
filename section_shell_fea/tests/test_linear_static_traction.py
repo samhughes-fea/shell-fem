@@ -19,6 +19,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.lo
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
+    equipollent_section_force_vector,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
     assemble_section_from_zones,
@@ -125,6 +126,7 @@ def test_half_specified_traction_raises() -> None:
 
 
 def test_combined_rhs_equals_beam_plus_traction() -> None:
+    """Equipollent production applies frozen SFV only; traction overlay is not stacked."""
     panel_topology = _pb()
     asm = _assemble(panel_topology, ne=3)
     ndof = int(asm.cache.n_dof_node)
@@ -134,37 +136,41 @@ def test_combined_rhs_equals_beam_plus_traction() -> None:
         about_xy=BEAM_LOAD_AXIS_YZ,
     )
     tf, pts = _synthetic_traction()
-    f_beam = beam_resultants_to_nodal_load(
-        asm.node_meta, resultants, about_xy=resultants.about_xy, ndof=ndof, L_x=1.0,
+    sfv = equipollent_section_force_vector(panel_topology, resultants)
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
+        section_force_vector_to_nodal_load,
     )
-    f_tr = traction_face_loads(
-        asm.node_meta,
-        np.asarray(tf.total_forces, dtype=float),
-        pts,
-        ndof=ndof,
-        L_x=1.0,
+
+    f_sfv = section_force_vector_to_nodal_load(
+        asm.node_meta, sfv, ndof=ndof, L_x=1.0,
     )
     cascade = LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
             resultants=resultants,
+            section_force_vector=sfv,
             traction_field=tf,
             traction_points_yz=pts,
             section_strip_mesh=_strip_mesh(panel_topology),
             load_channel="equipollent",
         ).execute()
     )
-    assert cascade.used_traction is True
-    np.testing.assert_allclose(cascade.f_nodal, f_beam + f_tr, rtol=0.0, atol=1e-12)
+    assert cascade.used_traction is False
+    np.testing.assert_allclose(cascade.f_nodal, f_sfv, rtol=0.0, atol=1e-12)
 
 
 def test_linear_static_traction_cascade_reaches_quaternary_fi() -> None:
     panel_topology = _pb()
     tf, pts = _synthetic_traction(q_y=5.0e3, q_z=1.0e3)
+    resultants = BeamResultantVector.from_named(
+        T=10.0, frame=FRAME_SECTION_YZ, about_xy=BEAM_LOAD_AXIS_YZ,
+    )
+    sfv = equipollent_section_force_vector(panel_topology, resultants)
     cascade = LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
-            T=10.0,
+            resultants=resultants,
+            section_force_vector=sfv,
             traction_field=tf,
             traction_points_yz=pts,
             section_strip_mesh=_strip_mesh(panel_topology),
@@ -173,6 +179,6 @@ def test_linear_static_traction_cascade_reaches_quaternary_fi() -> None:
     )
     fi, _needs = governing_fi_from_quaternary(cascade.quaternary)
     assert np.isfinite(fi)
-    assert cascade.used_traction is True
+    assert cascade.used_traction is False
     assert cascade.quaternary is not None
 

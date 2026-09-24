@@ -199,6 +199,65 @@ def test_hashin_fi_per_ply_from_rows_batch_evaluates_in_material_frame():
                 hashin_fi(
                     sig3.reshape(1, 3),
                     Xt[pi : pi + 1], Xc[pi : pi + 1], Yt[pi : pi + 1], Yc[pi : pi + 1], S12[pi : pi + 1],
+                    np.array([p.S23 for p, _ in lam.plies])[pi : pi + 1],
                 )[0]
             )
             assert fi_out[ri, pi] == pytest.approx(expected)
+
+
+def test_cache_formulation_id_survives_tertiary_and_quaternary():
+    """A registered non-default formulation id is copied cache → T → Q unchanged."""
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.contracts import (
+        mitc4_fsdt_descriptor,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.registry import (
+        ShellFormulationRegistration,
+        clear_formulation_registry_for_tests,
+        default_formulation_id,
+        register_formulation,
+        resolve_formulation,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.results.compute_quaternary import (
+        ShellQuaternaryResultsOrchestrator,
+    )
+
+    alt_id = "TEST-CACHE-FSDT"
+    desc = mitc4_fsdt_descriptor()
+    register_formulation(
+        ShellFormulationRegistration(
+            descriptor=desc.__class__(
+                **{
+                    **{f.name: getattr(desc, f.name) for f in desc.__dataclass_fields__.values()},
+                    "formulation_id": alt_id,
+                }
+            ),
+            factory_cls=resolve_formulation("MITC4-FSDT").factory_cls,
+            kernel=resolve_formulation("MITC4-FSDT").kernel,
+            projector=resolve_formulation("MITC4-FSDT").projector,
+        )
+    )
+    try:
+        assert default_formulation_id("FSDT") == "MITC4-FSDT"
+        lam = _lam(0.0)
+        rows = _rows(2)
+        cache = ShellFormulationCache(
+            stiffness_objects=[],
+            force_objects=[],
+            panel_laminates=[lam],
+            formulation_id=alt_id,
+            analysis_dof_layout_id="test_layout",
+        )
+        secondary = ShellSecondaryResultSet(
+            elemental_results=ShellElementalResults(resultant_rows=rows)
+        )
+        tertiary = ShellTertiaryResultsOrchestrator(secondary=secondary, cache=cache).compute()
+        assert tertiary.meta["formulation_id"] == alt_id
+        assert tertiary.meta["analysis_dof_layout_id"] == "test_layout"
+        assert set(tertiary.ply_results.formulation_id) == {alt_id}
+
+        quaternary = ShellQuaternaryResultsOrchestrator(tertiary=tertiary, cache=cache).compute()
+        assert quaternary.formulation_id == alt_id
+        assert quaternary.meta["formulation_id"] == alt_id
+    finally:
+        clear_formulation_registry_for_tests()
+        assert default_formulation_id("FSDT") == "MITC4-FSDT"

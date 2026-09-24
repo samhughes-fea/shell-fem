@@ -13,10 +13,7 @@ _FORBIDDEN_MODULES = (
 )
 # Registry / recovery shims until full recovery migration off mitc4.element helpers.
 # Buckling ops (assemble_geometric / solve_eigen) route via resolve_kernel — not allowlisted.
-_ALLOWLIST = {
-    "processing/static/results/compute_secondary/secondary_results_orchestrator.py",
-    "processing/static/results/compute_tertiary/tertiary_results_orchestrator.py",
-}
+_ALLOWLIST: set[str] = set()
 
 
 def _iter_py_files(root: Path):
@@ -60,6 +57,31 @@ def _check_no_kernel_imports(root: Path, label: str) -> None:
 def test_processing_does_not_import_formulation_kernel_modules():
     assert _PROCESSING.is_dir()
     _check_no_kernel_imports(_PROCESSING, "processing/")
+
+
+def test_coordinate_frames_does_not_import_section_shell_fea():
+    frames = (
+        _PKG.parents[1] / "geometry_utilities" / "coordinate_frames"
+    )
+    violations: list[str] = []
+    for path in frames.rglob("*.py"):
+        if "tests" in path.parts:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "section_shell_fea" in text:
+            violations.append(str(path.relative_to(frames)))
+    assert not violations, "coordinate_frames must not import section_shell_fea:\n" + "\n".join(
+        violations
+    )
+
+
+def test_formulation_factory_has_no_eager_mitc4_import():
+    src = (_PKG / "pre_processing" / "element_library" / "formulation_factory.py").read_text(
+        encoding="utf-8"
+    )
+    assert "from .mitc4.mitc4_quad4_element import" not in src
+    assert "from .mitc4.factory import" in src or "mitc4.factory" in src
+
 
 
 def test_operations_has_no_orchestration_module():
@@ -108,3 +130,12 @@ def test_simulation_runner_owns_orchestration():
     assert "def prepare_local_system" in src
     assert "def solve_linear_system_only" in src
     assert "def compute_primary_results" in src
+
+
+def test_generic_result_orchestrators_have_no_hardcoded_formulation_id():
+    for rel in (
+        "processing/static/results/compute_tertiary/tertiary_results_orchestrator.py",
+        "processing/static/results/compute_quaternary/quaternary_results_orchestrator.py",
+    ):
+        src = (_PKG / rel).read_text(encoding="utf-8")
+        assert "MITC4-FSDT" not in src, rel

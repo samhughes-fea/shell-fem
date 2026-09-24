@@ -30,6 +30,7 @@ def write_station_json(
     mesh_element_length_frac: float | None = None,
     target_element_length_m: float | None = None,
     backend_extra: Mapping[str, Any] | None = None,
+    failure_assessment: Mapping[str, Any] | None = None,
     fsdt_periodic_extra: Mapping[str, Any] | None = None,
 ) -> Path:
     """Write per-station JSON for the midline→strip-mesh shell path."""
@@ -79,8 +80,10 @@ def write_station_json(
     }
     if backend_extra:
         payload["backend"] = dict(backend_extra)
-    if fsdt_periodic_extra:
-        payload["fsdt_periodic_hashin"] = dict(fsdt_periodic_extra)
+    extra = dict(failure_assessment or fsdt_periodic_extra or {})
+    if extra:
+        payload["failure_assessment"] = extra
+        payload["fsdt_periodic_hashin"] = extra
     json_path = out_dir / f"section_shell_station_{station_tag}.json"
     write_json(json_path, to_jsonable(payload))
     return json_path

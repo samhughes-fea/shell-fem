@@ -70,6 +70,7 @@ class ShellPanelSolveResult:
     panel_abd: Any | None = None
     panel_thickness_m: Any | None = None
     panel_G_eff: Any | None = None
+    panel_constitutive_specs: Any | None = None
     panel_labels: list[str] | None = None
     station_buckling: ShellStationBucklingBundle | None = None
     shell_midline_strips: tuple[ShellMidlineStrip, ...] = ()
@@ -120,6 +121,7 @@ class SectionShellRecoveryBundle:
     panel_abd: Any | None = None  # np.ndarray (n_panel, 6, 6)
     panel_thickness_m: Any | None = None  # (n_panel,)
     panel_G_eff: Any | None = None  # (n_panel,)
+    panel_constitutive_specs: Any | None = None
     panel_labels: list[str] | None = None
     station_buckling: ShellStationBucklingBundle | None = None
     shell_midline_strips: tuple[ShellMidlineStrip, ...] = ()
@@ -177,6 +179,7 @@ class SectionShellRecoveryBundle:
             panel_abd=self.panel_abd,
             panel_thickness_m=self.panel_thickness_m,
             panel_G_eff=self.panel_G_eff,
+            panel_constitutive_specs=self.panel_constitutive_specs,
             panel_labels=self.panel_labels,
             station_buckling=self.station_buckling,
             shell_midline_strips=self.shell_midline_strips,

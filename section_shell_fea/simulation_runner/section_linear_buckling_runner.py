@@ -67,6 +67,7 @@ def panel_inputs_from_nested_resultants(
     panel_labels: Sequence[str] | None = None,
     panel_abd: Sequence[np.ndarray] | None = None,
     panel_thickness_m: Sequence[float] | None = None,
+    panel_constitutive_specs: Sequence[Any] | None = None,
     panel_widths_m: Sequence[float] | None = None,
     length_m: float = 1.0,
     provenance: ShellStationProvenance | None = None,
@@ -124,6 +125,13 @@ def panel_inputs_from_nested_resultants(
                 # Omit source_resultant: secondary rows use element index in
                 # station_index, which must not collide with the blade station id.
                 source_resultant=None,
+                fsdt=(
+                    panel_constitutive_specs[pi].fsdt
+                    if panel_constitutive_specs is not None
+                    and pi < len(panel_constitutive_specs)
+                    and panel_constitutive_specs[pi] is not None
+                    else None
+                ),
             )
         )
     return inputs
@@ -171,6 +179,7 @@ class SectionLinearBucklingRunner:
         self.n_gdof: int = 0
         self.shell_theory: ShellTheory = ShellTheory.FSDT
         self.Kg_global: sp.spmatrix | None = None
+        self.constraint_set: Any | None = None
 
     @classmethod
     def from_panel_inputs(
@@ -215,6 +224,7 @@ class SectionLinearBucklingRunner:
         L_x: float = 1.0,
         shell_theory: ShellTheory | None = None,
         provenance: ShellStationProvenance | None = None,
+        constraint_set: Any | None = None,
     ) -> "SectionLinearBucklingRunner":
         """Full-section path: reuse static ``K`` / ``T`` and secondary prestress."""
         runner = cls()
@@ -227,6 +237,7 @@ class SectionLinearBucklingRunner:
         runner.panel_inputs = list(panel_inputs)
         runner.n_gdof = int(n_gdof)
         runner.L_x = float(L_x)
+        runner.constraint_set = constraint_set
         runner._provenance = provenance or ShellStationProvenance()
         runner.shell_theory = shell_theory or getattr(
             runner._provenance, "shell_theory", None
@@ -298,11 +309,21 @@ class SectionLinearBucklingRunner:
             Kg_global=self.Kg_global,
             T=self.T,
             n_modes=int(n_modes),
-            extra_diagnostics={
-                "shell_theory": str(self.shell_theory),
-                "n_prestress_elements": len(prestress_map),
-                "n_panels": len(self.panel_inputs),
-            },
+        extra_diagnostics={
+            "shell_theory": str(self.shell_theory),
+            "n_prestress_elements": len(prestress_map),
+            "n_panels": len(self.panel_inputs),
+            **(
+                {
+                    "interface_constraint_mode": self.constraint_set.report.interface_constraint_mode,
+                    "cap_tie_mode": self.constraint_set.report.cap_tie_mode,
+                    "n_constraint_equations": len(self.constraint_set.equations),
+                    "n_fixed_dofs": len(self.constraint_set.fixed_dofs),
+                }
+                if getattr(self, "constraint_set", None) is not None
+                else {}
+            ),
+        },
         )
         state = section_state.as_eigen_state()
         self.eigen_states = [state]

@@ -22,6 +22,10 @@ Production kernel is **MITC4** (Bathe–Dvorkin mixed interpolation of tensorial
 components) under first-order shear deformation theory (FSDT). Frame on each
 facet: curvilinear **C ≡ E** (laminate).
 
+The normative field order, signs, units, weak form, boundary pairs, limits,
+legacy rotation map, and completed curvature-sign migration are specified in the
+[`mitc4/` formulation contract](mitc4/README.md).
+
 **DOF layout per node** (`ndof=6` MITC4+ default):
 
 \[
@@ -39,6 +43,10 @@ map DOFs to membrane strain, curvature, and transverse shear. Element stiffness:
 \big(
 \mathbf{B}_m^{\mathsf{T}}\mathbf{A}\mathbf{B}_m
 +
+\mathbf{B}_m^{\mathsf{T}}\mathbf{B}\mathbf{B}_b
++
+\mathbf{B}_b^{\mathsf{T}}\mathbf{B}^{\mathsf T}\mathbf{B}_m
++
 \mathbf{B}_b^{\mathsf{T}}\mathbf{D}_b\mathbf{B}_b
 +
 \mathbf{B}_s^{\mathsf{T}}\mathbf{A}_s\mathbf{B}_s
@@ -47,7 +55,7 @@ map DOFs to membrane strain, curvature, and transverse shear. Element stiffness:
 \;(+\;\text{Hughes–Brezzi drilling when }ndof=6).
 \]
 
-Constitutive blocks come from the bound zone ABD / \(G_{\mathrm{eff}}\)
+Constitutive blocks come from the bound zone canonical ABDAs object
 ([`../constitutive/`](../constitutive/README.md)).
 
 Physical model summary: [`../../docs/SHELL_MODEL.md`](../../docs/SHELL_MODEL.md).
@@ -58,12 +66,12 @@ Physical model summary: [`../../docs/SHELL_MODEL.md`](../../docs/SHELL_MODEL.md)
 
 | Symbol / path | Role |
 |---------------|------|
-| [`mitc4/`](mitc4/) | Production MITC4 implementation (`element.py` DOF / B / Ke) |
+| [`mitc4/`](mitc4/) | Production MITC4 implementation and normative formulation contract |
 | [`formulation_factory.py`](formulation_factory.py) | Theory → element constructor |
 | [`shell_element_base.py`](shell_element_base.py) | Shared shell element Protocol / base |
 | [`kernel.py`](kernel.py) | Element-agnostic helpers (`ndof`, resultant recovery hooks) |
 
-| In | `L_s`, `L_x`, ABD, thickness, \(G_{\mathrm{eff}}\), optional drilling flag |
+| In | Flat-Q4 geometry, `PanelConstitutiveSpec.fsdt`, thickness, drilling settings |
 | Out | Dense `Ke` (\(4\mathrm{ndof}\times 4\mathrm{ndof}\)); optional `Fe` hooks |
 
 Consumers use the package barrel / runner — not deep `mitc4.*` imports from
@@ -75,7 +83,7 @@ outside this worker.
 
 ```mermaid
 flowchart LR
-  abd[ABD_plus_Geff] --> mitc[MITC4_element]
+  abd[canonical_ABDAs] --> mitc[MITC4_element]
   geom[Ls_Lx_thickness] --> mitc
   mitc --> Ke[element_Ke]
   factory[formulation_factory] --> mitc

@@ -76,7 +76,7 @@ A station FE solve is not a catalogue letter. It is:
 2. **Frozen SFV** — contour densities from loads (any channel); FE **applies** only.
 3. **Strip mesh** — `SectionStripMesh` from mesh (density outside FE).
 4. **Prep** — formulation cache / ABD / apply SFV → nodal `f`.
-5. **Solve** — prepare → assemble → constrain → reduce(`T`) → solve.
+| **Solve** | prepare → assemble (`K`, `f_element`) → compose `SectionConstraintSet` → `f_total = f_element + f_station` → constrain → reduce(`T`) → solve.
 6. **Cascade** — P→S→T→Q; Hashin FI on quaternary; `DiagnosticsBin`.
 7. **Optional buckling** — sibling runner from static secondary prestress.
 
@@ -107,14 +107,16 @@ diagnostics / demos (not always AST-visible).
 |-----|------|------|----------|-------------------|----------------|
 | `FE-API` | [`simulation_runner/`](../../simulation_runner/README.md) | Sole L4 sequencer; static + buckling runners; `CascadeBin` | `FE-PREP`, `FE-SOLVE`, `FE-CASCADE`, `FE-BUCK` | bind policy; SFV shaping on production paths | `SectionLinearStaticRunner` |
 | `FE-PREP` | [`pre_processing/`](../../pre_processing/README.md) | Apply SFV → `f`/`Fe`; MITC4 `Ke`; constitutive stacks; panel-topology DTO; dispatch | mesh / bind **product types** only | package barrel as ownership; invent assignment policy | formulation cache / panel topology |
-| `FE-SOLVE` | [`processing/static/operations/`](../../processing/static/README.md) | prepare → assemble → constrain → reduce(`T`) → solve | `FE-PREP` products | `section_bind`; `shape_section_force_vector*` | reduced / solved system |
+| `FE-SOLVE` | [`processing/static/operations/`](../../processing/static/README.md) + [`constraints/`](../../processing/static/constraints/README.md) | assemble once; compose one immutable constraint set; `f_total = f_element + f_station`; constrain/reduce/solve kernel | `FE-PREP` products | `section_bind`; `shape_section_force_vector*` | reduced / solved system |
 | `FE-CASCADE` | [`processing/static/results/`](../../processing/static/results/docs/README.md) | P→S→T→Q + `DiagnosticsBin` | solve-state DTOs | bind / loads shaping | `CascadeBin` tiers |
 | `FE-BUCK` | [`processing/buckling/`](../../processing/buckling/README.md) | Geometric stiffness / eigen (sibling of static FI) | static secondary prestress | second L4 sequencer role | buckling bundle |
 | `FE-ADAPTER` | [`interface/`](../../interface/README.md) | Cross-package adapters only (named staging exception) | FE products | MITC4 kernels; SFV shaping as ownership | station analysis builders |
 | `FE-CCX` | [`calculix_ccx/`](../../calculix_ccx/README.md) | Opt-in CCX oracle quarantine | FE products for comparison | production theory registration at import | CCX validation |
 
-Package-level stub `api/` / `types/` re-export the barrel — treat as **FE-API
-aliases**, not a second sequencer.
+Package-level `api/` re-exports the worker `__all__` (deliberate
+`API_STANDARDS` seam). The unused `types/` barrel was removed: it had no
+consumers and shadowed stdlib `types` when tools ran from the package
+directory.
 
 ## 4. Forbidden internal leaks
 

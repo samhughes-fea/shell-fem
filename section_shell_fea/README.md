@@ -5,7 +5,9 @@
 
 Apply a precomputed `SectionForceVector` (SFV) to nodal loads, form MITC4
 stiffness, assemble and solve the linear-static shell system, then recover the
-P→S→T→Q cascade (plus diagnostics). This package has **no** knowledge of sizing
+P→S→T→Q cascade (plus diagnostics). Failure evaluation is capability-driven:
+MITC4 reports plane-stress Hashin only; reconstructed interface shear is
+diagnostic. This package has **no** knowledge of sizing
 vs fatigue, parallel vs serial, or iterative vs single-shot — callers decide when
 to invoke it and which cascade tiers to read.
 Glossary: [`../../docs/CASCADE_GLOSSARY.md`](../../docs/CASCADE_GLOSSARY.md).
@@ -155,12 +157,16 @@ Discrete element stiffness (MITC4 mixed shear interpolation):
 \mathbf{K}_e
 =
 \int_{\Omega_e}
-\mathbf{B}^{\mathsf{T}}\,\mathbf{D}\,\mathbf{B}\,\mathrm{d}A,
+\mathbf{B}_g^{\mathsf{T}}\,\mathbf{D}_g\,\mathbf{B}_g\,\mathrm{d}A,
 \qquad
-\mathbf{D}
-\leftarrow
-\mathrm{ABD}+G_{\mathrm{eff}}.
+\mathbf{D}_g=
+\begin{bmatrix}\mathrm{ABD}&0\\0&A_s\end{bmatrix}.
 \]
+
+`A_s` is the already-corrected full 2×2 laminate transverse-shear stiffness.
+MITC4 covariant tying modifies only the shear rows of `B_g`; drilling energy is
+assembled and reported separately. See the element
+[`formulation contract`](pre_processing/element_library/mitc4/README.md).
 
 Global solve after assemble / essential BC / reduction \(\mathbf{T}\):
 
@@ -210,12 +216,16 @@ Cap-peak sampling CSVs: [`visualisation/output/cap_peak_sampling/`](visualisatio
 
 ## 6. Ownership homes
 
-**Large-package layout** (exception to the uniform `api/`+`types/`+domain-homes
-shell used by smaller spine workers — see
-[WORKER_PACKAGE_TEMPLATE.md](../../../docs/conventions/api/WORKER_PACKAGE_TEMPLATE.md)):
+**Large-package layout** (worker-specific exception: retain `api/` as the public
+seam required by
+[WORKER_PACKAGE_TEMPLATE.md](../../../docs/conventions/api/WORKER_PACKAGE_TEMPLATE.md)
+and [API_STANDARDS.md](../../../docs/conventions/api/API_STANDARDS.md); do **not**
+add a `types/` barrel — it shadows stdlib `types` when the working directory is
+the package root):
 
 | # | Home | Owns |
 |---|------|------|
+| 0 | [`api/`](api/__init__.py) | Worker public seam (re-exports package `__all__`) |
 | 1 | [`pre_processing/loading/`](pre_processing/loading/README.md) | Apply SFV → nodal `f` / `Fe` |
 | 2 | [`pre_processing/element_library/`](pre_processing/element_library/README.md) | MITC4 / formulation factory (`Ke`) |
 | 3 | [`pre_processing/constitutive/`](pre_processing/constitutive/README.md) | Zone constitutive prep (ABD stacks) |

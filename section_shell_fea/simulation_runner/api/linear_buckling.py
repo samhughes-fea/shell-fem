@@ -112,6 +112,7 @@ def run_section_linear_buckling_from_static(
         panel_labels=list(asm.lab_p),
         panel_abd=abd_seq,
         panel_thickness_m=t_seq,
+        panel_constitutive_specs=getattr(asm.cache, "panel_constitutive_specs", None),
         panel_widths_m=widths,
         length_m=float(length_m),
         provenance=prov,
@@ -139,6 +140,7 @@ def run_section_linear_buckling_from_static(
             L_x=float(length_m),
             shell_theory=shell_theory,
             provenance=prov,
+            constraint_set=getattr(_runner, "constraint_set", None),
         )
 
     result: SectionLinearBucklingResult = runner.run_cascade(

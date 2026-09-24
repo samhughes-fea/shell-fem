@@ -1,8 +1,7 @@
 """Build connected panel strip meshes and assign global node numbers.
 
-Mesh-prep for the thin formulation-cache assembly path (periodic K6) and
-assembly helpers. Global node assignment helpers live in
-:mod:`~blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core`.
+Mesh-prep for the thin formulation-cache assembly path. Global node assignment
+helpers live in :mod:`.global_numbering`.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
     cluster_points,
     panel_maps_from_section_strip_mesh,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
     assign_global_nodes_cluster_basis,
     assign_global_nodes_hybrid_collinear,
     assign_global_nodes_hybrid_kind_crossing,

@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+    BEAM_LOAD_AXIS_YZ,
+    FRAME_SECTION_YZ,
+    BeamResultantVector,
+)
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
+    equipollent_section_force_vector,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
     LinearStaticCascadeResult,
@@ -35,10 +41,14 @@ def _strip_mesh(panel_topology, *, n_elements_per_panel: int = 3):
 def test_linear_handoff_all_panel_results_nonempty_for_my() -> None:
     panel_topology = _pb()
     mesh = _strip_mesh(panel_topology)
+    resultants = BeamResultantVector.from_named(
+        My=1.0e3, frame=FRAME_SECTION_YZ, about_xy=BEAM_LOAD_AXIS_YZ,
+    )
     cascade = LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
-            My=1.0e3,
+            resultants=resultants,
+            section_force_vector=equipollent_section_force_vector(panel_topology, resultants),
             section_strip_mesh=mesh,
             load_channel="equipollent",
         ).execute()

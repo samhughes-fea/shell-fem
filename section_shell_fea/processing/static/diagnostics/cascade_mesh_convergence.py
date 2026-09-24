@@ -130,8 +130,8 @@ PEAK_METRIC_LABELS: dict[str, str] = {
     "peak_mid_sig": "peak mid-σ",
     "peak_abs_tau13": "peak |τ13|",
     "peak_abs_tau23": "peak |τ23|",
-    "peak_hashin": "peak Hashin (in-plane)",
-    "peak_hashin_il": "peak Hashin (interlaminar)",
+    "peak_hashin": "peak plane-stress Hashin",
+    "peak_hashin_il": "peak FSDT interface-shear diagnostic",
 }
 
 
@@ -491,7 +491,10 @@ def run_cascade_at_frac(
     ]
     kind_owner_count = _kind_owner_counts(panel_maps) if panel_maps else {}
     tie_slave_nodes: set[int] = set()
-    if getattr(runner, "cap_tie_report", None) is not None:
+    constraint_report = getattr(getattr(runner, "constraint_set", None), "report", None)
+    if constraint_report is not None:
+        tie_slave_nodes = set(int(n) for n in constraint_report.tie_slave_nodes)
+    elif getattr(runner, "cap_tie_report", None) is not None:
         tie_slave_nodes = {
             int(lk.slave_node) for lk in runner.cap_tie_report.links
         }
@@ -651,18 +654,8 @@ def run_cascade_at_frac(
                 governing_panel_index = int(pi)
                 governing_element_index = int(ei)
                 governing_criterion = "hashin"
-        for pi, arr in enumerate(stores["peak_hashin_il"]):
-            vals = np.asarray(arr, dtype=float)
-            if not np.any(np.isfinite(vals)):
-                continue
-            ei = int(np.nanargmax(vals))
-            fv = float(vals[ei])
-            if fv > best_fi:
-                best_fi = fv
-                governing_fi = fv
-                governing_panel_index = int(pi)
-                governing_element_index = int(ei)
-                governing_criterion = "hashin_il"
+        # Interface-shear diagnostics are recorded on peak_hashin_il but
+        # never participate in governing selection.
 
     peak_kwargs = _kind_peak_kwargs(stores, labels=labels)
     diag = results.diagnostics

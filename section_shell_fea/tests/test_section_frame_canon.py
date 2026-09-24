@@ -37,6 +37,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.lo
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
+    equipollent_section_force_vector,
 )
 from blade_structure_utilities.load_utilities.section_loads import (
     SectionOutlineGeometry,
@@ -169,6 +170,7 @@ class TestFailureIndexIsEvaluatedInM:
                     np.asarray(sig3, dtype=float).reshape(1, 3),
                     np.array([ply.Xt]), np.array([ply.Xc]),
                     np.array([ply.Yt]), np.array([ply.Yc]), np.array([ply.S12]),
+                    np.array([ply.S23]),
                 )[0]
             )
 
@@ -348,20 +350,22 @@ class TestFlapEdgeMapReachesTheRightAxis:
             U_X,
             gdof,
         )
-        from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
-            SectionLinearStaticRunner,
-        )
         from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
             build_section_strip_mesh,
+        )
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
+            assemble_section_from_zones,
         )
 
         pt = build_shell_panel_topology("2412", [0.35], chord_m=CHORD, twist_rad=0.0)
         mesh = build_section_strip_mesh(pt.shell_inputs, n_elements_per_panel=6)
-        runner = SectionLinearStaticRunner(
-            panel_topology=pt, section_strip_mesh=mesh,
-            My=0.0, Mz=0.0, load_channel="equipollent",
-        ).execute()
-        node_meta = runner.assembly.node_meta
+        zones = list(pt.zones)
+        nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
+        nxy = [np.zeros_like(a) for a in nx]
+        asm = assemble_section_from_zones(
+            zones, nx, nxy, section_strip_mesh=mesh,
+        )
+        node_meta = asm.node_meta
 
         ch = blade_resultants_to_shell_channels(**named_resultants)
         vec = BeamResultantVector.from_named(

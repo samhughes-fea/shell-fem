@@ -1,9 +1,9 @@
 """
 Precompute job diagnostics helpers: airfoil conversion and station JSON payloads.
 
-Production orchestration routes through the per-station Path C loop
-(``dispatch_station_theory``). This module retains airfoil conversion utilities
-and JSON payload builders used by the station loop.
+Production orchestration routes through ``SectionLinearStaticRunner`` (P→S→T→Q).
+This module retains airfoil conversion utilities and JSON payload builders used
+by station diagnostics.
 """
 from __future__ import annotations
 
@@ -215,29 +215,48 @@ def _serialize_mitc4_station_resultants(panel_resultants: list[Any] | None) -> l
     return out
 
 
-def _periodic_hashin_audit_json(bundle: Any, *, strengths: dict[str, float]) -> dict[str, Any]:
-    """Provenance breakdown + governing Hashin element for job JSON."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.results.api.fi_recovery import (
-        max_hashin_fi_from_bundle,
-        select_governing_hashin_element,
-    )
-
-    max_fi, needs_review = max_hashin_fi_from_bundle(bundle, strengths=strengths)
-    gov = select_governing_hashin_element(bundle)
+def _failure_assessment_json(bundle: Any, *, strengths: dict[str, float]) -> dict[str, Any]:
+    """Serialize quaternary failure assessment; do not recompute FI here."""
+    del strengths
     prov_counts: dict[str, int] = {}
     all_res = getattr(bundle, "all_panel_results", None) or []
     for panel_res in all_res:
         for row in panel_res or []:
             if row is None:
                 continue
-            for _f, p in row.provenance.items():
+            for _f, p in getattr(row, "provenance", {}).items():
                 k = p.kind.value
                 prov_counts[k] = prov_counts.get(k, 0) + 1
+    q = getattr(bundle, "quaternary_results", None)
+    if q is None:
+        q = getattr(bundle, "quaternary", None)
+    if q is None:
+        return {
+            "max_fi_hashin": None,
+            "max_utilization_governing": None,
+            "governing_criterion": None,
+            "governing_status": "unavailable",
+            "needs_review": True,
+            "provenance_breakdown": prov_counts,
+            "governing_element": {
+                "status": "unavailable",
+                "reason": "no_quaternary_results",
+            },
+            "formulation_id": None,
+        }
+    gov = dict(getattr(q, "governing", None) or {})
+    native = gov.get("fi")
+    nr = getattr(q, "needs_review", None)
+    needs_review = bool(np.any(nr)) if nr is not None else False
     return {
-        "max_fi_hashin": float(max_fi),
-        "needs_review": bool(needs_review),
+        "max_fi_hashin": None if native is None else float(native),
+        "max_utilization_governing": getattr(q, "max_utilization_governing", None),
+        "governing_criterion": gov.get("criterion_id") or gov.get("criterion"),
+        "governing_status": gov.get("status"),
+        "needs_review": needs_review,
         "provenance_breakdown": prov_counts,
         "governing_element": gov,
+        "formulation_id": getattr(q, "formulation_id", None),
     }
 
 
@@ -367,6 +386,7 @@ def build_section_shell_station_json_payload(
             "panel_results": [_serialize_shell_panel_buckling_assessment(panel) for panel in bundle.panel_results],
         }
 
+    audit = _failure_assessment_json(bundle, strengths=strengths)
     payload: dict[str, Any] = {
         "schema": "section_shell_station_v1",
         "station_tag": station_tag,
@@ -409,9 +429,8 @@ def build_section_shell_station_json_payload(
             "panel_labels": list(panel_labels_m),
             "fi_by_panel": fi_per_panel,
         },
-        "fsdt_periodic_hashin_audit": _periodic_hashin_audit_json(
-            bundle, strengths=strengths,
-        ),
+        "failure_assessment": audit,
+        "fsdt_periodic_hashin_audit": audit,
         "shell_station_buckling": _serialize_shell_station_buckling_bundle(station_buckling),
         "panel_buckling": _serialize_shell_station_buckling_bundle(station_buckling),
     }

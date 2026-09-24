@@ -16,6 +16,7 @@ import numpy as np
 import scipy.sparse as sp
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import (
+    AssemblyDiagnostics,
     ShellFormulationCache,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
@@ -43,10 +44,15 @@ from ..diagnostics.solve_phase_timing import PhaseCollector, _NULL_PHASE_COLLECT
 
 @dataclass(frozen=True)
 class SectionAssemblyResult:
-    """Assembly-only payload: global system + geometry maps + threaded ABD + cache."""
+    """Assembly-only payload: topology, maps, formulation cache, K, and element RHS.
+
+    Does not own supports or MPC construction. ``f_element`` is the scatter of
+    element ``Fe`` only; station loads are combined later as
+    ``f_total = f_element + f_station``.
+    """
 
     K_global: sp.csr_matrix
-    f_global: np.ndarray
+    f_element: np.ndarray
     node_meta: GlobalNodeMeta
     panel_maps: list[PanelGlobalMap]
     abd_p: np.ndarray
@@ -56,6 +62,14 @@ class SectionAssemblyResult:
     cache: ShellFormulationCache
     topology: ConnectedPanelTopology
     n_gdof: int
+    zones: list[Any]
+    diagnostics: AssemblyDiagnostics | None = None
+    n_scatter_add: int = 1
+
+    @property
+    def f_global(self) -> np.ndarray:
+        """Deprecated alias for ``f_element`` (element RHS, not station loads)."""
+        return self.f_element
 
     def as_legacy_8tuple(
         self,
@@ -63,7 +77,7 @@ class SectionAssemblyResult:
         """Historic assemble_global_shell return shape (without formulation cache)."""
         return (
             self.K_global,
-            self.f_global,
+            self.f_element,
             self.node_meta,
             self.panel_maps,
             self.abd_p,
@@ -88,8 +102,9 @@ def assemble_section_from_zones(
 ) -> SectionAssemblyResult:
     """Thin assembly path: topology → formulation cache → scatter-add K/f.
 
-    Used by production periodic K6 caching and by ``assemble_global_shell``.
-    Does not apply contour clamps, MPCs, or resultant recovery.
+    Used by the production runner and ``assemble_global_shell``. Does not apply
+    contour clamps, MPCs, or resultant recovery. Topology modes affect numbering
+    and node metadata only.
 
     ``section_strip_mesh`` is required (BL-005); density is owned by
     ``mesh_utilities.section_mesh``.
@@ -114,7 +129,9 @@ def assemble_section_from_zones(
     )
     mode = str(interface_constraint_mode or "shared")
     if mode == "shared_cluster_frame":
-        from .connected_assembly_core import apply_shared_cluster_frame_to_cache
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
+            apply_shared_cluster_frame_to_cache,
+        )
 
         apply_shared_cluster_frame_to_cache(
             cache,
@@ -122,60 +139,30 @@ def assemble_section_from_zones(
             getattr(topology, "endpoint_frame_R", None) or {},
         )
     n_gdof = topology.next_global_node * int(cache.n_dof_node)
-    K_global, f_global, _diag = assemble_section_system(cache, n_gdof)
+    K_global, f_element, diag = assemble_section_system(cache, n_gdof)
     node_meta = collect_global_node_meta(
         topology.panel_maps, zone_list, zones_out_list, topology.next_global_node
     )
-    # Cluster-basis junctions allocate unique endpoints + virtual refs; attach
-    # frame-mapping MPCs here so transformed_basis / shared_rotated /
-    # hybrid_* (TB-flagged clusters only) are solvable.
-    _hybrid_modes = ("hybrid_collinear", "hybrid_kind_crossing")
-    if mode in ("transformed_basis", "shared_rotated", *_hybrid_modes) or str(
-        getattr(topology, "effective_mode", "")
-    ) in ("shared_rotated", *_hybrid_modes):
-        from .connected_assembly_core import (
+    # Virtual cluster-ref geometry only. MPCs/supports are composed later.
+    if getattr(topology, "cluster_layer_node", None):
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
             attach_cluster_node_meta,
-            build_cluster_basis_constraints,
-            cluster_is_kind_crossing,
         )
 
-        if mode in _hybrid_modes:
-            flags = getattr(topology, "cluster_is_collinear_flags", {}) or {}
-            mpc_clusters = []
-            for cid, c in enumerate(topology.clusters):
-                if bool(flags.get(cid, False)):
-                    continue
-                if mode == "hybrid_kind_crossing" and not cluster_is_kind_crossing(
-                    c, topology.panel_maps
-                ):
-                    continue
-                mpc_clusters.append(c)
-        else:
-            mpc_clusters = topology.clusters
-        cluster_mpcs = build_cluster_basis_constraints(
-            topology.panel_maps,
-            zone_list,
-            mpc_clusters,
-            topology.endpoint_cluster_node,
-            topology.endpoint_cluster_rot_node,
-            topology.cluster_layer_node,
-            topology.cluster_layer_rot_node,
-            ndof=int(cache.n_dof_node),
-        )
         attach_cluster_node_meta(
             node_meta,
             topology.clusters,
             zone_list,
             topology.cluster_layer_node,
             topology.cluster_layer_rot_node,
-            cluster_mpcs,
+            None,
         )
     abd_p, t_p, g_p, lab_p = compact_panel_abd_from_stacks(
         topology.panel_maps, cache.panel_abd_stacks
     )
     return SectionAssemblyResult(
         K_global=K_global,
-        f_global=f_global,
+        f_element=f_element,
         node_meta=node_meta,
         panel_maps=topology.panel_maps,
         abd_p=abd_p,
@@ -185,6 +172,9 @@ def assemble_section_from_zones(
         cache=cache,
         topology=topology,
         n_gdof=n_gdof,
+        zones=zone_list,
+        diagnostics=diag,
+        n_scatter_add=1,
     )
 
 

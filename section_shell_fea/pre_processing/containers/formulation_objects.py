@@ -8,10 +8,40 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from blade_structure_utilities.material_utilities.laminate import (
+    FSDTLaminateStiffness,
+)
+
 if TYPE_CHECKING:
     from blade_structure_utilities.material_utilities.laminate import LaminateDefinition
 
 PanelConstitutiveKind = Literal["isotropic", "orthotropic"]
+
+
+@dataclass(frozen=True, slots=True)
+class PanelConstitutiveSpec:
+    """Frozen FE handoff carrying one authoritative panel ABDAs definition."""
+
+    fsdt: FSDTLaminateStiffness
+    thickness_m: float
+    material_kind: PanelConstitutiveKind = "orthotropic"
+    sigma_y_pa: float = float("nan")
+    sigma_uts_pa: float = float("nan")
+    sigma_ucs_pa: float = float("nan")
+    tau_us_pa: float = float("nan")
+    correction_provenance: Literal[
+        "explicit", "ply_integrated", "legacy_scalar"
+    ] | None = None
+
+    def __post_init__(self) -> None:
+        if not np.isfinite(self.thickness_m) or float(self.thickness_m) <= 0.0:
+            raise ValueError("PanelConstitutiveSpec.thickness_m must be positive")
+        provenance = self.correction_provenance or self.fsdt.provenance
+        if provenance != self.fsdt.provenance:
+            raise ValueError(
+                "correction_provenance must match fsdt.provenance"
+            )
+        object.__setattr__(self, "correction_provenance", provenance)
 
 
 @dataclass(frozen=True)
@@ -81,6 +111,11 @@ class ShellFormulationCache:
     panel_sigma_uts_pa: list[float] = field(default_factory=list)
     panel_sigma_ucs_pa: list[float] = field(default_factory=list)
     panel_tau_us_pa: list[float] = field(default_factory=list)
+    panel_constitutive_specs: list[PanelConstitutiveSpec | None] = field(
+        default_factory=list
+    )
+    formulation_id: str = "MITC4-FSDT"
+    analysis_dof_layout_id: str = "station_c6"
 
 
 @dataclass(frozen=True)
@@ -95,6 +130,7 @@ class AssemblyDiagnostics:
 __all__ = [
     "AssemblyDiagnostics",
     "PanelConstitutiveKind",
+    "PanelConstitutiveSpec",
     "ShellForceGaussPointData",
     "ShellForceObject",
     "ShellFormulationCache",

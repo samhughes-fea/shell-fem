@@ -11,7 +11,7 @@ home owning thin-wall or aero shaping.
 | Owns | Does **not** own | Why |
 |------|------------------|-----|
 | `section_force_vector_to_nodal_load` | SFV *shaping* ([`section_loads`](../../../../load_utilities/section_loads/README.md)) | One SFV product; FE only applies |
-| Legacy `beam_resultants_to_nodal_load` helpers | TractionField / XFOIL staging (`section_loads.surface_traction`) | Channel B staging left the FE tree |
+| Legacy `beam_resultants_to_nodal_load` helpers | TractionField / XFOIL staging (`section_loads.surface_traction`) | Regression/reference only through next major; production apply is SFV |
 | Skin node-pair lumping of contour densities | MITC4 `Ke` / assemble / solve | Stiffness and solve live elsewhere |
 
 **Locked boundary:** FE only **applies** a precomputed `SectionForceVector`. Channel B

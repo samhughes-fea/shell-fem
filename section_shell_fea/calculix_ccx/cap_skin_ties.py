@@ -17,10 +17,10 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
     PanelGlobalMap,
     interp_yz_nodes,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.cap_tie_constraints import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
     CAP_TIE_MODES,
-    _kind_of,
-    _project_onto_polyline,
+    kind_of as _kind_of,
+    project_onto_polyline as _project_onto_polyline,
 )
 
 from .mesh import CcxSectionMesh, _sanitize_elset_name

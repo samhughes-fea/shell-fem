@@ -35,8 +35,9 @@ Both live under `processing/static/operations/`, but they are **not** the same l
 
 | Kind | Modules | Role |
 |------|---------|------|
-| **Stage ops** (1d-fem analogues) | `prepare_local`, `assemble_global`, `constrain_global`, `reduce_constrained`, `solve_reduced`, `reconstruct_field`, `disassemble_field`, `solve_states.py` | Educational FE system-state transitions invoked by `SectionLinearStaticRunner` |
-| **Assembly orchestra** (blade geometry) | `section_assembly`, `global_shell_assembly`, `connected_assembly_core`, `connected_panel_topology`, `physics_contract` | Topology → formulation cache → scatter-add; builds runner inputs (`SectionAssemblyResult`), not a second solve spine |
+| **Stage ops** (1d-fem analogues) | `prepare_local`, `assemble_global`, `constrain_global`, `reduce_constrained`, `solve_reduced`, `reconstruct_field`, `disassemble_field`, `solve_states.py`, `solve_constrained.py` | Educational FE system-state transitions; `solve_constrained_system` is the functional kernel invoked by `SectionLinearStaticRunner` |
+| **Constraint subsystem** | `processing/static/constraints/` | Junction MPCs, cap ties, supports, one composer, `SectionConstraintSet` |
+| **Assembly orchestra** (blade geometry) | `section_assembly`, `global_shell_assembly` (shim), `connected_assembly_core` (shim), `connected_panel_topology`, `physics_contract` | Topology → formulation cache → scatter-add; **no** MPC/support construction |
 
 ## Stages
 
@@ -53,16 +54,14 @@ Both live under `processing/static/operations/`, but they are **not** the same l
 
 ```mermaid
 flowchart TB
-    subgraph runner [SectionLinearStaticRunner]
-        prep["prepare_local_system()"]
-        asm["assemble_global_system()"]
-        con["constrain_global_system()"]
-        red["reduce_constrained_system()"]
-        slv["solve_reduced_system()"]
-        rec["reconstruct_global_field()"]
-        prim["compute_primary_results()"]
+    subgraph runner [SectionLinearStaticRunner.execute]
+        asm["assemble once (K, f_element)"]
+        cmp["compose SectionConstraintSet"]
+        rhs["f_total = f_element + f_station"]
+        ker["solve_constrained_system"]
+        rec["P→S→T→Q"]
     end
-    prep --> asm --> con --> red --> slv --> rec --> prim
+    asm --> cmp --> rhs --> ker --> rec
 ```
 
 ## Adaptations from the 1d-fem reference
@@ -76,3 +75,13 @@ flowchart TB
 1. Stage classes do not import MITC4 element kernels directly — use formulation cache / `resolve_kernel`.
 2. Runners own orchestration and diagnostics emission.
 3. Do not reintroduce Channel-A product APIs.
+
+## Execution boundaries
+
+| Path | Role |
+|------|------|
+| `SectionLinearStaticRunner(...).execute().get_results()` | **Production** lifecycle: assemble once, compose one constraint set, apply frozen SFV, kernel, P→S→T→Q |
+| `solve_constrained_system` | **Internal** functional kernel (constrain → reduce → solve → reconstruct) |
+| `from_cache` / `from_global` | Compatibility wrappers; explicit constraints only; never infer station policy |
+| `station_theory_dispatch` / `station_recovery` | Adapter-only; density and SFV shaping stay upstream of the runner |
+| CalculiX (`calculix_ccx`) | Validation-only (global backend registration; no raising station solver) |

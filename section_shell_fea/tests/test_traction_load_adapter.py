@@ -19,6 +19,9 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.interface.tractio
     section_resultants_from_load_field,
     traction_points_from_load_field,
 )
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
+    equipollent_section_force_vector,
+)
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
     LinearStaticCascadeResult,
 )
@@ -280,6 +283,7 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
             resultants=resultants,
+            section_force_vector=equipollent_section_force_vector(panel_topology, resultants),
             traction_field=traction_field,
             traction_points_yz=traction_points,
             section_strip_mesh=build_section_strip_mesh(
@@ -290,7 +294,7 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
             load_channel="equipollent",
         ).execute()
     )
-    assert cascade.used_traction is True
+    assert cascade.used_traction is False
     assert cascade.quaternary is not None
     fi = float((cascade.quaternary.governing or {}).get("fi", 0.0) or 0.0)
     assert np.isfinite(fi)

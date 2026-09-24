@@ -14,7 +14,7 @@ from blade_structure_utilities.load_utilities.section_loads import (
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.traction_face_load import (
     _skin_node_pairs,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.analysis_dof_layout import (
     U_S,
     U_X,
     W,

@@ -80,9 +80,19 @@ def compute_gaussian_resultants(
         pi = int(stiff.panel_index)
         local_ei = int(stiff.local_element_index)
         L_s = _element_L_s(pi=pi, local_element_index=local_ei, panel_maps=panel_maps)
-        if L_s < 1e-30 or pi < 0 or pi >= len(cache.panel_abd_stacks):
+        if L_s < 1e-30 or pi < 0:
             continue
-        ABD = cache.panel_abd_stacks[pi][0]
+        panel_spec = (
+            cache.panel_constitutive_specs[pi]
+            if pi < len(cache.panel_constitutive_specs)
+            else None
+        )
+        if panel_spec is not None:
+            ABD = panel_spec.fsdt.ABD
+        elif pi < len(cache.panel_abd_stacks):
+            ABD = cache.panel_abd_stacks[pi][0]
+        else:
+            continue
         u = np.asarray(u_elem, dtype=float)
         elem_ids[ei] = int(stiff.element_id)
         panel_idx[ei] = pi

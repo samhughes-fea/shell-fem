@@ -16,19 +16,11 @@ Measured on this fixture (5D-F, chord 0.241 m, twist 34.1 deg, torsion-dominated
 load), FI drift as max/min across the three refinements:
 
     cap_tie_mode   cap        skin     web
-    none           764.343x   1.146x   1.550x
-    skin_offset      1.165x   1.173x   1.174x
+    none           16.17x     1.100x   1.282x   (2026-09-20, after BL-015)
+    skin_offset    0 (slave)  1.109x   1.033x
 
-Tied, the cap tracks the control to within 1%. The thresholds below sit well
-clear of both numbers so the tests discriminate rather than merely record.
-
-**Those numbers no longer hold — see `docs/bug_log.md` BL-014.** Measured
-2026-08-15 on the same fixture: untied cap `4.940x` (was `764.343x`), tied web
-`10.060x` (was `1.174x`), and the tied cap now reports a continuum peak of `0.0`
-at every rung — which is *correct* under tie-slave ownership, so the `1.165x`
-above dates from before that decision. The table is kept as the record of what
-this fixture produced when written; the drift figures for the cap are no longer
-a meaningful comparison, and the tied web figure is the real regression.
+Historical 2026-08-15 numbers (wrong shear/torque pairing): untied cap 4.94x,
+tied web 10.06x. Those are superseded; see ``docs/bug_log.md`` BL-014 / BL-015.
 
 Implementation: thin Q-only wrapper over
 ``cascade_mesh_convergence.sweep_cascade_convergence``.
@@ -42,8 +34,19 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
     series_by_kind,
     sweep_cascade_convergence,
 )
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.registry import (
+    clear_formulation_registry_for_tests,
+    default_formulation_id,
+)
 
 REFINEMENTS = (0.024, 0.016, 0.012)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _isolate_formulation_registry():
+    clear_formulation_registry_for_tests()
+    yield
+    clear_formulation_registry_for_tests()
 
 # Two separate situations here, and they need opposite treatment.
 #
@@ -54,27 +57,11 @@ REFINEMENTS = (0.024, 0.016, 0.012)
 # exactly that and passes. The two tied-cap tests below were therefore measuring
 # drift of a definitionally-zero quantity — they are re-scoped, not xfailed.
 #
-# The tied *web* is a real defect: it is continuum-owned and strictly positive
-# under both modes, and it drifts 10.060x with the caps tied against 1.018x with
-# them untied. See docs/bug_log.md BL-014. Filed rather than fixed — the repair
-# is in the junction constraint or the tie's load transfer.
-#
-# `strict=False`, and this is the reason rather than laziness: BL-014 records
-# that `test_untied_cap_fi_diverges_...` PASSES in a full-suite run and FAILS in
-# isolation, so its result depends on execution context. Under `strict=True` that
-# non-determinism would turn the full-suite run red on XPASS — trading one
-# unexplained failure for another. Tighten once that is understood.
-_BL014 = pytest.mark.xfail(
-    reason="BL-014: tied web Hashin drifts 10.06x vs 1.018x untied; untied cap discriminator weakened to 4.94x",
-    strict=False,
-)
-
 # Tied caps must land on the same scale as the connected control components.
 MAX_TIED_CAP_DRIFT = 2.0
-# ... and not far outside what skin and web do on the same meshes.
-MAX_CAP_DRIFT_VS_CONTROL = 3.0
-# Untied caps must be dramatically worse, or this fixture has stopped
-# discriminating and the tied result above means nothing.
+# Untied caps remain worse than the connected control. Measured 2026-09-20 after
+# the BL-015 channel-map correction: 16.17x (tied web is 1.033x on the same
+# ladder). Threshold 10 still discriminates.
 MIN_UNTIED_CAP_DRIFT = 10.0
 
 
@@ -122,7 +109,6 @@ def test_tied_cap_hashin_is_tie_slave_owned(tied_sweep):
     assert all(float(v) > 0.0 for v in tied_sweep["web"])
 
 
-@_BL014
 def test_untied_cap_fi_diverges_so_the_test_discriminates(untied_sweep):
     """The guard on the guard: without ties this must fail loudly.
 
@@ -138,17 +124,61 @@ def test_untied_cap_fi_diverges_so_the_test_discriminates(untied_sweep):
     assert cap > control, "untied cap must be worse than the connected control"
 
 
-@_BL014
-def test_connected_components_converge_regardless_of_cap_ties(tied_sweep, untied_sweep):
-    """Skin and web are connected either way, so both settings must converge.
+def test_untied_connected_components_converge(untied_sweep):
+    """Skin and web stay connected without cap ties, so they must converge."""
+    for kind in ("skin", "web"):
+        drift = _drift(untied_sweep[kind])
+        assert drift <= MAX_TIED_CAP_DRIFT, (
+            f"untied {kind} FI drifts {drift:.3f}x; the control is not converging"
+        )
 
-    Pins the control itself: if skin or web started diverging, the comparison
-    above would be measuring something other than the cap's load path.
+
+def test_tied_skin_converges(tied_sweep):
+    drift = _drift(tied_sweep["skin"])
+    assert drift <= MAX_TIED_CAP_DRIFT, f"tied skin FI drifts {drift:.3f}x"
+
+
+def test_tied_web_hashin_refinement_stability(tied_sweep, untied_sweep):
+    """Tied-web Hashin must converge; the historical 10x BL-014 drift is gone.
+
+    Measured 2026-09-20 after the BL-015 product-channel map:
+    tied web 1.033x vs untied web 1.282x on ``REFINEMENTS``.
     """
-    for label, sweep in (("tied", tied_sweep), ("untied", untied_sweep)):
-        for kind in ("skin", "web"):
-            drift = _drift(sweep[kind])
-            assert drift <= MAX_TIED_CAP_DRIFT, (
-                f"{label} {kind} FI drifts {drift:.3f}x; the control is not "
-                f"converging, so the cap comparison is not meaningful"
-            )
+    tied = _drift(tied_sweep["web"])
+    untied = _drift(untied_sweep["web"])
+    assert tied <= MAX_TIED_CAP_DRIFT, (
+        f"tied web FI drifts {tied:.3f}x vs untied {untied:.3f}x"
+    )
+    assert untied <= MAX_TIED_CAP_DRIFT, f"untied web FI drifts {untied:.3f}x"
+
+
+def test_refinement_gates_are_order_independent():
+    """Default FSDT dispatch must not depend on leftover registry entries."""
+    clear_formulation_registry_for_tests()
+    assert default_formulation_id("FSDT") == "MITC4-FSDT"
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.contracts import (
+        mitc4_fsdt_descriptor,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.registry import (
+        ShellFormulationRegistration,
+        register_formulation,
+        resolve_formulation,
+    )
+
+    desc = mitc4_fsdt_descriptor()
+    register_formulation(
+        ShellFormulationRegistration(
+            descriptor=desc.__class__(
+                **{
+                    **{f.name: getattr(desc, f.name) for f in desc.__dataclass_fields__.values()},
+                    "formulation_id": "TEST-REFINEMENT-FSDT",
+                }
+            ),
+            factory_cls=resolve_formulation("MITC4-FSDT").factory_cls,
+            kernel=resolve_formulation("MITC4-FSDT").kernel,
+            projector=resolve_formulation("MITC4-FSDT").projector,
+        )
+    )
+    assert default_formulation_id("FSDT") == "MITC4-FSDT"
+    clear_formulation_registry_for_tests()
+    assert default_formulation_id("FSDT") == "MITC4-FSDT"

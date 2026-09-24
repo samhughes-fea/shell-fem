@@ -11,6 +11,7 @@ from numpy.typing import NDArray
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import (
     PanelConstitutiveKind,
+    PanelConstitutiveSpec,
     ShellFormulationCache,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import (
@@ -19,14 +20,9 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.constitutive.panel_abd import (
     panel_abd_tuple_from_lam,
+    panel_constitutive_spec_from_lam,
 )
 from ..mesh.shell_mesh_map import PanelGlobalMap
-from .mitc4.mitc4_quad4_element import (
-    Mitc4ElementGeometry,
-    Mitc4ElementLoads,
-    Mitc4ElementMaterial,
-    Mitc4Quad4Element,
-)
 from .shell_element_base import ShellElementBase
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.solve_phase_timing import (
     PHASE_ELEMENT_FORCE_VECTORS,
@@ -103,65 +99,6 @@ class ShellElementFactory(ABC):
         ...
 
 
-class Mitc4ElementFactory(ShellElementFactory):
-    theory = ShellTheory.FSDT
-    n_dof_node = 6
-
-    def iter_elements(
-        self,
-        panel_maps: list[PanelGlobalMap],
-        zones: list[Any],
-        Nx_panels: list[NDArray[np.float64]],
-        Nxy_panels: list[NDArray[np.float64]],
-        *,
-        L_x: float = 1.0,
-        zones_outboard: list[Any] | None = None,
-        panel_abd_stacks: list[tuple] | None = None,
-    ) -> Iterator[Mitc4Quad4Element]:
-        elem_id = 0
-        for pi, pm in enumerate(panel_maps):
-            if len(pm.s_nodes) == 0:
-                continue
-            p = zones[pi]
-            nodes_yz = np.asarray(getattr(p, "nodes"), dtype=float)
-            s_nodes = pm.s_nodes
-            s_panel_full = np.asarray(p.s, dtype=float)
-            Nx_nodes = np.interp(s_nodes, s_panel_full, np.asarray(Nx_panels[pi], dtype=float))
-            Nxy_nodes = np.interp(s_nodes, s_panel_full, np.asarray(Nxy_panels[pi], dtype=float))
-            kappa_nodes = _panel_kappa_nodes(nodes_yz, s_panel_full, s_nodes)
-            if panel_abd_stacks is not None:
-                ABD, thickness, _, _, G_eff = panel_abd_stacks[pi]
-            else:
-                ABD, thickness, _, _, G_eff = panel_abd_tuple_from_lam(p.lam)
-
-            for ei, e in enumerate(pm.elements):
-                i0, i1, i2, i3 = e
-                L_s_plain = float(abs(s_nodes[i1] - s_nodes[i0]))
-                L_s, L_x_elem = _element_L_s(pi, s_nodes, i0, i1, zones, zones_outboard, L_x)
-                if L_s < 1e-30:
-                    continue
-                nx_avg = 0.5 * (Nx_nodes[i0] + Nx_nodes[i1])
-                nxy_avg = 0.5 * (Nxy_nodes[i0] + Nxy_nodes[i1])
-                kappa_avg = None
-                if kappa_nodes is not None:
-                    kappa_avg = float(0.5 * (kappa_nodes[i0] + kappa_nodes[i1]))
-                yield Mitc4Quad4Element(
-                    element_id=elem_id,
-                    panel_index=pi,
-                    local_element_index=ei,
-                    geometry=Mitc4ElementGeometry(
-                        L_s=L_s,
-                        L_s_donnell=L_s_plain,
-                        L_x=L_x,
-                        local_nodes=(i0, i1, i2, i3),
-                    ),
-                    material=Mitc4ElementMaterial(ABD=ABD, thickness=thickness, G_eff=G_eff),
-                    loads=Mitc4ElementLoads(nx_avg=nx_avg, nxy_avg=nxy_avg, kappa_avg=kappa_avg),
-                    dof_per_node=self.n_dof_node,
-                )
-                elem_id += 1
-
-
 _ELEMENT_FACTORY_REGISTRY: dict[ShellTheory, type[ShellElementFactory]] = {}
 
 
@@ -178,16 +115,34 @@ def register_element_factory(theory: ShellTheory, factory_cls: type[ShellElement
     _ELEMENT_FACTORY_REGISTRY[theory] = factory_cls
 
 
+def _formulation_id_from_factory(factory: ShellElementFactory) -> str:
+    """Prefer the factory's own id; otherwise the registry default for its theory."""
+    fid = getattr(factory, "formulation_id", None)
+    if fid:
+        return str(fid)
+    from .registry import default_formulation_id
+
+    return default_formulation_id(factory.theory)
+
+
 def resolve_element_factory(shell_theory: ShellTheory) -> ShellElementFactory:
     resolve_shell_theory_capability(shell_theory)
+    from .registry import default_formulation_id, ensure_default_formulations, resolve_formulation
+
+    ensure_default_formulations()
     try:
         factory_cls = _ELEMENT_FACTORY_REGISTRY[shell_theory]
     except KeyError:
-        raise ValueError(f"No element factory registered for {shell_theory!r}") from None
+        factory_cls = resolve_formulation(default_formulation_id(shell_theory)).factory_cls
     return factory_cls()
 
 
-register_element_factory(ShellTheory.FSDT, Mitc4ElementFactory)
+def __getattr__(name: str) -> Any:
+    if name == "Mitc4ElementFactory":
+        from .mitc4.factory import Mitc4ElementFactory as _Factory
+
+        return _Factory
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _panel_load_totals_from_forces(
@@ -382,6 +337,35 @@ def _panel_constitutive_metadata(
     return kinds, sigma_y_list, sigma_uts_list, sigma_ucs_list, tau_us_list
 
 
+def _typed_panel_constitutive_specs(
+    panel_maps: list[PanelGlobalMap],
+    panel_laminates: list[Any],
+    kinds: list[PanelConstitutiveKind],
+    sigma_y_pa: list[float],
+    sigma_uts_pa: list[float],
+    sigma_ucs_pa: list[float],
+    tau_us_pa: list[float],
+) -> list[PanelConstitutiveSpec | None]:
+    """Build the authoritative frozen FE constitutive handoff once per panel."""
+    specs: list[PanelConstitutiveSpec | None] = []
+    for pi, panel_map in enumerate(panel_maps):
+        laminate = panel_laminates[pi]
+        if len(panel_map.s_nodes) == 0 or laminate is None:
+            specs.append(None)
+            continue
+        specs.append(
+            panel_constitutive_spec_from_lam(
+                laminate,
+                material_kind=kinds[pi],
+                sigma_y_pa=sigma_y_pa[pi],
+                sigma_uts_pa=sigma_uts_pa[pi],
+                sigma_ucs_pa=sigma_ucs_pa[pi],
+                tau_us_pa=tau_us_pa[pi],
+            )
+        )
+    return specs
+
+
 def fill_global_dof_indices(
     cache: ShellFormulationCache,
     panel_maps: list[PanelGlobalMap],
@@ -420,6 +404,15 @@ def build_formulation_cache(
         panel_sigma_ucs_pa,
         panel_tau_us_pa,
     ) = _panel_constitutive_metadata(panel_maps, zones)
+    panel_constitutive_specs = _typed_panel_constitutive_specs(
+        panel_maps,
+        panel_laminates,
+        panel_constitutive_kind,
+        panel_sigma_y_pa,
+        panel_sigma_uts_pa,
+        panel_sigma_ucs_pa,
+        panel_tau_us_pa,
+    )
     # Materialised (not a single-pass generator) so stiffness and force build
     # each get their own aggregated phase timing, one start/end pair per
     # build_formulation_cache call rather than per element.
@@ -432,6 +425,7 @@ def build_formulation_cache(
             L_x=L_x,
             zones_outboard=zones_outboard,
             panel_abd_stacks=panel_abd_stacks,
+            panel_constitutive_specs=panel_constitutive_specs,
         )
     )
     collector = phase_collector if phase_collector is not None else _NULL_PHASE_COLLECTOR
@@ -453,6 +447,8 @@ def build_formulation_cache(
         panel_sigma_uts_pa=panel_sigma_uts_pa,
         panel_sigma_ucs_pa=panel_sigma_ucs_pa,
         panel_tau_us_pa=panel_tau_us_pa,
+        panel_constitutive_specs=panel_constitutive_specs,
+        formulation_id=_formulation_id_from_factory(factory),
     )
     fill_global_dof_indices(cache, panel_maps)
     from .formulation_validation import validate_formulation_cache_shapes

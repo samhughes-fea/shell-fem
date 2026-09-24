@@ -142,16 +142,32 @@ def _compute_secondary_resultants(
         )
         if L_s < 1e-30:
             continue
-        abd_stack = cache.panel_abd_stacks[pi] if pi < len(cache.panel_abd_stacks) else None
-        if abd_stack is None:
-            continue
-        ABD = abd_stack[0]
-        thickness = float(abd_stack[1])
-        G_eff = float(abd_stack[4])
-        res = kernel.recover_resultants(u_elem, L_s, L_x, ABD)
-        Q1, Q2 = kernel.recover_shear(
-            u_elem, L_s, L_x, G_eff=G_eff, thickness=thickness,
+        panel_spec = (
+            cache.panel_constitutive_specs[pi]
+            if pi < len(cache.panel_constitutive_specs)
+            else None
         )
+        if panel_spec is not None and hasattr(kernel, "recover_generalized"):
+            res = kernel.recover_generalized(
+                u_elem, L_s, L_x, panel_spec.fsdt
+            )
+            thickness = float(panel_spec.thickness_m)
+            Q1, Q2 = float(res["Q1"]), float(res["Q2"])
+        else:
+            abd_stack = (
+                cache.panel_abd_stacks[pi]
+                if pi < len(cache.panel_abd_stacks)
+                else None
+            )
+            if abd_stack is None:
+                continue
+            ABD = abd_stack[0]
+            thickness = float(abd_stack[1])
+            G_eff = float(abd_stack[4])
+            res = kernel.recover_resultants(u_elem, L_s, L_x, ABD)
+            Q1, Q2 = kernel.recover_shear(
+                u_elem, L_s, L_x, G_eff=G_eff, thickness=thickness,
+            )
         prov_kind = kernel.provenance_kind
         if Q1 is None:
             prov = {

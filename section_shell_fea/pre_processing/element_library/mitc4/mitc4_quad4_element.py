@@ -7,17 +7,22 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from blade_structure_utilities.material_utilities.laminate import (
+    FSDTLaminateStiffness,
+)
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import (
     ShellForceObject,
     ShellStiffnessObject,
 )
 from ..shell_element_base import ShellElementBase
-from .element import mitc4_stiffness
+from .element import assemble_mitc4_stiffness
+from .utilities import (
+    ElementLoadOperator,
+    MaterialStiffnessOperator,
+    ShapeFunctionOperator,
+)
 
 _ELEMENT_TYPE = "MITC4-FSDT"
-_U_X = 0
-_U_S = 1
-_W = 2
 
 
 @dataclass(frozen=True)
@@ -33,6 +38,7 @@ class Mitc4ElementMaterial:
     ABD: NDArray[np.float64]
     thickness: float
     G_eff: float
+    fsdt: FSDTLaminateStiffness | None = None
 
 
 @dataclass(frozen=True)
@@ -67,14 +73,15 @@ class Mitc4Quad4Element(ShellElementBase):
     def element_stiffness_matrix(self) -> ShellStiffnessObject:
         g = self.geometry
         m = self.material
-        ke = mitc4_stiffness(
-            g.L_s,
-            g.L_x,
-            m.ABD,
+        shape = ShapeFunctionOperator(g.L_s, g.L_x)
+        material = MaterialStiffnessOperator(
+            m.fsdt if m.fsdt is not None else m.ABD,
             m.thickness,
-            G_eff=m.G_eff,
-            include_drilling=self.dof_per_node >= 6,
+            G_eff=None if m.fsdt is not None else m.G_eff,
         )
+        ke = assemble_mitc4_stiffness(
+            shape, material, ndof=self.dof_per_node
+        ).K_e
         return ShellStiffnessObject(
             element_id=self.element_id,
             element_type=_ELEMENT_TYPE,
@@ -87,20 +94,14 @@ class Mitc4Quad4Element(ShellElementBase):
         g = self.geometry
         ld = self.loads
         n = self.dof_per_node
-        fe = np.zeros(4 * n, dtype=np.float64)
-
-        f_node_x = ld.nx_avg * g.L_s / 2.0
-        f_node_s = ld.nxy_avg * g.L_s / 2.0
-        for node_slot in (2, 3):
-            base = node_slot * n
-            fe[base + _U_X] += f_node_x
-            fe[base + _U_S] += f_node_s
-
-        if ld.kappa_avg is not None:
-            q_n = ld.nx_avg * ld.kappa_avg
-            f_node_w = q_n * g.L_s_donnell * g.L_x / 4.0
-            for node_slot in range(4):
-                fe[node_slot * n + _W] += f_node_w
+        shape = ShapeFunctionOperator(g.L_s, g.L_x)
+        donnell_ratio = g.L_s_donnell / max(g.L_s, 1.0e-30)
+        fe = ElementLoadOperator(shape, ndof=n).legacy_strip_load(
+            nx=ld.nx_avg,
+            nxy=ld.nxy_avg,
+            kappa=ld.kappa_avg,
+            donnell_area_ratio=donnell_ratio,
+        )
 
         return ShellForceObject(
             element_id=self.element_id,

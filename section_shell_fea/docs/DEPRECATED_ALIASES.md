@@ -33,9 +33,15 @@ inbound usage is zero.
 | `ThinWallResult.panels` / related `.panels` | `.zones` | FE result types | **warns** / migrate |
 | Scalar `N,Vy,Vz,M22,Mz,T` kwargs alone | `resultants=BeamResultantVector` | `SectionLinearStaticRunner` | **silent** (centroid-referenced) |
 | `SectionShellRecoveryBundle.y_sc` / `.z_sc` | `.y_e` / `.z_e` (elastic centroid, **not** shear centre) | `station_analysis_types.py` | **silent** dual-write |
-| `compute_quaternary_fi_from_panel_rows` | runner `quaternary_results` via linear cascade | `processing/static/results/compute_quaternary/bundle_fi.py` | **legacy** (parity / research) |
+| `assemble_global_shell` | `assemble_section_from_zones` | `processing/static/operations/global_shell_assembly.py` | **legacy** (8-tuple shim through next major) |
+| `connected_assembly_core` numbering/MPC symbols | `pre_processing.mesh.global_numbering` / `processing.static.constraints` | `processing/static/operations/connected_assembly_core.py` | **silent** shim |
+| `operations/cap_tie_constraints` | `processing.static.constraints.cap_tie` | `processing/static/operations/cap_tie_constraints.py` | **silent** shim |
+| `SectionLinearStaticRunner.from_cache` / `from_global` | `solve_constrained_system` | `simulation_runner/section_linear_static_runner.py` | **legacy** (explicit constraints only) |
+| `beam_resultants_to_nodal_load` on production execute | frozen `SectionForceVector` + `section_force_vector_to_nodal_load` | `pre_processing/loading/beam_resultants_to_nodal_load.py` | **legacy** (regression/reference) |
 | `USE_TAPERED_INTERLAMINAR` / `_legacy_channel_a_*tapered*` | prismatic quaternary IL on linear track | `shell_fi_eval.py` | quarantined (default `False`) |
-| `shell_fi_batch(dual_run=…)` | env `SHELL_FI_DUAL_RUN=1` | `shell_fi_eval.py` | quarantined — kwarg ignored |
+| `hashin_il` / `ShellHashinFiResult.interlaminar` | FSDT interface-shear diagnostic (`interface_shear`) | `compute_quaternary` | **silent** compatibility; excluded from governing |
+| `max_fi_hashin` | plane-stress Hashin native FI; prefer `max_utilization_governing` | station evaluate / sizing trial | **silent** alias |
+| `fsdt_periodic_hashin_audit` / `fsdt_periodic_hashin` | `failure_assessment` | `io/job_outputs.py`, `io/station_json.py` | **silent** dual-write through next major |
 
 ### Plot naming note (`vis.py`)
 
@@ -62,10 +68,12 @@ theory-agnostic wrappers over `save_mitc4_v2_*`. Do **not** deprecate the
 ## Appendix: removed waves (historical)
 
 MITC4 → theory-agnostic renames, Channel-A periodic / K6 / clamped FE entry,
-`engine/` package retirement, `api/` package-level barrel, Pipeline-B →
+`engine/` package retirement, unused `types/` barrel (stdlib shadowing), Pipeline-B →
 `ShellPanelTopology` rename, and warn-stage SoC shims (`engine.panel_abd`,
-`io.example_plots`, `bc_mode="full_clamp"`, …) are **done**. Do not reintroduce
-them. Details live in git history and
+`io.example_plots`, `bc_mode="full_clamp"`, …) are **done**. The worker
+`section_shell_fea/api/` barrel is **retained** as the explicit
+`API_STANDARDS` seam; do not reintroduce a shadowing `types/` package.
+Details live in git history and
 [`DEPRECATION_REGISTER.md`](../../../docs/architecture/DEPRECATION_REGISTER.md).
 
 ```mermaid
