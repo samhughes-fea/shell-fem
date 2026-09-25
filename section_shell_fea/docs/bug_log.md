@@ -247,3 +247,33 @@ reported.
 Tied |N12| away from junctions: skin 65.6 / 64.3 / 66.0 kN/m (1.03×), web 39.9 /
 37.7 / 38.0 kN/m (1.06×), cap 465 / 554 / 452 kN/m (1.22×).
 
+## Cap-tie / recovery exactness slice (2026-09-25)
+
+Package-local graphify: `constraints/cap_tie/` (37 nodes; god
+`project_onto_polyline`, `build_cap_skin_ties`); `processing/static/results/`
+(369 nodes; god `solve_station_clpt_shell`, FI / FSDT recovery); loading and
+diagnostics already closed as FEA-L-001 / FEA-L-002.
+
+<a id="fea-ct-001"></a>
+## FEA-CT-001 — Cap ties re-project onto the skin polyline
+
+**Status:** Open — 2026-09-25 (exactness programme item 8)
+**Area:** `processing/static/constraints/cap_tie/geometry.py`
+
+### Symptom / evidence
+`build_cap_skin_ties` picks the nearest skin polyline segment via
+`project_onto_polyline` for every exclusive cap node. section_geometry now emits
+`ShellMidlineStrip.bonds` (SG-017) and Channel C uses them as identity
+`WallBond`s; FE still re-derives the host by distance.
+
+### Required resolution
+Consume cap→skin bonds (or mesh-node identity from those bonds) when building
+MPCs; refuse unbonded caps under shear. Keep projection only as a diagnostic
+distance check, not as membership.
+
+### Recovery survey
+Results tree: `except Exception=0`, `nearest=0`, `fallback=16` (documented
+policy fallbacks). FrameTag not imported on results surfaces — follow-on to
+tag pierce / ply-frame fields with `coordinate_frames` where they cross package
+boundaries (item 2 harness already exists). No new recovery root-cause closed
+this pass beyond logging.
