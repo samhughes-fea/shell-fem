@@ -136,12 +136,21 @@ def build_section_constraint_set(
     interface_constraint_mode: str = "shared",
     cap_tie_mode: str = "none",
     bc_mode: str = DEFAULT_BC_MODE,
+    shell_midlines: Any | None = None,
 ) -> SectionConstraintSet:
-    """Compose one immutable constraint set from an assembled section."""
+    """Compose one immutable constraint set from an assembled section.
+
+    ``shell_midlines`` carries SG-017 bonds for ``cap_tie_mode='skin_offset'``
+    (FEA-CT-001). When omitted, midlines are taken from
+    ``assembly.shell_midlines`` if present.
+    """
     iface = str(interface_constraint_mode or "shared")
     ties = str(cap_tie_mode or "none")
     supports_mode = str(bc_mode or DEFAULT_BC_MODE)
     ndof = int(assembly.cache.n_dof_node)
+    midlines = shell_midlines
+    if midlines is None:
+        midlines = getattr(assembly, "shell_midlines", None)
 
     junction = _junction_equations(assembly, interface_constraint_mode=iface)
     topology = assembly.topology
@@ -166,6 +175,7 @@ def build_section_constraint_set(
         ndof=ndof,
         mode=ties,
         existing=junction,
+        shell_midlines=midlines,
     )
     if not isinstance(cap_report, CapTieReport):
         cap_report = CapTieReport(mode=ties)

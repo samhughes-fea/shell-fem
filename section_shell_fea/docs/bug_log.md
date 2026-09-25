@@ -249,31 +249,51 @@ Tied |N12| away from junctions: skin 65.6 / 64.3 / 66.0 kN/m (1.03×), web 39.9 
 
 ## Cap-tie / recovery exactness slice (2026-09-25)
 
-Package-local graphify: `constraints/cap_tie/` (37 nodes; god
-`project_onto_polyline`, `build_cap_skin_ties`); `processing/static/results/`
-(369 nodes; god `solve_station_clpt_shell`, FI / FSDT recovery); loading and
-diagnostics already closed as FEA-L-001 / FEA-L-002.
+Package-local graphify: `constraints/cap_tie/` (before: 37 nodes, god
+`project_onto_polyline` / `build_cap_skin_ties`; after FEA-CT-001: 47 nodes,
+god `build_cap_skin_ties` / `_locate_on_bonds` — membership via bonds);
+`processing/static/results/` (369 nodes; god `solve_station_clpt_shell`,
+FI / FSDT recovery); loading and diagnostics already closed as FEA-L-001 /
+FEA-L-002.
 
 <a id="fea-ct-001"></a>
 ## FEA-CT-001 — Cap ties re-project onto the skin polyline
 
-**Status:** Open — 2026-09-25 (exactness programme item 8)
-**Area:** `processing/static/constraints/cap_tie/geometry.py`
+**Status:** Fixed — 2026-09-25
+**Area:** `processing/static/constraints/cap_tie/geometry.py`,
+`calculix_ccx/cap_skin_ties.py`
 
 ### Symptom / evidence
-`build_cap_skin_ties` picks the nearest skin polyline segment via
-`project_onto_polyline` for every exclusive cap node. section_geometry now emits
+`build_cap_skin_ties` picked the nearest skin polyline segment via
+`project_onto_polyline` for every exclusive cap node. section_geometry emits
 `ShellMidlineStrip.bonds` (SG-017) and Channel C uses them as identity
-`WallBond`s; FE still re-derives the host by distance.
+`WallBond`s; FE re-derived the host by distance.
 
-### Required resolution
-Consume cap→skin bonds (or mesh-node identity from those bonds) when building
-MPCs; refuse unbonded caps under shear. Keep projection only as a diagnostic
-distance check, not as membership.
+### Root cause
+Cap-tie builders took only mesh `panel_maps` / `node_meta` and rediscovered
+membership by proximity instead of reading producer bonds on
+`ShellMeshInputs.midlines`.
+
+### Fix
+- `build_cap_skin_ties` requires `shell_midlines`; locates each exclusive cap
+  node on that cap's `StripBond.points`, reads the aligned `host_points` foot,
+  and builds masters only on the named host skin panel.
+- Unbonded caps / missing midlines under `skin_offset` raise (no nearest-skin
+  fallback). `project_onto_polyline` remains for named-polyline location and
+  diagnostic gap notes only.
+- Same membership rule in CalculiX `build_cap_skin_tie_surfaces`.
+- Midlines threaded through compose / assembly / runner / CCX mesh build.
+
+### Verification
+- `pytest …/tests/test_cap_tie_constraints.py` (bond host labels; refuse empty
+  bonds; rigid-body residual).
+- Package-local graphify after: god `_locate_on_bonds` / `bonds_by_cap_panel_label`
+  alongside `build_cap_skin_ties`; `project_onto_polyline` no longer the
+  membership hub.
+- Recovery FrameTag adoption remains a follow-on (item 8 remainder).
 
 ### Recovery survey
 Results tree: `except Exception=0`, `nearest=0`, `fallback=16` (documented
 policy fallbacks). FrameTag not imported on results surfaces — follow-on to
 tag pierce / ply-frame fields with `coordinate_frames` where they cross package
-boundaries (item 2 harness already exists). No new recovery root-cause closed
-this pass beyond logging.
+boundaries (item 2 harness already exists).

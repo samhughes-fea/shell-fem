@@ -65,6 +65,8 @@ class SectionAssemblyResult:
     zones: list[Any]
     diagnostics: AssemblyDiagnostics | None = None
     n_scatter_add: int = 1
+    shell_midlines: Any | None = None
+    """SG-017 midlines (bonds) for cap-tie membership; optional until compose."""
 
     @property
     def f_global(self) -> np.ndarray:
@@ -99,6 +101,7 @@ def assemble_section_from_zones(
     interface_constraint_mode: str = "shared",
     shell_theory: ShellTheory = ShellTheory.FSDT,
     phase_collector: PhaseCollector | None = None,
+    shell_midlines: Any | None = None,
 ) -> SectionAssemblyResult:
     """Thin assembly path: topology → formulation cache → scatter-add K/f.
 
@@ -175,6 +178,7 @@ def assemble_section_from_zones(
         zones=zone_list,
         diagnostics=diag,
         n_scatter_add=1,
+        shell_midlines=shell_midlines,
     )
 
 

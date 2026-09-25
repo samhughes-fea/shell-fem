@@ -136,12 +136,14 @@ def test_transformed_basis_composer_adds_junction_equations(assembled_5df):
         L_x=1.0,
         interface_constraint_mode="transformed_basis",
         section_strip_mesh=mesh,
+        shell_midlines=shell.midlines,
     )
     assert asm.node_meta.constraints in (None, {})
     cs = build_section_constraint_set(
         asm,
         interface_constraint_mode="transformed_basis",
         cap_tie_mode="skin_offset",
+        shell_midlines=shell.midlines,
     )
     assert cs.report.n_junction_equations > 0
     assert cs.report.n_cap_tie_equations >= 0

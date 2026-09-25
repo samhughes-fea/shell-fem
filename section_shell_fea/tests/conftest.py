@@ -8,7 +8,10 @@ import pytest
 
 @pytest.fixture
 def assembled_5df():
-    """Assemble a cap-bearing 5D-F section; returns the SectionAssemblyResult."""
+    """Assemble a cap-bearing 5D-F section; returns the SectionAssemblyResult.
+
+    ``shell_midlines`` carry SG-017 bonds for FEA-CT-001 cap ties.
+    """
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
         build_section_view,
         resolve_system_type,
@@ -53,4 +56,5 @@ def assembled_5df():
         L_x=1.0,
         interface_constraint_mode="shared",
         section_strip_mesh=mesh,
+        shell_midlines=shell.midlines,
     )

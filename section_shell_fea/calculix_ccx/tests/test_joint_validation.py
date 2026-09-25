@@ -50,12 +50,13 @@ def test_l_junction_shared_nodes_no_tie():
 
 
 def test_capped_skin_offset_emits_tie_and_surfaces():
-    panels, nx, nxy, strip, _shell = build_capped_catalogue_fixture("3D-F")
+    panels, nx, nxy, strip, shell = build_capped_catalogue_fixture("3D-F")
     mesh = build_ccx_section_mesh(
         panels,
         section_strip_mesh=strip,
         interface_constraint_mode="shared",
         cap_tie_mode="skin_offset",
+        shell_midlines=shell.midlines,
     )
     assert mesh.cap_tie_mode == "skin_offset"
     assert mesh.cap_skin_ties, "expected at least one cap–skin *TIE surface"
@@ -98,11 +99,12 @@ def test_capped_none_omits_tie():
 
 
 def test_equation_fallback_export():
-    panels, nx, nxy, strip, _shell = build_capped_catalogue_fixture("3D-F")
+    panels, nx, nxy, strip, shell = build_capped_catalogue_fixture("3D-F")
     mesh = build_ccx_section_mesh(
         panels,
         section_strip_mesh=strip,
         cap_tie_mode="skin_offset",
+        shell_midlines=shell.midlines,
     )
     with tempfile.TemporaryDirectory() as tmp:
         path = write_section_inp(
@@ -160,7 +162,7 @@ def test_ccx_capped_tie_live_smoke():
         solve_global_coupled_ccx,
     )
 
-    panels, nx, nxy, strip, _shell = build_capped_catalogue_fixture("3D-F")
+    panels, nx, nxy, strip, shell = build_capped_catalogue_fixture("3D-F")
     with tempfile.TemporaryDirectory() as tmp:
         try:
             results, diag, inp = solve_global_coupled_ccx(
@@ -172,6 +174,7 @@ def test_ccx_capped_tie_live_smoke():
                 cap_tie_mode="skin_offset",
                 cap_tie_export="tie",
                 job_name="cap_tie",
+                shell_midlines=shell.midlines,
             )
         except Exception:
             # Some CCX builds reject shell *TIE; equation fallback must still solve.
@@ -184,6 +187,7 @@ def test_ccx_capped_tie_live_smoke():
                 cap_tie_mode="skin_offset",
                 cap_tie_export="equation",
                 job_name="cap_eq",
+                shell_midlines=shell.midlines,
             )
         assert diag[0]["solver"] == "global_coupled_ccx"
         text = Path(inp).read_text(encoding="utf-8")

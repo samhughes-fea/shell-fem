@@ -146,6 +146,7 @@ def run_ccx_cascade_at_frac(
             cap_tie_mode=cap_tie_mode,
             cap_tie_export=export,
             job_name="section",
+            shell_midlines=shell.midlines,
         )
         trust = True
     except Exception:
@@ -163,6 +164,7 @@ def run_ccx_cascade_at_frac(
                     cap_tie_mode=cap_tie_mode,
                     cap_tie_export="equation",
                     job_name="section",
+                    shell_midlines=shell.midlines,
                 )
                 trust = True
             except Exception:

@@ -1,14 +1,17 @@
 """Cap–skin ``*TIE`` surface geometry for CalculiX section decks.
 
-Mirrors MITC4 ``cap_tie_mode="skin_offset"`` (BL-003): caps do not share junction
-nodes with the skin, so a bonded interface must be emitted explicitly. CalculiX
-analogue is ``*TIE`` with ``POSITION TOLERANCE`` covering the measured midline
-offset (≈ ``(t_skin + t_cap) / 2``).
+Mirrors MITC4-FSDT ``cap_tie_mode="skin_offset"`` (BL-003 / FEA-CT-001): caps do
+not share junction nodes with the skin, so a bonded interface must be emitted
+explicitly. Membership follows SG-017 ``StripBond`` (named host), not nearest
+skin projection. CalculiX analogue is ``*TIE`` with ``POSITION TOLERANCE``
+covering the measured midline offset (≈ ``(t_skin + t_cap) / 2``).
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -19,6 +22,10 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
     CAP_TIE_MODES,
+    _bond_locate_tol_m,
+    _locate_on_bonds,
+    _resolve_skin_panel,
+    bonds_by_cap_panel_label,
     kind_of as _kind_of,
     project_onto_polyline as _project_onto_polyline,
 )
@@ -94,14 +101,14 @@ def build_cap_skin_tie_surfaces(
     mesh: CcxSectionMesh,
     zones: list,
     *,
+    shell_midlines: Sequence[Any] | None = None,
     cap_kind: str = "cap",
     skin_kind: str = "skin",
 ) -> list[CcxCapSkinTieSurface]:
-    """Project each unique cap node onto the skin and collect ``*TIE`` surfaces.
+    """Build ``*TIE`` surfaces from SG-017 bonds (FEA-CT-001).
 
-    Slave side: all CCX node ids on the cap (both strip layers) that are not
-    already shared-junction nodes. Master side: skin S4R elements whose contour
-    segments were hit by at least one projection.
+    Slave side: exclusive cap CCX nodes. Master side: skin S4R elements on the
+    bond-named host whose contour segments hold the bond foot.
     """
     panel_maps = mesh.panel_maps
     skin_maps = [
@@ -110,41 +117,49 @@ def build_cap_skin_tie_surfaces(
     cap_maps = [
         pm for pm in panel_maps if _kind_of(pm.panel_label) == cap_kind and len(pm.s_nodes)
     ]
-    if not cap_maps or not skin_maps:
+    if not cap_maps:
         return []
+    if not skin_maps:
+        raise ValueError(
+            "cap_tie_mode='skin_offset' but no skin panels found; cannot build *TIE surfaces"
+        )
+    if shell_midlines is None:
+        raise ValueError(
+            "cap_tie_mode='skin_offset' requires shell_midlines with StripBond "
+            "entries (SG-017); none were passed (FEA-CT-001)"
+        )
 
+    bonds_by_cap = bonds_by_cap_panel_label(shell_midlines)
+    skin_by_label = {pm.panel_label: pm for pm in skin_maps}
     owners = _owner_count(panel_maps)
     elem_len = _median_element_length(mesh, zones, skin_maps)
-    # Map (skin panel_index, local bottom node i) -> element eids using that segment.
     skin_seg_to_eids: dict[tuple[int, int], list[int]] = {}
     for e in mesh.elements:
         pm = panel_maps[e.panel_index]
         if _kind_of(pm.panel_label) != skin_kind:
             continue
-        # Strip quads: local nodes [i0, i1, i1+n, i0+n]; segment index = i0.
         i0 = int(pm.elements[e.local_element_index][0])
         skin_seg_to_eids.setdefault((e.panel_index, i0), []).append(int(e.eid))
 
     surfaces: list[CcxCapSkinTieSurface] = []
     for cap in cap_maps:
+        bonds = bonds_by_cap.get(cap.panel_label, ())
+        if not bonds:
+            raise ValueError(
+                f"cap {cap.panel_label!r} has no StripBond entries under skin_offset; "
+                "refusing nearest-skin projection (FEA-CT-001 / SG-017)"
+            )
+
         n_cap = len(cap.s_nodes)
         slave_nodes: set[int] = set()
         master_eids: set[int] = set()
         skin_labels: set[str] = set()
         gaps: list[float] = []
         n_proj = 0
+        cap_yz = interp_yz_nodes(cap.s_nodes, zones[cap.panel_index])
 
         for layer, base in (("bottom", 0), ("top", n_cap)):
-            skin_polys: list[tuple[str, int, list[int], NDArray[np.float64]]] = []
-            for skin in skin_maps:
-                poly = _skin_polyline(skin, zones, layer=layer)
-                if poly is None:
-                    continue
-                gids, pts = poly
-                skin_polys.append((skin.panel_label, skin.panel_index, gids, pts))
-            if not skin_polys:
-                continue
-
+            locate_tol = _bond_locate_tol_m(np.asarray(cap_yz, dtype=float))
             for li in range(n_cap):
                 gn = int(cap.global_nodes[base + li])
                 if gn < 0 or owners.get(gn, 0) > 1:
@@ -152,30 +167,42 @@ def build_cap_skin_tie_surfaces(
                 ccx_nid = _ccx_id(mesh, gn)
                 if ccx_nid is None:
                     continue
-                q = interp_yz_nodes(cap.s_nodes, zones[cap.panel_index])[li]
+                q = np.asarray(cap_yz[li], dtype=float)
                 if not np.all(np.isfinite(q)):
                     continue
-                best = None
-                for lab, spi, gids, pts in skin_polys:
-                    d, seg, t = _project_onto_polyline(q, pts)
-                    if seg >= 0 and (best is None or d < best[0]):
-                        best = (d, lab, spi, seg, t)
-                if best is None:
-                    continue
-                d, lab, spi, seg, t_param = best
+                bond, foot, _d_bond = _locate_on_bonds(
+                    q, bonds, max_distance_m=locate_tol, cap_label=cap.panel_label
+                )
+                skin = _resolve_skin_panel(
+                    str(bond.host_label), skin_by_label, cap_label=cap.panel_label
+                )
+                poly = _skin_polyline(skin, zones, layer=layer)
+                if poly is None:
+                    raise ValueError(
+                        f"cap {cap.panel_label!r}: host skin {skin.panel_label!r} "
+                        f"layer {layer!r} has no usable mesh polyline"
+                    )
+                _gids, pts = poly
+                d_mesh, seg, t_param = _project_onto_polyline(foot, pts)
+                if seg < 0:
+                    raise ValueError(
+                        f"cap {cap.panel_label!r}: bond foot could not be located on "
+                        f"host skin mesh {skin.panel_label!r}"
+                    )
                 slave_nodes.add(int(ccx_nid))
-                skin_labels.add(lab)
-                gaps.append(float(d))
+                skin_labels.add(skin.panel_label)
+                gaps.append(float(np.linalg.norm(q - foot)))
                 n_proj += 1
+                spi = int(skin.panel_index)
                 for eid in skin_seg_to_eids.get((spi, int(seg)), []):
                     master_eids.add(int(eid))
-                # Adjacent segment when projection lands near a knot.
                 if float(t_param) < 0.05 and seg > 0:
                     for eid in skin_seg_to_eids.get((spi, int(seg) - 1), []):
                         master_eids.add(int(eid))
                 if float(t_param) > 0.95:
                     for eid in skin_seg_to_eids.get((spi, int(seg) + 1), []):
                         master_eids.add(int(eid))
+                _ = d_mesh  # diagnostic only
 
         if not slave_nodes or not master_eids:
             continue

@@ -74,6 +74,8 @@ def ccx_global_coupled_solve_from_thin_wall(
         job_name=job_name,
         bc_mode=global_bc_mode,
         interface_constraint_mode=interface_constraint_mode,
+        # Panel-built thin-wall path has no SG-017 bonds; leave caps untied.
+        cap_tie_mode="none",
     )
 
     ref: ShellPanelResultants | None = None

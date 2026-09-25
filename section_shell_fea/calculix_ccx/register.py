@@ -62,6 +62,8 @@ def _solve_ccx(
         bc_mode=kwargs.get("bc_mode", "contour_support"),
         interface_constraint_mode=kwargs.get("interface_constraint_mode", "shared"),
         l_x=kwargs.get("l_x", 1.0),
+        cap_tie_mode=kwargs.get("cap_tie_mode", "none"),
+        shell_midlines=kwargs.get("shell_midlines"),
     )
     return res, diag
 

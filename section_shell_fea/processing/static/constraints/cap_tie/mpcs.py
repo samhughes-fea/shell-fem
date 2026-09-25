@@ -173,14 +173,21 @@ def build_cap_tie_constraints(
     ndof: int,
     mode: str = "none",
     existing: Constraints | None = None,
+    shell_midlines: list | tuple | None = None,
 ) -> tuple[Constraints, CapTieReport]:
-    """Locate and emit cap ties in one call. ``mode='none'`` is a no-op."""
+    """Locate and emit cap ties in one call. ``mode='none'`` is a no-op.
+
+    ``shell_midlines`` must carry SG-017 ``StripBond`` entries when
+    ``mode='skin_offset'`` (FEA-CT-001).
+    """
     mode = str(mode or "none")
     if mode not in CAP_TIE_MODES:
         raise ValueError(f"cap_tie_mode must be one of {CAP_TIE_MODES}; got {mode!r}")
     if mode == "none":
         return {}, CapTieReport(mode="none", notes=["cap ties disabled"])
-    report = build_cap_skin_ties(panel_maps, node_meta)
+    report = build_cap_skin_ties(
+        panel_maps, node_meta, shell_midlines=shell_midlines
+    )
     return cap_tie_constraints(report, node_meta, ndof=ndof, existing=existing), report
 
 

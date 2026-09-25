@@ -200,6 +200,7 @@ def write_joint_deck(
     cap_tie_export: str = "tie",
     l_x: float = 1.0,
     bc_mode: str = "contour_support",
+    shell_midlines: Any | None = None,
 ) -> tuple[Path, Any, JointDeckCheck]:
     """Build mesh, write ``.inp``, return path/mesh/offline check."""
     mesh = build_ccx_section_mesh(
@@ -208,6 +209,7 @@ def write_joint_deck(
         interface_constraint_mode=interface_constraint_mode,
         l_x=l_x,
         cap_tie_mode=cap_tie_mode,
+        shell_midlines=shell_midlines,
     )
     out = write_section_inp(
         mesh,
@@ -434,6 +436,7 @@ def run_joint_validation(
                 section_strip_mesh=strip,
                 path=work / f"{layout}_{mode}.inp",
                 cap_tie_mode=mode,
+                shell_midlines=shell.midlines,
             )
             mesh_last = mesh
             report.deck_checks.append(check)
@@ -465,6 +468,7 @@ def run_joint_validation(
                         ccx_exe=ccx_exe,
                         cap_tie_mode="skin_offset",
                         job_name=f"{layout}_tie",
+                        shell_midlines=shell.midlines,
                     )
                     crow.ccx = summarize_kind_peaks(zones, results)
                     crow.cap_nxy_share_ccx = cap_nxy_share(crow.ccx)

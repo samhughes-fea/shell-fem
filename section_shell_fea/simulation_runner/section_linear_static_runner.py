@@ -432,6 +432,11 @@ class SectionLinearStaticRunner:
             shell_theory=self._shell_theory,
             phase_collector=self._phase_collector,
             section_strip_mesh=strip_mesh,
+            shell_midlines=(
+                self._shell_midlines
+                if self._shell_midlines is not None
+                else getattr(getattr(panel_topology, "shell_inputs", None), "midlines", None)
+            ),
         )
         ndof = int(asm.cache.n_dof_node)
         constraint_set = build_section_constraint_set(
@@ -439,6 +444,11 @@ class SectionLinearStaticRunner:
             interface_constraint_mode=self._interface_constraint_mode,
             cap_tie_mode=self._cap_tie_mode,
             bc_mode=self._bc_mode,
+            shell_midlines=(
+                self._shell_midlines
+                if self._shell_midlines is not None
+                else getattr(getattr(panel_topology, "shell_inputs", None), "midlines", None)
+            ),
         )
         constraints = constraint_equations_to_solver_dict(constraint_set.equations)
         fixed = set(constraint_set.fixed_dofs)
