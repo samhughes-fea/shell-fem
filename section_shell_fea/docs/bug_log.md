@@ -290,10 +290,66 @@ membership by proximity instead of reading producer bonds on
 - Package-local graphify after: god `_locate_on_bonds` / `bonds_by_cap_panel_label`
   alongside `build_cap_skin_ties`; `project_onto_polyline` no longer the
   membership hub.
-- Recovery FrameTag adoption remains a follow-on (item 8 remainder).
+- Recovery FrameTag adoption closed as [FEA-R-001](#fea-r-001); demo-strength
+  silent Hashin closed as [FEA-FI-001](#fea-fi-001).
 
 ### Recovery survey
-Results tree: `except Exception=0`, `nearest=0`, `fallback=16` (documented
-policy fallbacks). FrameTag not imported on results surfaces — follow-on to
-tag pierce / ply-frame fields with `coordinate_frames` where they cross package
-boundaries (item 2 harness already exists).
+Results tree (2026-09-25 re-graphify, 409 nodes): gods include
+`ShellPlyResults` / `ShellElementalResults` / `solve_station_clpt_shell`.
+`except Exception=0`, `nearest=0` on the results tree; documented policy
+`fallback` sites remain. Traction nearest lives under FEA-L-003 (loading).
+
+---
+
+<a id="fea-r-001"></a>
+## FEA-R-001 — Recovery containers lacked validated FrameTag fields
+
+**Status:** Fixed — 2026-09-25
+**Area:** `containers/ply_results.py`, `containers/elemental_results.py`,
+`pre_processing/containers/recovery_types.py` (`ShellPanelResultants`)
+
+### Symptom / evidence
+Package-local graphify on `processing/static/results/` (409 nodes): recovery
+god nodes (`ShellPlyResults`, `ShellElementalResults`, `solve_station_clpt_shell`)
+carried E/M only in prose. Cross-package consumers could not validate frames
+(ARCH-MUST-016). Survey follow-on from FEA-CT-001.
+
+### Fix
+- `ShellPanelResultants.frame` — required `FrameTag`, must be `FRAME_E`
+- `ShellElementalResults.resultant_frame` — `FRAME_E`
+- `ShellPlyResults.mid_surface_frame` / `ply_material_frame` — `FRAME_E` / `FRAME_M`
+- Tertiary orchestrator meta stamps the same tags
+
+### Verification
+Import/construct smoke; tertiary suite; refuse wrong tags in `__post_init__`.
+
+---
+
+<a id="fea-fi-001"></a>
+## FEA-FI-001 — Governing Hashin silently used demo skin strengths
+
+**Status:** Fixed — 2026-09-25
+**Area:** `compute_quaternary/compute_governing_element.py` (`max_hashin_fi_from_bundle`)
+
+### Symptom / evidence
+Graphify surprising edge: `max_hashin_fi_from_bundle` → `default_skin_strengths_pa`.
+When `strengths=None`, production used hard-coded glass/carbon demo allowables
+instead of the panel laminate's ply strengths (unlike `select_governing_hashin_element`).
+
+### Fix
+Default path uses laminate-native `hashin_fi_per_ply_from_row` (same as the
+governing-element selector). Explicit `strengths=` remains for demos/tests only;
+missing laminate raises with FEA-FI-001. `default_skin_strengths_pa` docstring
+marks demos-only.
+
+### Verification
+`tests/test_quaternary_orchestrator.py` and related FI suites.
+
+---
+
+<a id="fea-l-003-pkg"></a>
+## Cross-ref: FEA-L-003 traction nearest (loading)
+
+Logged under
+[`pre_processing/loading/docs/bug_log.md#fea-l-003`](../pre_processing/loading/docs/bug_log.md#fea-l-003);
+deferred with SL-014.

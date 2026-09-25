@@ -6,6 +6,12 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+    FRAME_E,
+    FrameTag,
+    require_frame_tag,
+)
+
 from .shell_theory_capabilities import (
     ProvenanceKind,
     provenance_is_placeholder,
@@ -182,8 +188,16 @@ class ShellPanelResultants:
     panel_label: str = ""
     panel_index: int = 0
     station_index: int = 0
+    frame: FrameTag = FRAME_E
+    """Structural frame of the mid-surface resultants (ARCH-MUST-016); always **E**."""
 
     def __post_init__(self) -> None:
+        self.frame = require_frame_tag(self.frame)
+        if self.frame != FRAME_E:
+            raise ValueError(
+                f"ShellPanelResultants.frame must be {FRAME_E!r} (element/laminate); "
+                f"got {self.frame!r}"
+            )
         scalar_values = {
             "N11": self.N11,
             "N22": self.N22,

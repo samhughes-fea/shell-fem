@@ -11,6 +11,7 @@ fixed — fix and verification. Related: section_loads
 | ID | Title | Status |
 |---|---|---|
 | [FEA-L-001](#fea-l-001) | Channel C samples are lumped onto the nearest node pair with re-derived weights | **Fixed** 2026-09-25 — consistent nodal loads |
+| [FEA-L-003](#fea-l-003) | Traction face loads place outline forces on the nearest skin node-pair | **Open — deferred** with section_loads SL-014 (Channel B) |
 
 ---
 
@@ -79,4 +80,32 @@ density 100 → 50 N/m on one element gives nodal loads `(2·100 + 50)/6` and
 `(100 + 2·50)/6`, summing to the field's integral. FE suites pass with Channel C
 through the runner. The tied-convergence guard then exposed that its peak metric
 included junction singularities — section_shell_fea FEA-L-002.
+
+---
+
+<a id="fea-l-003"></a>
+## FEA-L-003
+
+**Traction face loads place outline forces on the nearest skin node-pair**
+
+**Status:** Open — deferred (with section_loads [SL-014](../../../../../load_utilities/section_loads/docs/bug_log.md#sl-014), 2026-09-25)
+**Found:** 2026-09-25 (exactness item 8 recovery / loading survey)
+**Area:** `traction_face_load.py` (`traction_face_loads`)
+
+### Symptom / evidence
+Each TractionField panel force is assigned by `argmin` distance to
+`_skin_node_pairs` midline locations. Graphify / production scan: Channel B FE
+overlay still rediscovers membership by proximity.
+
+### Root cause
+Outline aero panels do not emit strip / mesh identity with the forces. The FE
+worker therefore cannot place loads on a named host the way FEA-L-001 / Channel C
+does from labelled SFV samples.
+
+### Required resolution
+Producer must emit panel→strip (or arc) membership with the traction field;
+FE consumes that identity. Until SL-014 / Channel B selection is decided, keep
+this path logged and do not treat force conservation alone as exactness.
+
+---
 

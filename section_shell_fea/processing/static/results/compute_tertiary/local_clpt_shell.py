@@ -153,7 +153,11 @@ def sweep_panel_clpt_fi(
 
 
 def default_skin_strengths_pa() -> dict[str, float]:
-    """Representative glass/carbon skin strengths [Pa] for Hashin envelope demos."""
+    """Representative glass/carbon skin strengths [Pa] for Hashin **demos only**.
+
+    Production governing FI must use laminate ply strengths (FEA-FI-001). Do not
+    call this as a silent substitute when a zone laminate is available.
+    """
     return {
         "Xt": 600e6,
         "Xc": 500e6,

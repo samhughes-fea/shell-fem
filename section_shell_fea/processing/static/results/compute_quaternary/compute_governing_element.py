@@ -43,14 +43,22 @@ def max_hashin_fi_from_bundle(
     *,
     strengths: dict[str, float] | None = None,
 ) -> tuple[float, bool]:
-    """Governing in-plane Hashin FI over all trusted panel elements."""
-    from blade_structure_utilities.material_utilities.laminate import laminate_definition_from_legacy
+    """Governing in-plane Hashin FI over all trusted panel elements.
+
+    Strengths come from each panel's laminate (same path as
+    :func:`select_governing_hashin_element`). Passing ``strengths=`` overrides
+    with an explicit dict (tests / demos only). Silent substitution of
+    ``default_skin_strengths_pa`` is refused (FEA-FI-001).
+    """
+    from blade_structure_utilities.material_utilities.laminate import (
+        LaminateDefinition,
+        laminate_definition_from_legacy,
+    )
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.results.api.fi_recovery import (
-        default_skin_strengths_pa,
         hashin_fi_from_row,
+        hashin_fi_per_ply_from_row,
     )
 
-    st = strengths or default_skin_strengths_pa()
     zones = _bundle_zones(bundle)
     all_res = getattr(bundle, "all_panel_results", None) or []
     fi_max = 0.0
@@ -63,11 +71,30 @@ def max_hashin_fi_from_bundle(
         for row in all_res[pi] or []:
             if row is None:
                 continue
-            fi, nr = hashin_fi_from_row(row, plies, lam=lam_raw, **st)
+            if strengths is not None:
+                fi, nr = hashin_fi_from_row(row, plies, lam=lam_raw, **strengths)
+                if nr:
+                    needs_review = True
+                    continue
+                fi_max = max(fi_max, float(fi))
+                continue
+            ld = getattr(getattr(panel, "lam", None), "_ld", getattr(panel, "lam", None))
+            if not isinstance(ld, LaminateDefinition) or not ld.plies:
+                if isinstance(lam_raw, LaminateDefinition) and lam_raw.plies:
+                    ld = lam_raw
+                else:
+                    raise ValueError(
+                        f"panel {pi} has no LaminateDefinition with plies; cannot "
+                        "evaluate Hashin without producer strengths (FEA-FI-001). "
+                        "Pass strengths= explicitly only for demos."
+                    )
+            fi_v, nr = hashin_fi_per_ply_from_row(row, ld, plies)
             if nr:
                 needs_review = True
                 continue
-            fi_max = max(fi_max, fi)
+            if fi_v.size == 0:
+                continue
+            fi_max = max(fi_max, float(np.max(fi_v)))
     return fi_max, needs_review
 
 

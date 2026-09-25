@@ -184,6 +184,8 @@ class ShellTertiaryResultsOrchestrator:
                 "shear_recovery_mode": SHEAR_RECOVERY_MODE_FSDT_PARABOLIC,
                 "formulation_id": formulation_id,
                 "analysis_dof_layout_id": str(self.cache.analysis_dof_layout_id),
+                "mid_surface_frame": ply_results.mid_surface_frame,
+                "ply_material_frame": ply_results.ply_material_frame,
             },
         )
 

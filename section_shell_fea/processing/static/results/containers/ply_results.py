@@ -7,6 +7,8 @@ Frames (see ``geometry_utilities.coordinate_frames``):
 * **M** (ply material): ``eps_ply_mat`` / ``sig_ply_mat`` after ``T_ply`` / ``T_ply_eps``
 
 Failure criteria consume **M** only. Isotropic panels have M ≡ E (``n_ply=1``).
+Validated ``FrameTag`` fields (ARCH-MUST-016 / FEA-R-001) make that contract
+machine-checkable at the package boundary.
 """
 
 from __future__ import annotations
@@ -14,6 +16,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+
+from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+    FRAME_E,
+    FRAME_M,
+    FrameTag,
+    require_frame_tag,
+)
 
 # Face axis on ``eps_ply_mat`` / ``sig_ply_mat``: 0=outer (x3+), 1=mid, 2=inner (x3-).
 # Blade-structure reading of outer/inner depends on panel kind (skin / spar / web);
@@ -78,6 +87,26 @@ class ShellPlyResults:
 
     element_key: np.ndarray | None = None
     """(n_elem, 3) ``[element_id, panel_index, local_element_index]``."""
+
+    mid_surface_frame: FrameTag = FRAME_E
+    """Frame of ``eps0`` / ``kappa`` (and ``tau_iface``)."""
+
+    ply_material_frame: FrameTag = FRAME_M
+    """Frame of ``eps_ply_mat`` / ``sig_ply_mat`` / ``sig_ply_mat_canonical``."""
+
+    def __post_init__(self) -> None:
+        self.mid_surface_frame = require_frame_tag(self.mid_surface_frame)
+        self.ply_material_frame = require_frame_tag(self.ply_material_frame)
+        if self.mid_surface_frame != FRAME_E:
+            raise ValueError(
+                f"ShellPlyResults.mid_surface_frame must be {FRAME_E!r}; "
+                f"got {self.mid_surface_frame!r}"
+            )
+        if self.ply_material_frame != FRAME_M:
+            raise ValueError(
+                f"ShellPlyResults.ply_material_frame must be {FRAME_M!r}; "
+                f"got {self.ply_material_frame!r}"
+            )
 
 
 __all__ = ["FACE_INNER", "FACE_MID", "FACE_OUTER", "ShellPlyResults"]
