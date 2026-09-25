@@ -41,7 +41,11 @@ class MaterialStiffnessOperator:
         abd = np.asarray(self.ABD, dtype=np.float64)
         if abd.shape != (6, 6) or not np.all(np.isfinite(abd)):
             raise ValueError("ABD must be a finite 6x6 matrix")
-        if not np.allclose(abd, abd.T):
+        from blade_structure_utilities.material_utilities.laminate.definition import (
+            is_symmetric_to_round_off,
+        )
+
+        if not is_symmetric_to_round_off(np.asarray(abd, dtype=np.float64)):
             raise ValueError("ABD must be symmetric")
         if self.A_s is not None:
             a_s = np.asarray(self.A_s, dtype=np.float64)
