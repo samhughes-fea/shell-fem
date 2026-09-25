@@ -298,7 +298,7 @@ def load_cotide_station_recipe(
     bg = inputs.blade_geometry
     ld = inputs.loading
     scale = analysis_geometry_from_blade(bg, inputs.sampling_distribution_parameters)
-    ifu = InternalForce(scaling=scale, loading=ld)
+    ifu = InternalForce(geometry=scale, loading=ld)
     ifu.execute()
     wc = ifu.get_worst_curves_dict()
 
