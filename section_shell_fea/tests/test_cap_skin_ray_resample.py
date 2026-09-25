@@ -172,7 +172,13 @@ def test_cap_interior_segments_nondegenerate(airfoil, layout_key):
 
 
 def test_cap_resample_disabled_preserves_midline_count(airfoil):
-    """With resampling off, cap vertex count matches split-only pipeline."""
+    """With resampling off, every cap keeps its split-only geometry.
+
+    The cap-to-skin bond pass (section_geometry SG-017) may add correspondence
+    vertices, but only *on* the existing polyline: the split-only vertices must
+    all survive, in order, and every added vertex must lie on the original cap.
+    Counting vertices would conflate the two.
+    """
     from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import build_section_view, resolve_system_type
     from blade_structure_utilities.geometry_utilities.section_geometry.midlines.shell_midline_export import build_shell_midline_strips
     from blade_structure_utilities.geometry_utilities.section_geometry.topology.shell_strip_topology import (
@@ -193,7 +199,7 @@ def test_cap_resample_disabled_preserves_midline_count(airfoil):
     )
     _validate_strips(strips)
     split = _split_skin_at_junctions(strips)
-    n_pts_split = {m.label: np.asarray(m.midline_twisted_pitch_axis_blade_frame).shape[0] for m in split if m.kind == "cap"}
+    split_caps = {m.label: np.asarray(m.midline_twisted_pitch_axis_blade_frame) for m in split if m.kind == "cap"}
 
     shell = shell_mesh_inputs_from_section(
         section,
@@ -204,5 +210,21 @@ def test_cap_resample_disabled_preserves_midline_count(airfoil):
         cap_resample_from_skin_rays=False,
     )
     for m in shell.midlines:
-        if m.kind == "cap":
-            assert np.asarray(m.midline_twisted_pitch_axis_blade_frame).shape[0] == n_pts_split[m.label]
+        if m.kind != "cap":
+            continue
+        original = split_caps[m.label]
+        final = np.asarray(m.midline_twisted_pitch_axis_blade_frame)
+        if np.hypot(*(final[0] - original[0])) > np.hypot(*(final[-1] - original[0])):
+            final = final[::-1]  # the mesh handoff may reverse a strip for +x3
+        matched = [int(np.argmin(np.hypot(*(final - point).T))) for point in original]
+        assert all(np.hypot(*(final[i] - point)) < 1e-12 for i, point in zip(matched, original))
+        assert matched == sorted(matched), "split-only cap vertices must survive in order"
+        segments = list(zip(original[:-1], original[1:]))
+        for index, point in enumerate(final):
+            if index in matched:
+                continue
+            distance = min(
+                np.hypot(*(point - (a + np.clip(np.dot(point - a, b - a) / np.dot(b - a, b - a), 0, 1) * (b - a))))
+                for a, b in segments
+            )
+            assert distance < 1e-12, "an added vertex must lie on the original cap polyline"
