@@ -200,3 +200,8 @@ own the 10× tied-web / shear-channel narrative; this entry does not duplicate i
 
 Verification: colocated constraint unit tests, `tests/test_constraint_*.py`, existing cap-tie / cascade / FI suites, and the non-slow shell-FEA campaign. CCX remains validation-only (global backend registration; no raising station solver).
 
+## Channel C load application (2026-09-25)
+
+Open: [FEA-L-001](../pre_processing/loading/docs/bug_log.md#fea-l-001) — Channel C
+samples are lumped onto the nearest node pair with re-derived weights. Found with
+section_loads [SL-007 … SL-012](../../../load_utilities/section_loads/docs/bug_log.md#sl-007).
