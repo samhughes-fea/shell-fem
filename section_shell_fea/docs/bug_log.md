@@ -202,6 +202,48 @@ Verification: colocated constraint unit tests, `tests/test_constraint_*.py`, exi
 
 ## Channel C load application (2026-09-25)
 
-Open: [FEA-L-001](../pre_processing/loading/docs/bug_log.md#fea-l-001) — Channel C
-samples are lumped onto the nearest node pair with re-derived weights. Found with
+Fixed: [FEA-L-001](../pre_processing/loading/docs/bug_log.md#fea-l-001) — Channel C
+samples were lumped onto the nearest node pair with re-derived weights; now
+consistent nodal loads on each strip's own elements. Found with
 section_loads [SL-007 … SL-012](../../../load_utilities/section_loads/docs/bug_log.md#sl-007).
+
+## FEA-L-002 — mesh-convergence "interior" peaks were not mesh-independent (2026-09-25)
+
+**Status:** Fixed 2026-09-25
+**Area:** `processing/static/diagnostics/cascade_mesh_convergence.py`;
+`tests/test_cascade_mesh_convergence.py`
+
+### Symptom
+
+With exact Channel C loads (section_loads SL-007 … SL-012) the tied-convergence
+guard failed: tied skin peak |N12| 65.6 k / 64.3 k / **170.2 k** N/m on the 3-rung
+ladder. The same spike existed under the old loads (126.8 k at the finest rung).
+Tied web "interior" |N12| jumped 47.4 k → 270.3 k on the finest rung.
+
+### Root cause
+
+- The asserted peaks included the elements at kind-crossing junctions (web feet,
+  cap–web crossings), where the shell model has a stress singularity: that peak
+  rises under refinement for any load, so no threshold makes it a convergence
+  check. The 2.0× tolerance set on 2026-09-25 (after SL-001) was calibrated on a
+  load field that happened to sit under it.
+- `*_interior` peaks excluded an end band of `ENDPOINT_BAND = 2` **elements**:
+  its physical width shrinks with refinement, and it never excludes interior
+  T-junctions (a cap crossing a web mid-strip) — which is where the finest-rung
+  web peak was.
+
+### Fix
+
+`junction_masks`: an element is in a junction neighbourhood when its midpoint is
+within a **physical** radius of any node owned by more than one component kind
+(panel end or interior). `sweep_cascade_convergence` fixes the radius for the
+whole ladder at `ENDPOINT_BAND` element lengths of the coarsest rung, so every
+rung reports the same region. The tied-convergence test asserts the junction-free
+peaks (`peak_abs_n12_interior`, `peak_mid_sig_interior`) and keeps the raw peaks
+reported.
+
+### Verification
+
+Tied |N12| away from junctions: skin 65.6 / 64.3 / 66.0 kN/m (1.03×), web 39.9 /
+37.7 / 38.0 kN/m (1.06×), cap 465 / 554 / 452 kN/m (1.22×).
+

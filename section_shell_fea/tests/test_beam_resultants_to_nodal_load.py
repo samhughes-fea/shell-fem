@@ -155,6 +155,7 @@ def test_torsion_about_shear_centre_opt_in_reconstructs_T():
     ndof = int(static.assembly.cache.n_dof_node)
     f_from_sfv = section_force_vector_to_nodal_load(
         static.assembly.node_meta, sfv, ndof=ndof,
+        panel_maps=static.assembly.panel_maps, zones=panel_topology.zones,
     )
     np.testing.assert_allclose(static.f_nodal, f_from_sfv, rtol=0.0, atol=1e-12)
     back = integrate_nodal_load_resultants(

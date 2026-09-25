@@ -143,6 +143,7 @@ def test_combined_rhs_equals_beam_plus_traction() -> None:
 
     f_sfv = section_force_vector_to_nodal_load(
         asm.node_meta, sfv, ndof=ndof, L_x=1.0,
+        panel_maps=asm.panel_maps, zones=panel_topology.zones,
     )
     cascade = LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(

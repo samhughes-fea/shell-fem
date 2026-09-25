@@ -357,13 +357,60 @@ def _fi_sampling_excluded(
     return any(int(kind_owner_count.get(int(g), 0)) > 1 for g in gids)
 
 
+def junction_masks(
+    panel_maps: Sequence[Any],
+    kind_owner_count: Mapping[int, int],
+    radius_m: float,
+) -> list[np.ndarray]:
+    """Per panel: ``True`` for elements within ``radius_m`` (arc length) of a junction.
+
+    A junction is any node owned by more than one component kind -- the panel
+    ends where a web meets the skin, **and** interior T-junctions such as a cap
+    crossing a web, which an end band in element counts never excludes. The
+    radius is physical, so the excluded neighbourhood is the same on every rung
+    of a refinement ladder; an element-count band shrinks as the mesh refines and
+    lets the junction singularity walk into the "interior".
+    """
+    masks: list[np.ndarray] = []
+    for pm in panel_maps:
+        s_nodes = np.asarray(getattr(pm, "s_nodes", ()), dtype=float)
+        elements = list(pm.elements or [])
+        count = s_nodes.size
+        if count == 0 or not elements:
+            masks.append(np.zeros(len(elements), dtype=bool))
+            continue
+        junction_s = [
+            float(s_nodes[i])
+            for i in range(count)
+            if any(
+                int(kind_owner_count.get(int(pm.global_nodes[j]), 0)) > 1
+                for j in (i, i + count)
+                if j < len(pm.global_nodes) and int(pm.global_nodes[j]) >= 0
+            )
+        ]
+        middles = np.array(
+            [float(np.mean([s_nodes[int(li) % count] for li in element])) for element in elements]
+        )
+        if not junction_s:
+            masks.append(np.zeros(middles.size, dtype=bool))
+            continue
+        distance = np.min(np.abs(middles[:, None] - np.asarray(junction_s)[None, :]), axis=1)
+        masks.append(distance <= float(radius_m))
+    return masks
+
+
 def _accumulate_kind_peaks(
     per_panel: Sequence[np.ndarray],
     *,
     labels: Sequence[str],
     band: int = ENDPOINT_BAND,
+    masks: Sequence[np.ndarray] | None = None,
 ) -> tuple[dict[str, float], dict[str, float]]:
-    """Return (raw_max, interior_max) by kind from per-panel elemental arrays."""
+    """Return (raw_max, interior_max) by kind from per-panel elemental arrays.
+
+    ``masks`` (from :func:`junction_masks`) marks the elements the interior peak
+    excludes; without it the legacy end band of ``band`` elements is used.
+    """
     raw = _empty_kind_peaks()
     interior = _nan_kind_peaks()
     interior_seen = {k: False for k in KINDS}
@@ -377,7 +424,10 @@ def _accumulate_kind_peaks(
         finite = vals[np.isfinite(vals)]
         if finite.size:
             raw[kind] = max(raw[kind], float(np.nanmax(finite)))
-        ep = endpoint_band_mask(vals.size, band=band)
+        if masks is not None and pi < len(masks) and masks[pi].size == vals.size:
+            ep = np.asarray(masks[pi], dtype=bool)
+        else:
+            ep = endpoint_band_mask(vals.size, band=band)
         interior_vals = vals[~ep]
         interior_vals = interior_vals[np.isfinite(interior_vals)]
         if interior_vals.size:
@@ -397,11 +447,12 @@ def _kind_peak_kwargs(
     stores: Mapping[str, list[np.ndarray]],
     *,
     labels: Sequence[str],
+    masks: Sequence[np.ndarray] | None = None,
 ) -> dict[str, dict[str, float]]:
     """Build CascadeScalars kwargs for every KIND_PEAK_METRICS (+ interiors)."""
     out: dict[str, dict[str, float]] = {}
     for metric in KIND_PEAK_METRICS:
-        raw, interior = _accumulate_kind_peaks(stores[metric], labels=labels)
+        raw, interior = _accumulate_kind_peaks(stores[metric], labels=labels, masks=masks)
         out[metric] = raw
         out[f"{metric}_interior"] = interior
     return out
@@ -423,8 +474,15 @@ def run_cascade_at_frac(
     junction_band_step_over_h: float | None = None,
     junction_band_panel_labels: Collection[str] | None = None,
     junction_band_which: str = "both",
+    junction_radius_m: float | None = None,
 ) -> CascadeScalars:
-    """Build mesh at ``frac``, QA, solve cascade, extract dataclass scalars."""
+    """Build mesh at ``frac``, QA, solve cascade, extract dataclass scalars.
+
+    ``junction_radius_m`` is the arc length around every kind-crossing junction
+    that ``*_interior`` peaks exclude; ``None`` uses ``ENDPOINT_BAND`` elements of
+    this rung. A ladder should pass one value for every rung
+    (:func:`sweep_cascade_convergence` does).
+    """
     thickness = dict(thickness or DEFAULT_THICKNESS)
     load = dict(load or DEFAULT_LOAD)
     shell = _build_shell(
@@ -657,7 +715,9 @@ def run_cascade_at_frac(
         # Interface-shear diagnostics are recorded on peak_hashin_il but
         # never participate in governing selection.
 
-    peak_kwargs = _kind_peak_kwargs(stores, labels=labels)
+    radius = float(junction_radius_m) if junction_radius_m is not None else ENDPOINT_BAND * float(report.h_m)
+    masks = junction_masks(panel_maps, kind_owner_count, radius) if panel_maps else None
+    peak_kwargs = _kind_peak_kwargs(stores, labels=labels, masks=masks)
     diag = results.diagnostics
     return CascadeScalars(
         frac=float(frac),
@@ -689,7 +749,15 @@ def sweep_cascade_convergence(
     interface_constraint_mode: str = "shared",
     **kwargs: Any,
 ) -> list[CascadeScalars]:
-    """Run the density ladder and return per-rung scalars."""
+    """Run the density ladder and return per-rung scalars.
+
+    The junction neighbourhood excluded from ``*_interior`` peaks is fixed for
+    the whole ladder at ``ENDPOINT_BAND`` element lengths of the coarsest rung, so
+    every rung reports the same physical region.
+    """
+    if "junction_radius_m" not in kwargs:
+        chord = float(kwargs.get("chord", DEFAULT_CHORD))
+        kwargs["junction_radius_m"] = ENDPOINT_BAND * max(float(f) for f in refinements) * chord
     return [
         run_cascade_at_frac(
             frac,

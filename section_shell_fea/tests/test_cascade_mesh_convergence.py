@@ -100,7 +100,17 @@ def test_mesh_qa_passes_on_every_tied_rung(tied_rows):
 
 
 def test_tied_s_t_q_converge(tied_rows):
-    for attr in ("peak_abs_n12", "peak_mid_sig"):
+    """Membrane and mid-surface stress converge away from junctions.
+
+    A kind-crossing junction (web foot, cap crossing a web) is a stress
+    singularity of the shell model: its peak keeps rising under refinement for any
+    load, so a convergence check that includes it is not a check at any
+    threshold. The ``*_interior`` peaks exclude a fixed physical radius around
+    every junction -- panel ends *and* interior T-junctions -- the same on every
+    rung (``junction_masks``). Measured 2026-09-25 with exact Channel C loads:
+    tied skin |N12| 65.6 / 64.3 / 66.0 kN/m, web 39.9 / 37.7 / 38.0 kN/m.
+    """
+    for attr in ("peak_abs_n12_interior", "peak_mid_sig_interior"):
         series = series_by_kind(tied_rows, attr)
         for kind in ("cap", "skin", "web"):
             d = drift(series[kind])

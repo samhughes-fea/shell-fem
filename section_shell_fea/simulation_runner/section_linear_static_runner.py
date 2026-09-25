@@ -485,6 +485,8 @@ class SectionLinearStaticRunner:
             f = section_force_vector_to_nodal_load(
                 asm.node_meta,
                 sfv,
+                panel_maps=asm.panel_maps,
+                zones=zones,
                 ndof=ndof,
                 L_x=self._L_x,
             )
@@ -511,6 +513,8 @@ class SectionLinearStaticRunner:
             f = section_force_vector_to_nodal_load(
                 asm.node_meta,
                 sfv,
+                panel_maps=asm.panel_maps,
+                zones=zones,
                 ndof=ndof,
                 L_x=self._L_x,
             )
@@ -537,6 +541,8 @@ class SectionLinearStaticRunner:
             f = section_force_vector_to_nodal_load(
                 asm.node_meta,
                 sfv,
+                panel_maps=asm.panel_maps,
+                zones=zones,
                 ndof=ndof,
                 L_x=self._L_x,
             )

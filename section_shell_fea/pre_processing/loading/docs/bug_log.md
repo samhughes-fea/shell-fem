@@ -10,7 +10,7 @@ fixed — fix and verification. Related: section_loads
 
 | ID | Title | Status |
 |---|---|---|
-| [FEA-L-001](#fea-l-001) | Channel C samples are lumped onto the nearest node pair with re-derived weights | **Open** |
+| [FEA-L-001](#fea-l-001) | Channel C samples are lumped onto the nearest node pair with re-derived weights | **Fixed** 2026-09-25 — consistent nodal loads |
 
 ---
 
@@ -18,7 +18,7 @@ fixed — fix and verification. Related: section_loads
 
 **Channel C samples are lumped onto the nearest node pair with re-derived weights**
 
-**Status:** Open
+**Status:** Fixed 2026-09-25
 **Found:** 2026-09-25 (tracing section_loads SL-007 to the FE)
 **Area:** `section_force_vector_to_nodal_load.py` (production path:
 `SectionLinearStaticRunner` with `load_channel="thinwall"`)
@@ -54,3 +54,29 @@ Consistent nodal loads: interpolate each strip's density field (piecewise-linear
 σ, piecewise-constant q — SL-009) onto that strip's own mesh elements and
 integrate with the element shape functions, so ∑ nodal loads reproduces the
 field's resultants exactly and no load crosses to another strip.
+
+### Fix
+
+`section_force_vector_to_nodal_load(node_meta, sfv, *, panel_maps, zones, ...)`
+integrates each strip's field against **that strip's own** element shape
+functions:
+
+- the field is rebuilt from the strip's samples — Channel C's start / mid / end
+  triplets (Simpson weights, detected from `ds`) as an exact quadratic per
+  segment; other producers as a linear field through their samples;
+- every sample must lie on its strip's polyline (1 nm), and its arc position is
+  located there; a sample off its strip, or for a strip with no panel, is refused;
+- each element is split at the field's breakpoints and `∫ f N ds` is integrated
+  exactly on every piece;
+- loads go 50/50 to the bottom/top pair, and the in-plane force vector is
+  resolved onto each node's `(t, normal_2d(t))` — the basis
+  `applied_force_resultant_yz` inverts, so the applied force equals the field's.
+
+### Verification
+
+`tests/section_loads/unit/test_section_force_vector_to_nodal.py`: a linear
+density 100 → 50 N/m on one element gives nodal loads `(2·100 + 50)/6` and
+`(100 + 2·50)/6`, summing to the field's integral. FE suites pass with Channel C
+through the runner. The tied-convergence guard then exposed that its peak metric
+included junction singularities — section_shell_fea FEA-L-002.
+
