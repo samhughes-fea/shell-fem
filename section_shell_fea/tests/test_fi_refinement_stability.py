@@ -59,10 +59,12 @@ def _isolate_formulation_registry():
 #
 # Tied caps must land on the same scale as the connected control components.
 MAX_TIED_CAP_DRIFT = 2.0
-# Untied caps remain worse than the connected control. Measured 2026-09-20 after
-# the BL-015 channel-map correction: 16.17x (tied web is 1.033x on the same
-# ladder). Threshold 10 still discriminates.
-MIN_UNTIED_CAP_DRIFT = 10.0
+# Untied caps must fail the tolerance the tied assertions accept and drift at
+# least twice as much as the worst connected control. Measured 2026-09-25 after
+# section_loads SL-001: untied cap Hashin 5.52x vs control 1.33x (4.1x). The
+# previous absolute floor of 10x was calibrated on the mis-celled Channel C load
+# field (16.17x), not on what the guard is for.
+MIN_UNTIED_OVER_CONTROL = 2.0
 
 
 def _drift(values: list[float]) -> float:
@@ -117,11 +119,15 @@ def test_untied_cap_fi_diverges_so_the_test_discriminates(untied_sweep):
     """
     cap = _drift(untied_sweep["cap"])
     control = max(_drift(untied_sweep["skin"]), _drift(untied_sweep["web"]))
-    assert cap >= MIN_UNTIED_CAP_DRIFT, (
-        f"untied cap FI drift is only {cap:.3f}x; the fixture no longer "
-        f"discriminates, so the tied assertions are vacuous"
+    assert cap > MAX_TIED_CAP_DRIFT, (
+        f"untied cap FI drift {cap:.3f}x passes the tied tolerance "
+        f"{MAX_TIED_CAP_DRIFT}x; the fixture no longer discriminates, so the tied "
+        f"assertions are vacuous"
     )
-    assert cap > control, "untied cap must be worse than the connected control"
+    assert cap >= MIN_UNTIED_OVER_CONTROL * control, (
+        f"untied cap FI drift {cap:.3f}x is not clearly worse than the connected "
+        f"control {control:.3f}x"
+    )
 
 
 def test_untied_connected_components_converge(untied_sweep):

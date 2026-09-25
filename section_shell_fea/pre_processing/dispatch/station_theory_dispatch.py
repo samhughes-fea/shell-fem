@@ -207,7 +207,9 @@ def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResu
             about_xy=BEAM_LOAD_AXIS_YZ,
         )
         sfv = shape_section_force_vector(
-            resultants, getattr(request.shell_inputs, "midlines", None)
+            resultants,
+            getattr(request.shell_inputs, "midlines", None),
+            cell_wall_loops=getattr(request.shell_inputs, "cell_wall_loops", None),
         )
     return StationTheorySolveResult(
         fsdt_periodic_extra=fsdt_periodic_station_hashin(

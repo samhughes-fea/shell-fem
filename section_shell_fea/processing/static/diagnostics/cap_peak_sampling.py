@@ -306,7 +306,7 @@ def analyze_cap_peak_rung(
         panel_topology=shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True),
         section_strip_mesh=mesh,
         resultants=resultants,
-        section_force_vector=shape_section_force_vector(resultants, shell.midlines),
+        section_force_vector=shape_section_force_vector(resultants, shell.midlines, cell_wall_loops=shell.cell_wall_loops),
         load_channel="thinwall",
         cap_tie_mode=tie,
         interface_constraint_mode=interface_constraint_mode,

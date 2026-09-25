@@ -122,7 +122,9 @@ def _run(frac: float, cap_tie_mode: str, channel: str):
         )
 
         kwargs["section_force_vector"] = shape_section_force_vector(
-            resultants, panel_topology.shell_inputs.midlines
+            resultants,
+            panel_topology.shell_inputs.midlines,
+            cell_wall_loops=panel_topology.shell_inputs.cell_wall_loops,
         )
     runner = SectionLinearStaticRunner(
         panel_topology=panel_topology,

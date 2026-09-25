@@ -102,6 +102,9 @@ def build_shell_panel_topology(
     from blade_structure_utilities.geometry_utilities.section_geometry.midlines.shell_midline_export import (
         build_shell_midline_strips,
     )
+    from blade_structure_utilities.geometry_utilities.section_geometry.cell_wall_loops import (
+        build_cell_wall_loops,
+    )
     from blade_structure_utilities.geometry_utilities.section_geometry.topology.shell_strip_topology import (
         build_shell_strip_topology,
     )
@@ -156,6 +159,7 @@ def build_shell_panel_topology(
         twist_rad=float(twist_rad),
         leading_edge_twisted_pitch_axis_blade_frame=le_b,  # type: ignore[arg-type]
         trailing_edge_twisted_pitch_axis_blade_frame=te_b,  # type: ignore[arg-type]
+        cell_wall_loops=build_cell_wall_loops(strips),
     )
     return shell_panel_topology_from_shell_inputs(
         shell_inputs,

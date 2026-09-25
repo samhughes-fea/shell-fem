@@ -82,7 +82,7 @@ def test_production_execute_scatters_once(monkeypatch):
         T=5.0e3, Vy=2.0e4, Mz=1.0e4,
         frame=FRAME_SECTION_YZ, about_xy=BEAM_LOAD_AXIS_YZ,
     )
-    sfv = shape_section_force_vector(resultants, shell.midlines)
+    sfv = shape_section_force_vector(resultants, shell.midlines, cell_wall_loops=shell.cell_wall_loops)
     runner = SectionLinearStaticRunner(
         panel_topology=topology,
         section_strip_mesh=mesh,

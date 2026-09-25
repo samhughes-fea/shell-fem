@@ -122,7 +122,7 @@ def run_ccx_cascade_at_frac(
     topo = shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True)
     zones = list(topo.zones)
     resultants = BeamResultantVector.from_named(**load)
-    sfv = shape_section_force_vector(resultants, shell.midlines, L_x=float(l_x))
+    sfv = shape_section_force_vector(resultants, shell.midlines, cell_wall_loops=shell.cell_wall_loops, L_x=float(l_x))
     n11_panels, n12_panels = sfv_to_n11_n12(sfv, zones)
 
     work = Path(work_dir) if work_dir is not None else Path("ccx_cascade_work")

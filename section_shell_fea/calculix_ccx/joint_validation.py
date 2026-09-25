@@ -354,7 +354,7 @@ def run_mitc4_kind_peaks_from_shell(
         panel_topology=topo,
         section_strip_mesh=section_strip_mesh,
         resultants=resultants,
-        section_force_vector=shape_section_force_vector(resultants, shell.midlines),
+        section_force_vector=shape_section_force_vector(resultants, shell.midlines, cell_wall_loops=shell.cell_wall_loops),
         load_channel="thinwall",
         cap_tie_mode=cap_tie_mode,
         interface_constraint_mode=interface_constraint_mode,

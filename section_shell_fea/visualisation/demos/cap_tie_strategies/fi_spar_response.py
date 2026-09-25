@@ -277,7 +277,7 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
             section_strip_mesh=mesh_t,
             resultants=resultants,
             section_force_vector=shape_section_force_vector(
-                resultants, si_t.midlines
+                resultants, si_t.midlines, cell_wall_loops=si_t.cell_wall_loops
             ),
             load_channel="thinwall",
             cap_tie_mode=cap_tie_mode,

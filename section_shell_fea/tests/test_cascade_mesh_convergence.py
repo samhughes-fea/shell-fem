@@ -15,13 +15,19 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner
     SectionLinearStaticRunner,
 )
 
-MAX_TIED_DRIFT = 4.0
-# Short 3-rung smoke ladder: continuum-owned Hashin can still climb after
-# kind-crossing/tie filters drop junction-dominated coarse peaks.
-MAX_TIED_HASHIN_DRIFT = 6.0
-MIN_UNTIED_CAP_DRIFT = 3.0  # still >> skin/web control after junction-local h
-# Membrane/mid-σ on this 3-rung smoke is looser than the GCI study (2×).
-# Measured 2026-09-20 after BL-015: tied skin |N12| 3.03×. Hashin web is 1.03×.
+MAX_TIED_DRIFT = 2.0
+# Measured 2026-09-25 after section_loads SL-001 (Channel C cells from the
+# section's CellWallLoops): tied skin |N12| 1.60x, web 1.03x; tied Hashin skin
+# 1.10x, web 1.19x. The previous 4.0 was set on the mis-celled load field
+# (tied skin |N12| 3.03x), loose enough that the untied defect (2.9x) passed it.
+# Tied Hashin shares the tolerance: the previous 6.0 (set when continuum-owned
+# Hashin climbed on the mis-celled load field) would pass the untied defect
+# (5.5x) as converged.
+MAX_TIED_HASHIN_DRIFT = MAX_TIED_DRIFT
+# The discriminator is relative, not a calibrated floor: the untied cap must
+# fail the tolerance the tied assertions accept, and drift at least twice as
+# much as the worst connected control (measured 2.84x on |N12|, 4.14x on Hashin).
+MIN_UNTIED_OVER_CONTROL = 2.0
 
 
 @pytest.fixture(scope="module")
@@ -173,10 +179,14 @@ def test_untied_cap_s_and_q_diverge(untied_rows):
         series = series_by_kind(untied_rows, attr)
         cap = drift(series["cap"])
         control = max(drift(series["skin"]), drift(series["web"]))
-        assert cap >= MIN_UNTIED_CAP_DRIFT, (
-            f"untied {attr} cap drift only {cap:.3f}x; fixture no longer discriminates"
+        assert cap > MAX_TIED_DRIFT, (
+            f"untied {attr} cap drift {cap:.3f}x passes the tied tolerance "
+            f"{MAX_TIED_DRIFT}x; fixture no longer discriminates"
         )
-        assert cap > control
+        assert cap >= MIN_UNTIED_OVER_CONTROL * control, (
+            f"untied {attr} cap drift {cap:.3f}x is not clearly worse than the "
+            f"connected control {control:.3f}x"
+        )
 
 
 def test_connected_components_converge_untied(untied_rows):
