@@ -96,8 +96,8 @@ def test_dispatch_routes_fsdt_to_periodic_hashin(monkeypatch) -> None:
     assert res.backend_extra is None
 
 
-def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None:
-    """Usable load-field traction must use linear-static station runner execute()."""
+def test_fsdt_traction_requires_sfv_no_overlay(monkeypatch) -> None:
+    """Usable load-field traction selects Channel B; SFV required; no overlay kwargs."""
     from blade_structure_utilities.load_utilities.section_loads.surface_traction.station_load import (
         DistributedStationLoadSpec,
         IncidentAeroSpec,
@@ -126,7 +126,7 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
     class _FakeRunner:
         def __init__(self, **kwargs):
             captured.update(kwargs)
-            self.used_traction = True
+            self.load_channel_used = str(kwargs.get("load_channel", "thinwall"))
             self.assembly = _FakeAssembly()
 
         def execute(self):
@@ -177,6 +177,20 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
         ),
     )
 
+    with pytest.raises(ValueError, match="section_force_vector is required"):
+        std.fsdt_periodic_station_hashin(
+            None,
+            None,
+            N=0.0,
+            Vy=0.0,
+            Vz=0.0,
+            My=0.0,
+            Mz=0.0,
+            T=1.0,
+            section_strip_mesh=object(),
+            load_field=lf,
+        )
+
     out = std.fsdt_periodic_station_hashin(
         None,
         None,
@@ -188,11 +202,15 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
         T=1.0,
         section_strip_mesh=object(),
         load_field=lf,
+        section_force_vector=object(),
     )
     assert out["solver"] == "fsdt_linear_static_cascade"
-    assert out["used_traction"] is True
-    assert captured.get("traction_field") is not None
-    assert captured.get("traction_points_yz") is not None
+    assert out["load_channel"] == "surface_traction"
+    assert out["used_traction"] is False
+    assert "traction_field" not in captured
+    assert "traction_points_yz" not in captured
+    assert captured.get("load_channel") == "surface_traction"
+    assert captured.get("section_force_vector") is not None
 
 
 def test_dispatch_routes_ccx_to_thin_wall(monkeypatch) -> None:

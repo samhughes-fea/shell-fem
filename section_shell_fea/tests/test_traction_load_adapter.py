@@ -273,7 +273,7 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
     assert Vy == 0.0 and Vz == 0.0 and T == 12.0
 
     traction_points = traction_points_from_load_field(lf)
-    traction_field = lf.traction_field if traction_points is not None else None
+    assert traction_points is not None
     resultants = BeamResultantVector.from_named(
         N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
         frame=FRAME_SECTION_YZ,
@@ -284,8 +284,6 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
             panel_topology=panel_topology,
             resultants=resultants,
             section_force_vector=equipollent_section_force_vector(panel_topology, resultants),
-            traction_field=traction_field,
-            traction_points_yz=traction_points,
             section_strip_mesh=build_section_strip_mesh(
                 panel_topology.shell_inputs,
                 n_elements_per_panel=6,
@@ -294,7 +292,6 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
             load_channel="equipollent",
         ).execute()
     )
-    assert cascade.used_traction is False
     assert cascade.quaternary is not None
     fi = float((cascade.quaternary.governing or {}).get("fi", 0.0) or 0.0)
     assert np.isfinite(fi)
