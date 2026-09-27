@@ -55,9 +55,17 @@ python src/blade_structure_precompute/examples/section_selection/e2e_section_sel
 
 Log path for this closeout attempt: `docs/runs/e2e_section_selection/wp5_followon_2D-F_no_plots.log`.
 
-**Status at closeout:** pin **launched and in flight** (pass-1 station-level FE for all 16 stations after upstream Scale/IF/Feasibility/Stiffness). Append warm `stage_timings_s.section_selection`, acceptance, digests, FE calls, cache counters, and governing locations/modes to this file when the job finishes. Do not treat a contested/partial run as a performance oracle.
+**Status:** job finished (`job_e2e_section_selection_2026-09-27_23-35-46`).
 
-Compare against WP0 freeze and prior `docs/runs/e2e_section_selection/wp_s5_2D-F_run*.log` when complete.
+| Metric | Value |
+|--------|--------|
+| Wall `stage_timings_s.section_selection` | **1020.6 s** |
+| Stiffness selection | 116.7 s |
+| Campaign gates | 16/16 gated OK, `stop_reason=gated_mono_after_pass_ge_2` |
+| Shell process exit | 1 (PowerShell `Tee-Object` / stderr INFO → `NativeCommandError`; campaign JSON shows success) |
+| `section_acceptance.passed` | false (`shell_fem_results_seen=false`, `pipeline_complete=false` — acceptance packaging, not FE gate failure) |
+
+Compare against a same-day exclusive-window baseline before claiming BSP wall-time reduction; operation-level gains remain the retained evidence.
 
 ## D5.4 — Delivery slices (Conventional Commits)
 
