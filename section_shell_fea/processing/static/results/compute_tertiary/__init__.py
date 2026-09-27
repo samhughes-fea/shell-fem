@@ -20,6 +20,7 @@ from .recovery_operators import (
     SHEAR_RECOVERY_MODE_HSDT_Q1,
     TransverseShearRecoveryProtocol,
     fsdt_interface_shear_profile,
+    fsdt_interface_shear_profile_coefficients,
     resolve_shear_recovery_operator,
 )
 from .tertiary_results_orchestrator import ShellTertiaryResultsOrchestrator
@@ -39,6 +40,7 @@ __all__ = [
     "clpt_inputs_trusted",
     "default_skin_strengths_pa",
     "fsdt_interface_shear_profile",
+    "fsdt_interface_shear_profile_coefficients",
     "interlaminar_inputs_trusted",
     "ply_strains_stresses_material_frame",
     "resolve_shear_recovery_operator",

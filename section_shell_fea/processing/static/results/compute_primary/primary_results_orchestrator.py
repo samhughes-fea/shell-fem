@@ -37,6 +37,10 @@ class ShellPrimaryResultsOrchestrator:
     ``from_global`` runner with no per-element formulation objects) the result
     set carries an empty ``ShellElementalResults`` — matching the pre-tightening
     runner behaviour exactly.
+
+    ``K @ d_global`` is computed once; ``r_full``, residual, and fixed-DOF
+    reactions share that matvec (bitwise-identical to three independent matvecs
+    when arithmetic order is unchanged).
     """
 
     def __init__(
@@ -65,13 +69,15 @@ class ShellPrimaryResultsOrchestrator:
         self.disassembled: DisassembledShellResults | None = None
 
     def compute(self) -> ShellPrimaryResultSet:
-        r_full = np.asarray(self.K @ self.d_global - self.f, dtype=float)
+        f = np.asarray(self.f, dtype=float).ravel()
+        d = np.asarray(self.d_global, dtype=float).ravel()
+        Kd = np.asarray(self.K @ d, dtype=float).ravel()
+        r_full = Kd - f
+        # Helper APIs retain sign conventions; share the single matvec via Kd=.
         reactions = ComputeReactionForce(
-            K=self.K, f=self.f, d_global=self.d_global, fixed=self.fixed,
+            K=self.K, f=f, d_global=d, fixed=self.fixed, Kd=Kd,
         ).compute()
-        residual = ComputeResidual(
-            K=self.K, f=self.f, d_global=self.d_global,
-        ).compute()
+        residual = ComputeResidual(K=self.K, f=f, d_global=d, Kd=Kd).compute()
         self.primary = PrimaryShellResults(reactions=reactions, residual=residual, r_full=r_full)
 
         if self.cache is not None and self.global_sys is not None and self.field is not None:

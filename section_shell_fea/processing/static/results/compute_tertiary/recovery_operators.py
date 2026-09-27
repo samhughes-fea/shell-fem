@@ -26,7 +26,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     ShellPanelResultants,
 )
 from .compute_clt_strains import batched_clt_strains
-from .compute_ply_stresses import ply_strains_stresses_material_frame
+from .compute_ply_stresses import ply_strains_stresses_material_frame_batch
 from .provenance import interlaminar_inputs_trusted
 
 SHEAR_RECOVERY_MODE_FSDT_PARABOLIC = "fsdt_interface_parabolic"
@@ -62,14 +62,14 @@ class InPlaneLaminateRecoveryOperator:
         n_ply = len(getattr(lam, "plies", None) or [])
         eps_ply: list[np.ndarray | None] = [None] * n_rows
         sig_ply: list[np.ndarray | None] = [None] * n_rows
-        for i in range(n_rows):
-            if not mask[i]:
-                continue
-            eps_mat, sig_mat = ply_strains_stresses_material_frame(
-                lam, eps0[i], kappa[i],
+        trusted_idx = np.flatnonzero(np.asarray(mask, dtype=bool))
+        if trusted_idx.size > 0 and n_ply > 0:
+            eps_batch, sig_batch = ply_strains_stresses_material_frame_batch(
+                lam, eps0[trusted_idx], kappa[trusted_idx],
             )
-            eps_ply[i] = eps_mat
-            sig_ply[i] = sig_mat
+            for local_i, global_i in enumerate(trusted_idx.tolist()):
+                eps_ply[global_i] = eps_batch[local_i]
+                sig_ply[global_i] = sig_batch[local_i]
         return InPlaneLaminateRecoveryResult(
             eps0=eps0,
             kappa=kappa,
@@ -153,6 +153,57 @@ def _int_parab(
     return (x3_b - x3_a) - (4.0 / (3.0 * h * h)) * (x3_b**3 - x3_a**3)
 
 
+def fsdt_interface_shear_profile_coefficients(
+    *,
+    x3_iface: NDArray[np.float64],
+    h: float,
+    g13_ply: NDArray[np.float64] | None = None,
+    g23_ply: NDArray[np.float64] | None = None,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Laminate-static unit-Q coefficients for parabolic interface shear.
+
+    Returns ``(coeff13, coeff23)`` each ``(n_iface,)`` such that
+    ``tau_13 = q1 * coeff13`` and ``tau_23 = q2 * coeff23``. Free-surface
+    entries are identically zero. Independent of per-row ``Q1``/``Q2``.
+    """
+    x3 = np.asarray(x3_iface, dtype=np.float64).ravel()
+    n_iface = x3.size
+    coeff13 = np.zeros(n_iface, dtype=np.float64)
+    coeff23 = np.zeros(n_iface, dtype=np.float64)
+    if h <= 0.0 or n_iface < 2:
+        return coeff13, coeff23
+
+    n_ply = n_iface - 1
+    if g13_ply is None or g23_ply is None or len(g13_ply) != n_ply:
+        g13 = np.ones(n_ply, dtype=np.float64)
+        g23 = np.ones(n_ply, dtype=np.float64)
+    else:
+        g13 = np.asarray(g13_ply, dtype=np.float64).ravel()
+        g23 = np.asarray(g23_ply, dtype=np.float64).ravel()
+
+    g13_i = np.empty(n_iface, dtype=np.float64)
+    g23_i = np.empty(n_iface, dtype=np.float64)
+    g13_i[0], g13_i[-1] = g13[0], g13[-1]
+    g23_i[0], g23_i[-1] = g23[0], g23[-1]
+    if n_iface > 2:
+        g13_i[1:-1] = 0.5 * (g13[:-1] + g13[1:])
+        g23_i[1:-1] = 0.5 * (g23[:-1] + g23[1:])
+
+    w = np.clip(1.0 - (2.0 * x3 / h) ** 2, 0.0, None)
+    dx3_int = _int_parab(x3[:-1], x3[1:], h)
+    norm13 = float(np.sum(g13 * dx3_int))
+    norm23 = float(np.sum(g23 * dx3_int))
+    if norm13 > 0.0:
+        coeff13 = g13_i * w / norm13
+    if norm23 > 0.0:
+        coeff23 = g23_i * w / norm23
+    coeff13[0] = 0.0
+    coeff13[-1] = 0.0
+    coeff23[0] = 0.0
+    coeff23[-1] = 0.0
+    return coeff13, coeff23
+
+
 def fsdt_interface_shear_profile(
     *,
     q1: float,
@@ -177,45 +228,15 @@ def fsdt_interface_shear_profile(
     tau_iface
         ``(n_iface, 2)`` with columns ``[tau_13, tau_23]`` [Pa].
     """
-    x3 = np.asarray(x3_iface, dtype=np.float64).ravel()
-    n_iface = x3.size
-    out = np.zeros((n_iface, 2), dtype=np.float64)
-    if h <= 0.0 or n_iface < 2:
-        return out
-
-    n_ply = n_iface - 1
-    if g13_ply is None or g23_ply is None or len(g13_ply) != n_ply:
-        g13 = np.ones(n_ply, dtype=np.float64)
-        g23 = np.ones(n_ply, dtype=np.float64)
-    else:
-        g13 = np.asarray(g13_ply, dtype=np.float64).ravel()
-        g23 = np.asarray(g23_ply, dtype=np.float64).ravel()
-
-    # Interface G: free surfaces use adjacent ply; interiors average neighbours.
-    # (Vectorised: g13_i[1:-1] is the elementwise average of adjacent plies —
-    # same values as the old per-interface Python loop, computed in one call.)
-    g13_i = np.empty(n_iface, dtype=np.float64)
-    g23_i = np.empty(n_iface, dtype=np.float64)
-    g13_i[0], g13_i[-1] = g13[0], g13[-1]
-    g23_i[0], g23_i[-1] = g23[0], g23[-1]
-    if n_iface > 2:
-        g13_i[1:-1] = 0.5 * (g13[:-1] + g13[1:])
-        g23_i[1:-1] = 0.5 * (g23[:-1] + g23[1:])
-
-    w = np.clip(1.0 - (2.0 * x3 / h) ** 2, 0.0, None)
-    # Integrate piecewise-constant G * parabola over each ply, vectorised over
-    # all plies at once (was a per-ply Python accumulation loop).
-    dx3_int = _int_parab(x3[:-1], x3[1:], h)
-    norm13 = float(np.sum(g13 * dx3_int))
-    norm23 = float(np.sum(g23 * dx3_int))
-
-    if norm13 > 0.0:
-        out[:, 0] = float(q1) * g13_i * w / norm13
-    if norm23 > 0.0:
-        out[:, 1] = float(q2) * g23_i * w / norm23
-    # Enforce free-surface BC exactly (numerical / weight roundoff).
-    out[0, :] = 0.0
-    out[-1, :] = 0.0
+    coeff13, coeff23 = fsdt_interface_shear_profile_coefficients(
+        x3_iface=x3_iface,
+        h=h,
+        g13_ply=g13_ply,
+        g23_ply=g23_ply,
+    )
+    out = np.zeros((coeff13.size, 2), dtype=np.float64)
+    out[:, 0] = float(q1) * coeff13
+    out[:, 1] = float(q2) * coeff23
     return out
 
 
@@ -223,6 +244,36 @@ class FSDTInterfaceShearRecoveryOperator:
     """FSDT interface τ13/τ23 from Q1,Q2 — parabolic, resultant-consistent, free-surface zero."""
 
     recovery_mode: str = SHEAR_RECOVERY_MODE_FSDT_PARABOLIC
+
+    def panel_static_coefficients(
+        self,
+        lam: Any,
+        *,
+        thickness_m: float | None = None,
+        g13_ply: NDArray[np.float64] | None = None,
+        g23_ply: NDArray[np.float64] | None = None,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], float, NDArray[np.float64]]:
+        """Laminate-static shear coeffs for one panel (reuse across Q1/Q2 rows)."""
+        plies = getattr(lam, "plies", None) or []
+        n_ply = len(plies)
+        if n_ply == 0:
+            empty = np.zeros(0, dtype=np.float64)
+            return empty, empty, 0.0, np.zeros(0, dtype=np.float64)
+        x3_iface = np.asarray(
+            lam.ply_stack_x3_stations().x3_interfaces, dtype=np.float64,
+        )
+        h = float(thickness_m) if thickness_m is not None and thickness_m > 0.0 else float(
+            lam.total_thickness()
+        )
+        if g13_ply is None or g23_ply is None:
+            g13_ply, g23_ply = _ply_transverse_g(lam)
+        c13, c23 = fsdt_interface_shear_profile_coefficients(
+            x3_iface=x3_iface,
+            h=h,
+            g13_ply=g13_ply,
+            g23_ply=g23_ply,
+        )
+        return c13, c23, h, x3_iface
 
     def recover_interfaces(
         self,
@@ -233,7 +284,14 @@ class FSDTInterfaceShearRecoveryOperator:
         thickness_m: float | None = None,
         g13_ply: NDArray[np.float64] | None = None,
         g23_ply: NDArray[np.float64] | None = None,
+        coeff13: NDArray[np.float64] | None = None,
+        coeff23: NDArray[np.float64] | None = None,
     ) -> NDArray[np.float64]:
+        if coeff13 is not None and coeff23 is not None:
+            out = np.zeros((coeff13.size, 2), dtype=np.float64)
+            out[:, 0] = float(q1) * np.asarray(coeff13, dtype=np.float64)
+            out[:, 1] = float(q2) * np.asarray(coeff23, dtype=np.float64)
+            return out
         plies = getattr(lam, "plies", None) or []
         n_ply = len(plies)
         if n_ply == 0:
@@ -360,6 +418,7 @@ __all__ = [
     "SHEAR_RECOVERY_MODE_HSDT_Q1",
     "TransverseShearRecoveryProtocol",
     "fsdt_interface_shear_profile",
+    "fsdt_interface_shear_profile_coefficients",
     "parabolic_weight",
     "resolve_shear_recovery_operator",
 ]
