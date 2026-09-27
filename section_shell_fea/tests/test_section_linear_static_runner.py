@@ -81,7 +81,8 @@ def test_runner_collects_index_maps():
     K, f, constraints, fixed, n_gdof = _tiny_system()
     runner = SectionLinearStaticRunner.from_global(K, f, constraints, fixed, n_gdof)
     runner.solve_linear_system_only()
-    assert runner.index_maps.constraint_map is not None
-    assert runner.index_maps.reduction_map is not None
-    assert runner.index_maps.reconstruction_map is not None
-    assert len(runner.index_maps.constraint_map) == n_gdof
+    maps = runner.ensure_provenance_maps()
+    assert maps.constraint_map is not None
+    assert maps.reduction_map is not None
+    assert maps.reconstruction_map is not None
+    assert len(maps.constraint_map) == n_gdof

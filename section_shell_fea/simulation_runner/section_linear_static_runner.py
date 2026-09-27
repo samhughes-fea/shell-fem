@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import warnings
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import scipy.sparse as sp
@@ -31,7 +31,7 @@ from blade_structure_utilities.load_utilities.section_loads import (
 from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
     SectionStripMesh,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.solve_states import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.contracts.solve_states import (
     ConstrainedShellSystem,
     DisassembledShellResults,
     GlobalShellSystem,
@@ -41,8 +41,8 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
     SolvedReducedShellSystem,
 )
 # diagnostics
-from ..processing.static.diagnostics.dof_provenance import dump_index_maps
-from ..processing.static.diagnostics.solve_phase_timing import (
+from ..processing.static.diagnostics.solve.dof_provenance import dump_index_maps
+from ..processing.static.diagnostics.solve.solve_phase_timing import (
     PHASE_ASSEMBLE_GLOBAL_SYSTEM,
     PHASE_CONSTRAIN_GLOBAL_SYSTEM,
     PHASE_PREPARE_LOCAL_SYSTEM,
@@ -57,13 +57,22 @@ from ..processing.static.diagnostics.solve_phase_timing import (
 )
 from ..processing.static.results.containers.diagnostics_bin import DiagnosticsBin
 # operations
-from ..processing.static.operations.assemble_global import AssembleGlobalShellSystem
-from ..processing.static.operations.constrain_global import ConstrainGlobalShellSystem
-from ..processing.static.operations.prepare_local import PrepareLocalShellSystem
-from ..processing.static.operations.reconstruct_field import ReconstructGlobalShellField
-from ..processing.static.operations.reduce_constrained import KrrModifier, ReduceConstrainedShellSystem
-from ..processing.static.operations.solve_constrained import solve_constrained_system
-from ..processing.static.operations.solve_reduced import SolveReducedShellSystem
+from ..processing.static.operations.assembly.assemble_global import AssembleGlobalShellSystem
+from ..processing.static.operations.reduction.constrain_global import ConstrainGlobalShellSystem
+from ..processing.static.operations.preparation.prepare_local import PrepareLocalShellSystem
+from ..processing.static.operations.recovery.reconstruct_field import ReconstructGlobalShellField
+from ..processing.static.operations.reduction.reduce_constrained import (
+    KrrModifier,
+    ReduceConstrainedShellSystem,
+    ReductionOperator,
+)
+from ..processing.static.operations.solution.solve_constrained import solve_constrained_system
+from ..processing.static.operations.solution.solve_reduced import (
+    SolveReducedShellSystem,
+    k_reduced_identity,
+)
+
+ProvenancePolicy = Literal["eager", "lazy", "off"]
 # results
 from ..processing.static.results.compute_primary import ShellPrimaryResultsOrchestrator
 from ..processing.static.results.compute_quaternary import ShellQuaternaryResultsOrchestrator
@@ -186,8 +195,6 @@ class SectionLinearStaticRunner:
         about_yz: tuple[float, float] | None = None,
         torsion_about_shear_centre: bool = False,
         shear_centre_E_mean: float = 70e9,
-        traction_field: Any | None = None,
-        traction_points_yz: np.ndarray | None = None,
         n_elements_per_panel: Any = None,
         target_element_length_m: float | None = None,
         min_elements_per_panel: int | None = None,
@@ -204,6 +211,8 @@ class SectionLinearStaticRunner:
         compute_section_deformation_1a: bool = False,
         compute_gaussian: bool = False,
         compute_nodal: bool = False,
+        provenance_policy: ProvenancePolicy = "lazy",
+        reduction_operator: ReductionOperator | None = None,
     ) -> None:
         self._phase_collector = SolvePhaseCollector()
         self._collector_session_open = False
@@ -227,8 +236,16 @@ class SectionLinearStaticRunner:
         self.constraints: dict[int, list[tuple[int, float]]] = {}
         self.n_gdof: int = 0
         self.factor: spla.SuperLU | None = None
+        self._factor_k_identity: tuple[Any, ...] | None = None
         self._solver: SolveReducedShellSystem | None = None
         self._k_rr_modifier: KrrModifier | None = None
+        self._reduction_operator: ReductionOperator | None = reduction_operator
+        policy = str(provenance_policy or "lazy").strip().lower()
+        if policy not in ("eager", "lazy", "off"):
+            raise ValueError(
+                f"provenance_policy must be 'eager', 'lazy', or 'off'; got {provenance_policy!r}"
+            )
+        self.provenance_policy: ProvenancePolicy = policy  # type: ignore[assignment]
         self._last: SectionLinearStaticResult | None = None
         self._executed = False
 
@@ -253,8 +270,6 @@ class SectionLinearStaticRunner:
         self._about_xy = about_xy
         self._torsion_about_shear_centre = bool(torsion_about_shear_centre)
         self._shear_centre_E_mean = float(shear_centre_E_mean)
-        self._traction_field = traction_field
-        self._traction_points_yz = traction_points_yz
         self._n_elements_per_panel = n_elements_per_panel
         self._target_element_length_m = target_element_length_m
         self._min_elements_per_panel = min_elements_per_panel
@@ -279,7 +294,6 @@ class SectionLinearStaticRunner:
         self.assembly: Any | None = None
         self.resultants: BeamResultantVector | None = None
         self.f_nodal: np.ndarray | None = None
-        self.used_traction: bool = False
         self.section_force_vector: Any | None = None
         self.load_channel_used: str = "thinwall"
 
@@ -339,29 +353,6 @@ class SectionLinearStaticRunner:
         runner.n_gdof = n_gdof
         return runner
 
-    @staticmethod
-    def _resolve_traction_overlay(
-        *,
-        traction_field: Any | None,
-        traction_points_yz: np.ndarray | None,
-    ) -> tuple[Any | None, np.ndarray | None, bool]:
-        """Validate optional traction kwargs; reject half-specified input."""
-        has_field = traction_field is not None
-        has_points = traction_points_yz is not None
-        if has_field ^ has_points:
-            raise ValueError(
-                "traction_field and traction_points_yz must be supplied together "
-                "(got one without the other)."
-            )
-        if not has_field:
-            return None, None, False
-        pts = np.asarray(traction_points_yz, dtype=float)
-        if pts.ndim != 2 or pts.shape[1] != 2:
-            raise ValueError(
-                f"traction_points_yz must have shape (n, 2); got {pts.shape!r}"
-            )
-        return traction_field, pts, True
-
     def _prepare_station_system(self) -> tuple[np.ndarray, list[Any], str]:
         """Assemble section + nodal RHS from station facade inputs.
 
@@ -373,7 +364,7 @@ class SectionLinearStaticRunner:
         from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.types import (
             constraint_equations_to_solver_dict,
         )
-        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.section_assembly import (
             assemble_section_from_zones,
         )
 
@@ -398,11 +389,6 @@ class SectionLinearStaticRunner:
             about_xy = shear_centre_about_yz_from_panel_topology(
                 panel_topology, E_mean=float(self._shear_centre_E_mean)
             )
-
-        tf, pts, used_traction = self._resolve_traction_overlay(
-            traction_field=self._traction_field,
-            traction_points_yz=self._traction_points_yz,
-        )
 
         zones = list(panel_topology.zones)
         strip_mesh = self._section_strip_mesh
@@ -502,9 +488,6 @@ class SectionLinearStaticRunner:
             )
             channel_used = "thinwall"
             provenance_tag = "SectionLinearStaticRunner.execute + thinwall"
-            # Do not stack matching face traction on thinwall-shaped cut resultants
-            if used_traction:
-                used_traction = False
         elif channel_l in surface_aliases:
             from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
                 section_force_vector_to_nodal_load,
@@ -530,9 +513,6 @@ class SectionLinearStaticRunner:
             )
             channel_used = "surface_traction"
             provenance_tag = "SectionLinearStaticRunner.execute + surface_traction"
-            # Face traction already folded into SFV outside FE.
-            if used_traction:
-                used_traction = False
         elif channel_l in equipollent_aliases:
             from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
                 section_force_vector_to_nodal_load,
@@ -558,8 +538,6 @@ class SectionLinearStaticRunner:
             )
             channel_used = "equipollent"
             provenance_tag = "SectionLinearStaticRunner.execute + equipollent"
-            if used_traction:
-                used_traction = False
         else:
             raise ValueError(
                 f"Unknown load_channel={channel!r}; expected "
@@ -570,7 +548,6 @@ class SectionLinearStaticRunner:
         self.resultants = resultants
         self.f_nodal = f
         self.f_station = np.asarray(f, dtype=float)
-        self.used_traction = used_traction
         self.section_force_vector = sfv
         self.load_channel_used = channel_used
         self.cache = asm.cache
@@ -640,21 +617,61 @@ class SectionLinearStaticRunner:
             self.cache = PrepareLocalShellSystem().run(self.cache)
         return self.cache
 
+    def _collect_maps_eager(self) -> bool:
+        return self.provenance_policy == "eager"
+
+    def ensure_provenance_maps(self) -> ShellIndexMapSet:
+        """Materialize index maps on demand (lazy/off → rebuild; eager → no-op)."""
+        if self.provenance_policy == "eager":
+            return self.index_maps
+        if self.cache is not None and not self.index_maps.assembly_map:
+            self.index_maps.assembly_map = AssembleGlobalShellSystem.build_assembly_map(
+                self.cache, self.n_gdof
+            )
+        elif not self.index_maps.assembly_map and self.n_gdof > 0:
+            self.index_maps.assembly_map = [
+                ShellMapEntry(global_dof=d, independent=True) for d in range(self.n_gdof)
+            ]
+        if self.constrained is not None and not self.index_maps.constraint_map:
+            self.index_maps.constraint_map = ConstrainGlobalShellSystem.build_constraint_map(
+                self.constrained.constraints, set(self.constrained.fixed), self.n_gdof
+            )
+        if (
+            self.reduced is not None
+            and self._reduction_operator is not None
+            and not self.index_maps.reduction_map
+        ):
+            self.index_maps.reduction_map = ReduceConstrainedShellSystem.build_reduction_map(
+                self.index_maps.constraint_map or None,
+                self._reduction_operator.independent,
+                self._reduction_operator.red_pos,
+                self.n_gdof,
+            )
+        if self.field is not None and not self.index_maps.reconstruction_map:
+            self.index_maps.reconstruction_map = ReconstructGlobalShellField.build_reconstruction_map(
+                self.index_maps.reduction_map or None,
+                self.field.d_global,
+                self.n_gdof,
+            )
+        return self.index_maps
+
     def assemble_global_system(self) -> GlobalShellSystem:
         with self._phase_collector.phase(PHASE_ASSEMBLE_GLOBAL_SYSTEM):
+            collect = self._collect_maps_eager()
             if self.global_sys is not None:
-                if self.cache is not None:
-                    self.index_maps.assembly_map = AssembleGlobalShellSystem.build_assembly_map(
-                        self.cache, self.n_gdof
-                    )
-                elif not self.index_maps.assembly_map:
-                    self.index_maps.assembly_map = [
-                        ShellMapEntry(global_dof=d, independent=True) for d in range(self.n_gdof)
-                    ]
+                if collect:
+                    if self.cache is not None:
+                        self.index_maps.assembly_map = AssembleGlobalShellSystem.build_assembly_map(
+                            self.cache, self.n_gdof
+                        )
+                    elif not self.index_maps.assembly_map:
+                        self.index_maps.assembly_map = [
+                            ShellMapEntry(global_dof=d, independent=True) for d in range(self.n_gdof)
+                        ]
                 return self.global_sys
             if self.cache is not None:
                 self.global_sys, self.index_maps.assembly_map = AssembleGlobalShellSystem().run(
-                    self.cache, self.n_gdof,
+                    self.cache, self.n_gdof, collect_maps=collect,
                 )
             else:
                 raise RuntimeError("assemble_global_system requires cache or pre-set global_sys")
@@ -662,8 +679,9 @@ class SectionLinearStaticRunner:
 
     def constrain_global_system(self) -> ConstrainedShellSystem:
         with self._phase_collector.phase(PHASE_CONSTRAIN_GLOBAL_SYSTEM):
+            collect = self._collect_maps_eager()
             self.constrained, self.index_maps.constraint_map = ConstrainGlobalShellSystem().run(
-                self.constraints, self.fixed, self.n_gdof,
+                self.constraints, self.fixed, self.n_gdof, collect_maps=collect,
             )
             self.fixed = set(self.constrained.fixed)
         return self.constrained
@@ -672,35 +690,62 @@ class SectionLinearStaticRunner:
         if self.global_sys is None or self.constrained is None:
             raise RuntimeError("reduce_constrained_system requires assembled + constrained system")
         with self._phase_collector.phase(PHASE_REDUCE_CONSTRAINED_SYSTEM):
-            self.reduced, self.index_maps.reduction_map = ReduceConstrainedShellSystem().run(
+            collect = self._collect_maps_eager()
+            reducer = ReduceConstrainedShellSystem()
+            self.reduced, self.index_maps.reduction_map = reducer.run(
                 self.global_sys,
                 self.constrained,
                 self.n_gdof,
                 k_rr_modifier=self._k_rr_modifier,
-                constraint_map=self.index_maps.constraint_map,
+                constraint_map=self.index_maps.constraint_map or None,
+                operator=self._reduction_operator,
+                bc_mode=self._bc_mode,
+                cap_tie_mode=self._cap_tie_mode,
+                interface_constraint_mode=self._interface_constraint_mode,
+                collect_maps=collect,
             )
+            self._reduction_operator = reducer.last_operator
             self.T = self.reduced.T
+            # Gauge / ABD changes alter K_rr — never reuse a prior SuperLU factor.
+            self.factor = None
+            self._factor_k_identity = None
+            self._solver = None
         return self.reduced
 
     def solve_reduced_system(self, *, f_reduced: np.ndarray | None = None) -> SolvedReducedShellSystem:
         if self.reduced is None:
             raise RuntimeError("solve_reduced_system requires reduced system")
         with self._phase_collector.phase(PHASE_SOLVE_REDUCED_SYSTEM):
-            self._solver = SolveReducedShellSystem(self.reduced, factor=self.factor)
+            current_id = k_reduced_identity(self.reduced.K_reduced)
+            factor = self.factor
+            if factor is not None and self._factor_k_identity not in (None, current_id):
+                # Fail closed: drop stale factor rather than solve the wrong matrix.
+                factor = None
+                self.factor = None
+                self._factor_k_identity = None
+            self._solver = SolveReducedShellSystem(
+                self.reduced,
+                factor=factor,
+                factor_k_identity=self._factor_k_identity,
+                strict_factor_identity=False,
+            )
             self.solved = self._solver.solve(f_reduced)
             self.factor = self.solved.factor
+            self._factor_k_identity = self._solver.factor_k_identity
         return self.solved
 
     def reconstruct_global_field(self) -> ReconstructedShellField:
         if self.reduced is None or self.solved is None or self.constrained is None:
             raise RuntimeError("reconstruct_global_field requires reduced + solved + constrained")
         with self._phase_collector.phase(PHASE_RECONSTRUCT_GLOBAL_FIELD):
+            collect = self._collect_maps_eager()
             self.field, self.index_maps.reconstruction_map = ReconstructGlobalShellField().run(
                 self.reduced,
                 self.solved,
                 self.constrained.fixed,
                 self.n_gdof,
-                reduction_map=self.index_maps.reduction_map,
+                reduction_map=self.index_maps.reduction_map or None,
+                collect_maps=collect,
             )
         return self.field
 
@@ -845,12 +890,18 @@ class SectionLinearStaticRunner:
                 diagnostics=self.global_sys.diagnostics,
             )
         if self.constraint_set is not None and self.global_sys is not None:
+            collect = self._collect_maps_eager()
             result = solve_constrained_system(
                 self.global_sys,
                 self.constraint_set,
                 self.n_gdof,
                 k_rr_modifier=k_rr_modifier,
                 factor=self.factor,
+                operator=self._reduction_operator,
+                collect_maps=collect,
+                bc_mode=self._bc_mode,
+                cap_tie_mode=self._cap_tie_mode,
+                interface_constraint_mode=self._interface_constraint_mode,
             )
             self.constrained = result.constrained
             self.reduced = result.reduced
@@ -861,8 +912,18 @@ class SectionLinearStaticRunner:
             self.index_maps.reconstruction_map = result.reconstruction_map
             self.T = result.T
             self.factor = result.factor
+            self._factor_k_identity = (
+                k_reduced_identity(self.reduced.K_reduced) if self.factor is not None else None
+            )
             self.fixed = set(self.constrained.fixed)
-            self._solver = SolveReducedShellSystem(self.reduced, factor=self.factor)
+            if result.operator is not None:
+                self._reduction_operator = result.operator
+            self._solver = SolveReducedShellSystem(
+                self.reduced,
+                factor=self.factor,
+                factor_k_identity=self._factor_k_identity,
+                strict_factor_identity=False,
+            )
             self._solver.last_residual_rel = result.residual_rel
             self._solver.last_pivot_ratio = result.pivot_ratio
             self._solver.last_quality_ok = result.quality_ok
@@ -956,7 +1017,7 @@ class SectionLinearStaticRunner:
         if _env_truthy("SHELL_DOF_PROVENANCE_DUMP"):
             self._dump_index_maps()
 
-        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.cascade_trust import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.cascade_trust import (
             fill_cascade_trust,
         )
 
@@ -1062,7 +1123,7 @@ class SectionLinearStaticRunner:
 
     def _dump_index_maps(self) -> None:
         """Opt-in DOF provenance dump; see :mod:`..processing.diagnostics.dof_provenance`."""
-        dump_index_maps(self.index_maps)
+        dump_index_maps(self.ensure_provenance_maps())
 
 
 __all__ = [

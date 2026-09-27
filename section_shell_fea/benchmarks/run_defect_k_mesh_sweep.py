@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.defect_k_mesh_sweep import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.defect_k_mesh_sweep import (
     run_defect_k_mesh_sweep,
     summarize_hashin_drift,
 )

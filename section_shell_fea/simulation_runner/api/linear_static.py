@@ -17,7 +17,7 @@ import numpy as np
 from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
     BeamResultantVector,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.section_assembly import (
     SectionAssemblyResult,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.results.containers.container_hopper import (
@@ -42,7 +42,6 @@ class LinearStaticCascadeResult:
     quaternary: ShellQuaternaryResultSet
     resultants: BeamResultantVector
     f_nodal: np.ndarray
-    used_traction: bool = False
 
     @classmethod
     def from_executed_runner(cls, runner: SectionLinearStaticRunner) -> LinearStaticCascadeResult:
@@ -62,7 +61,6 @@ class LinearStaticCascadeResult:
             quaternary=quaternary,
             resultants=runner.resultants,
             f_nodal=runner.f_nodal,
-            used_traction=bool(runner.used_traction),
         )
 
 

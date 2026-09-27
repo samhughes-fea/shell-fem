@@ -50,10 +50,14 @@ Stage classes: [`../../docs/SECTION_SOLVE_STAGES.md`](../../docs/SECTION_SOLVE_S
 
 | Path | Role |
 |------|------|
-| [`operations/`](operations/) | Prepare / assemble / constrain / reduce / solve / reconstruct / disassemble |
+| [`operations/`](operations/) | Family layout: `contracts/`, `preparation/`, `assembly/`, `reduction/`, `solution/`, `recovery/` (root paths are compatibility aliases) |
 | [`constraints/`](constraints/) | Junction MPCs, cap ties, supports, `SectionConstraintSet` composer |
 | [`results/`](results/) | Cascade `compute_*` tiers + bin types |
-| [`diagnostics/`](diagnostics/) | GCI, trust, loading/mesh plots, timings, cap-peak |
+| [`diagnostics/`](diagnostics/) | Family layout: `solve/`, `equilibrium/`, `convergence/`, `parity/`, `plots/` (root paths are compatibility aliases) |
+
+Performance / layout closeout:
+[`../../docs/STATIC_OPERATIONS_PERFORMANCE_REPORT.md`](../../docs/STATIC_OPERATIONS_PERFORMANCE_REPORT.md),
+[`../../docs/STATIC_PROCESSING_WP0_BASELINE.md`](../../docs/STATIC_PROCESSING_WP0_BASELINE.md).
 
 Public product is the cascade bin returned by
 [`../../simulation_runner/`](../../simulation_runner/README.md)

@@ -19,7 +19,7 @@ from blade_structure_utilities.geometry_utilities.section_contract.beam_resultan
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
     shell_panel_topology_from_shell_inputs,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.cascade_mesh_convergence import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.cascade_mesh_convergence import (
     DEFAULT_CHORD,
     DEFAULT_LAYOUT,
     DEFAULT_LOAD,
@@ -150,29 +150,10 @@ def run_ccx_cascade_at_frac(
         )
         trust = True
     except Exception:
-        if export == "tie" and str(cap_tie_mode) == "skin_offset":
-            try:
-                results, diag, _inp = solve_global_coupled_ccx(
-                    zones,
-                    n11_panels,
-                    n12_panels,
-                    section_strip_mesh=mesh,
-                    work_dir=work / "equation",
-                    ccx_exe=ccx_exe,
-                    l_x=float(l_x),
-                    interface_constraint_mode=interface_constraint_mode,
-                    cap_tie_mode=cap_tie_mode,
-                    cap_tie_export="equation",
-                    job_name="section",
-                    shell_midlines=shell.midlines,
-                )
-                trust = True
-            except Exception:
-                trust = False
-                results = [[] for _ in zones]
-        else:
-            trust = False
-            results = [[] for _ in zones]
+        # FEA-CCX-002: do not silently switch tie → equation. Callers that need
+        # equation export must pass cap_tie_export="equation" explicitly.
+        trust = False
+        results = [[] for _ in zones]
 
     # Coverage: every panel that has strip elements should have mapped rows.
     n_elem_res = _n_elem_by_kind(zones, results)

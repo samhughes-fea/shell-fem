@@ -15,7 +15,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.plot_grid_independence import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.plot_grid_independence import (
     plot_grid_independence_study,
     plot_study_layout_convergence,
 )

@@ -1,38 +1,14 @@
-"""DisassembleGlobalShellField — scatter d_global to element U_e and element residuals."""
+"""Compatibility shim — prefer ``blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.recovery.disassemble_field``.
 
+See ``docs/DEPRECATED_ALIASES.md``.
+
+This module is an alias of the canonical implementation so private and
+public symbols (including test-only ``_*`` helpers) remain importable.
+"""
 from __future__ import annotations
 
-import numpy as np
+from importlib import import_module
+import sys as _sys
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import ShellFormulationCache
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.solve_states import DisassembledShellResults, GlobalShellSystem, ReconstructedShellField
-
-
-class DisassembleGlobalShellField:
-    def run(
-        self,
-        cache: ShellFormulationCache,
-        global_sys: GlobalShellSystem,
-        field: ReconstructedShellField,
-    ) -> DisassembledShellResults:
-        U_e: list[np.ndarray] = []
-        residual_e: list[np.ndarray] = []
-        norms: list[float] = []
-        d = field.d_global
-        for stiff, force in zip(cache.stiffness_objects, cache.force_objects):
-            g_dofs = stiff.global_dof_indices
-            if g_dofs is None:
-                continue
-            u_elem = np.asarray(d[g_dofs], dtype=float)
-            r_elem = np.asarray(stiff.K_e @ u_elem - force.F_e, dtype=float)
-            U_e.append(u_elem)
-            residual_e.append(r_elem)
-            norms.append(float(np.linalg.norm(r_elem)))
-        return DisassembledShellResults(
-            U_e=U_e,
-            element_residual_e=residual_e,
-            element_residual_norms=norms,
-        )
-
-
-__all__ = ["DisassembleGlobalShellField"]
+_canonical = import_module("blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.recovery.disassemble_field")
+_sys.modules[__name__] = _canonical

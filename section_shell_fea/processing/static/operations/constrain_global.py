@@ -1,58 +1,14 @@
-"""ConstrainGlobalShellSystem — propagate fixity and build DOF provenance."""
+"""Compatibility shim — prefer ``blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.reduction.constrain_global``.
 
+See ``docs/DEPRECATED_ALIASES.md``.
+
+This module is an alias of the canonical implementation so private and
+public symbols (including test-only ``_*`` helpers) remain importable.
+"""
 from __future__ import annotations
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.solve_states import ConstrainedShellSystem
-from ..results.containers.map_results import ShellMapEntry
+from importlib import import_module
+import sys as _sys
 
-
-class ConstrainGlobalShellSystem:
-    def run(
-        self,
-        constraints: dict[int, list[tuple[int, float]]],
-        fixed: set[int],
-        n_gdof: int,
-    ) -> tuple[ConstrainedShellSystem, list[ShellMapEntry]]:
-        propagated = True
-        fixed = set(fixed)
-        while propagated:
-            propagated = False
-            for slave, terms in constraints.items():
-                if slave in fixed:
-                    continue
-                if terms and all(m in fixed for m, _ in terms):
-                    fixed.add(slave)
-                    propagated = True
-        constraint_map = self.build_constraint_map(constraints, fixed, n_gdof)
-        constrained = ConstrainedShellSystem(
-            constraints=constraints,
-            fixed=fixed,
-            dof_provenance=[],
-        )
-        return constrained, constraint_map
-
-    @staticmethod
-    def build_constraint_map(
-        constraints: dict[int, list[tuple[int, float]]],
-        fixed: set[int],
-        n_gdof: int,
-    ) -> list[ShellMapEntry]:
-        slaves = set(constraints.keys())
-        entries: list[ShellMapEntry] = []
-        for dof in range(n_gdof):
-            if dof in fixed:
-                entries.append(ShellMapEntry(global_dof=dof, fixed=True))
-            elif dof in slaves:
-                entries.append(
-                    ShellMapEntry(
-                        global_dof=dof,
-                        slave=True,
-                        masters=list(constraints[dof]),
-                    )
-                )
-            else:
-                entries.append(ShellMapEntry(global_dof=dof, independent=True))
-        return entries
-
-
-__all__ = ["ConstrainGlobalShellSystem"]
+_canonical = import_module("blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.reduction.constrain_global")
+_sys.modules[__name__] = _canonical

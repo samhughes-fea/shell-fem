@@ -14,7 +14,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.cap_peak_sampling import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.cap_peak_sampling import (
     DEFAULT_INVESTIGATION_KEYS,
     run_cap_peak_study,
 )

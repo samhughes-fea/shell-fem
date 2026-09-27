@@ -12,7 +12,7 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.solve_states import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.contracts.solve_states import (
     DisassembledShellResults,
     GlobalShellSystem,
     PrimaryShellResults,

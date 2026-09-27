@@ -1,12 +1,14 @@
-"""Per-panel topology summary diagnostics (re-export).
+"""Compatibility shim — prefer ``blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.parity.topology_diagnostics``.
 
-``TopologyDiagnostics`` is owned by ``material_utilities.section_bind``.
+See ``docs/DEPRECATED_ALIASES.md``.
+
+This module is an alias of the canonical implementation so private and
+public symbols (including test-only ``_*`` helpers) remain importable.
 """
-
 from __future__ import annotations
 
-from blade_structure_utilities.material_utilities.section_bind import (
-    TopologyDiagnostics,
-)
+from importlib import import_module
+import sys as _sys
 
-__all__ = ["TopologyDiagnostics"]
+_canonical = import_module("blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.parity.topology_diagnostics")
+_sys.modules[__name__] = _canonical

@@ -24,7 +24,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 )
 from ..mesh.shell_mesh_map import PanelGlobalMap
 from .shell_element_base import ShellElementBase
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.solve_phase_timing import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.solve.solve_phase_timing import (
     PHASE_ELEMENT_FORCE_VECTORS,
     PHASE_ELEMENT_STIFFNESS_MATRICES,
     PhaseCollector,
@@ -232,7 +232,12 @@ def _isotropic_to_laminate_definition(mat: Any, zone: Any) -> Any:
 
     t = float(getattr(zone, "t", 0.0) or 0.0)
     if t <= 0.0:
-        t = float(getattr(getattr(zone, "lam", None), "t", 0.0) or 1e-3)
+        t = float(getattr(getattr(zone, "lam", None), "t", 0.0) or 0.0)
+    if not np.isfinite(t) or t <= 0.0:
+        raise ValueError(
+            "isotropic zone/laminate thickness missing or ≤0; refusing silent "
+            f"t=1e-3 default (zone label={getattr(zone, 'label', None)!r}; FEA-T-001)"
+        )
     e = float(mat.E)
     nu = float(mat.nu)
     g = e / (2.0 * (1.0 + nu))

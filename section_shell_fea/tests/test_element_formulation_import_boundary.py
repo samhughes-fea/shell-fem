@@ -95,13 +95,16 @@ def test_global_shell_assembly_uses_formulation_cache_pipeline():
     src = (_OPERATIONS / "global_shell_assembly.py").read_text(encoding="utf-8")
     assert "mitc4_stiffness(" not in src
     assert "assemble_section_from_zones(" in src
-    thin = (_OPERATIONS / "section_assembly.py").read_text(encoding="utf-8")
+    thin = (_OPERATIONS / "assembly" / "section_assembly.py").read_text(encoding="utf-8")
     assert "build_formulation_cache(" in thin
     assert "assemble_section_system(" in thin
-    # R8: scatter-add implementation lives in processing/static/operations
-    ops = (_OPERATIONS / "assemble_global.py").read_text(encoding="utf-8")
+    # R8: scatter-add implementation lives in operations.assembly
+    ops = (_OPERATIONS / "assembly" / "assemble_global.py").read_text(encoding="utf-8")
     assert "def assemble_section_system(" in ops
     assert "from ...engine.section_assembly import assemble_section_system" not in ops
+    # Legacy root paths remain as re-export shims
+    assert (_OPERATIONS / "section_assembly.py").is_file()
+    assert (_OPERATIONS / "assemble_global.py").is_file()
 
 
 def test_connected_assembly_core_has_no_legacy_solve_adapter():

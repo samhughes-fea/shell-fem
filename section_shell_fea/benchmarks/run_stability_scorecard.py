@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.stability_scorecard import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.stability_scorecard import (
     write_stability_scorecard,
 )
 
