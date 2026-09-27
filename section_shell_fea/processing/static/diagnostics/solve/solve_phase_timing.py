@@ -16,7 +16,10 @@ from ...results.containers.diagnostics_bin import DiagnosticsBin
 PHASE_ELEMENT_STIFFNESS_MATRICES = "element_stiffness_matrices"
 PHASE_ELEMENT_FORCE_VECTORS = "element_force_vectors"
 
-# Kinematics (solve_linear_system_only).
+# Station constraint composition (execute / _prepare_station_system).
+PHASE_COMPOSE_CONSTRAINTS = "compose_constraints"
+
+# Kinematics (solve_linear_system_only / solve_constrained_system).
 PHASE_PREPARE_LOCAL_SYSTEM = "prepare_local_system"
 PHASE_ASSEMBLE_GLOBAL_SYSTEM = "assemble_global_system"
 PHASE_CONSTRAIN_GLOBAL_SYSTEM = "constrain_global_system"
@@ -95,6 +98,7 @@ __all__ = [
     "_NULL_PHASE_COLLECTOR",
     "PHASE_ELEMENT_STIFFNESS_MATRICES",
     "PHASE_ELEMENT_FORCE_VECTORS",
+    "PHASE_COMPOSE_CONSTRAINTS",
     "PHASE_PREPARE_LOCAL_SYSTEM",
     "PHASE_ASSEMBLE_GLOBAL_SYSTEM",
     "PHASE_CONSTRAIN_GLOBAL_SYSTEM",

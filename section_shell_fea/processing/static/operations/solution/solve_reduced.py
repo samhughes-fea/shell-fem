@@ -37,6 +37,16 @@ def k_reduced_identity(K_reduced: sp.spmatrix) -> tuple[Hashable, ...]:
 
 
 class SolveReducedShellSystem:
+    """Factor-once reduced solver with fail-closed SuperLU identity ownership.
+
+    An injected ``factor`` must carry ``factor_k_identity`` of the matrix that was
+    actually factored. Missing identity is never filled from the *current*
+    ``K_reduced`` (that would silently trust a stale factor). Policies:
+
+    * ``strict_factor_identity=True`` (default): raise on missing/mismatched identity.
+    * ``strict_factor_identity=False``: discard the factor and refactor.
+    """
+
     def __init__(
         self,
         reduced: ReducedShellSystem,
@@ -55,8 +65,15 @@ class SolveReducedShellSystem:
         self.last_quality_ok: bool = True
         self.last_quality_reason: str = ""
         if factor is not None and factor_k_identity is None:
-            # Associate injected factors with the current matrix immediately.
-            self._factor_k_identity = k_reduced_identity(reduced.K_reduced)
+            # Never invent an identity for an unverified injected factor.
+            if self._strict_factor_identity:
+                raise CatastrophicSolveError(
+                    "injected SuperLU factor requires factor_k_identity of the "
+                    "matrix that was factored (fail-closed)"
+                )
+            self._factor = None
+            self._factor_k_identity = None
+            self._factor_was_injected = False
 
     @property
     def factor_k_identity(self) -> tuple[Hashable, ...] | None:

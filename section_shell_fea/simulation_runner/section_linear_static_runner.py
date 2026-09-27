@@ -44,6 +44,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
 from ..processing.static.diagnostics.solve.dof_provenance import dump_index_maps
 from ..processing.static.diagnostics.solve.solve_phase_timing import (
     PHASE_ASSEMBLE_GLOBAL_SYSTEM,
+    PHASE_COMPOSE_CONSTRAINTS,
     PHASE_CONSTRAIN_GLOBAL_SYSTEM,
     PHASE_PREPARE_LOCAL_SYSTEM,
     PHASE_PRIMARY_RESULTS,
@@ -213,6 +214,9 @@ class SectionLinearStaticRunner:
         compute_nodal: bool = False,
         provenance_policy: ProvenancePolicy = "lazy",
         reduction_operator: ReductionOperator | None = None,
+        constraint_set: Any | None = None,
+        modifier_key: Any = None,
+        constraint_reduction_cache: Any | None = None,
     ) -> None:
         self._phase_collector = SolvePhaseCollector()
         self._collector_session_open = False
@@ -239,7 +243,11 @@ class SectionLinearStaticRunner:
         self._factor_k_identity: tuple[Any, ...] | None = None
         self._solver: SolveReducedShellSystem | None = None
         self._k_rr_modifier: KrrModifier | None = None
+        self._modifier_key: Any = modifier_key
         self._reduction_operator: ReductionOperator | None = reduction_operator
+        self._injected_constraint_set: Any | None = constraint_set
+        self._constraint_reduction_cache: Any | None = constraint_reduction_cache
+        self._constraint_reduction_cache_key: tuple[Any, ...] | None = None
         policy = str(provenance_policy or "lazy").strip().lower()
         if policy not in ("eager", "lazy", "off"):
             raise ValueError(
@@ -353,14 +361,178 @@ class SectionLinearStaticRunner:
         runner.n_gdof = n_gdof
         return runner
 
+    @staticmethod
+    def _assembly_topology_fingerprint(asm: Any) -> tuple[Any, ...]:
+        """Exact topology fingerprint for constraint/reduction cache identity."""
+        panels: list[tuple[Any, ...]] = []
+        for pm in list(getattr(asm, "panel_maps", None) or []):
+            gnodes = getattr(pm, "global_nodes", None)
+            snodes = getattr(pm, "s_nodes", None)
+            g_arr = np.asarray([] if gnodes is None else gnodes, dtype=int).ravel()
+            s_arr = np.asarray([] if snodes is None else snodes, dtype=float).ravel()
+            panels.append(
+                (
+                    str(getattr(pm, "panel_label", "")),
+                    tuple(int(g) for g in g_arr.tolist()),
+                    tuple(float(s) for s in s_arr.tolist()),
+                )
+            )
+        node_meta = getattr(asm, "node_meta", None)
+        yz = np.asarray(getattr(node_meta, "yz", np.zeros((0, 2))), dtype=float)
+        return (
+            int(getattr(asm.cache, "n_dof_node", 0) or 0),
+            tuple(panels),
+            tuple(yz.shape),
+            hash(yz.tobytes()) if yz.size else 0,
+        )
+
+    @staticmethod
+    def _strip_bond_fingerprint(midlines: Any) -> tuple[Any, ...]:
+        rows: list[tuple[Any, ...]] = []
+        for m in midlines or ():
+            bond_rows: list[tuple[Any, ...]] = []
+            raw_bonds = getattr(m, "bonds", None)
+            bonds = () if raw_bonds is None else tuple(raw_bonds)
+            for bond in bonds:
+                pts = np.asarray(getattr(bond, "points", ()), dtype=float)
+                host = np.asarray(getattr(bond, "host_points", ()), dtype=float)
+                bond_rows.append(
+                    (
+                        str(getattr(bond, "host_label", "")),
+                        hash(pts.tobytes()) if pts.size else 0,
+                        hash(host.tobytes()) if host.size else 0,
+                    )
+                )
+            rows.append(
+                (
+                    str(getattr(m, "kind", "")),
+                    str(getattr(m, "label", "")),
+                    tuple(bond_rows),
+                )
+            )
+        return tuple(rows)
+
+    def _resolve_constraint_set(self, asm: Any, midlines: Any) -> Any:
+        """Compose constraints, or reuse exact-key cached products (WP2)."""
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.compose import (
+            build_section_constraint_set,
+        )
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.reduction.reduce_constrained import (
+            ReductionOperator,
+        )
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.reduction.constrain_global import (
+            ConstrainGlobalShellSystem,
+        )
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.types import (
+            constraint_equations_to_solver_dict,
+        )
+
+        if self._injected_constraint_set is not None:
+            return self._injected_constraint_set
+
+        cache = self._constraint_reduction_cache
+        if cache is None:
+            return build_section_constraint_set(
+                asm,
+                interface_constraint_mode=self._interface_constraint_mode,
+                cap_tie_mode=self._cap_tie_mode,
+                bc_mode=self._bc_mode,
+                shell_midlines=midlines,
+            )
+
+        n_gdof = int(getattr(asm, "n_gdof", 0) or 0)
+
+        # Provisional key components that do not require the constraint set.
+        # Full key (incl. fixed/MPC) is completed after compose on a miss.
+        topo = self._assembly_topology_fingerprint(asm)
+        bonds = self._strip_bond_fingerprint(midlines)
+        modes = (
+            str(self._bc_mode or ""),
+            str(self._cap_tie_mode or ""),
+            str(self._interface_constraint_mode or ""),
+            self._modifier_key,
+        )
+        if cache.key is not None:
+            # Hit only when topology/modes/bonds match the stored key prefix;
+            # full key equality is checked via cache.lookup.
+            stored = cache.key
+            if (
+                isinstance(stored, tuple)
+                and len(stored) >= 8
+                and stored[0] == int(n_gdof)
+                and stored[1] == topo
+                and stored[4] == bonds
+                and stored[5:8] == modes[:3]
+                and stored[8] == modes[3]
+                and cache.lookup(stored)
+            ):
+                self._reduction_operator = cache.reduction_operator
+                self._constraint_reduction_cache_key = stored
+                return cache.constraint_set
+
+        constraint_set = build_section_constraint_set(
+            asm,
+            interface_constraint_mode=self._interface_constraint_mode,
+            cap_tie_mode=self._cap_tie_mode,
+            bc_mode=self._bc_mode,
+            shell_midlines=midlines,
+        )
+        if cache is not None and n_gdof > 0:
+            constraints = constraint_equations_to_solver_dict(constraint_set.equations)
+            fixed = frozenset(int(d) for d in constraint_set.fixed_dofs)
+            # Normalized MPC fingerprint (same as ReductionIdentity).
+            mpc_items: list[tuple[int, tuple[tuple[int, float], ...]]] = []
+            for slave in sorted(constraints):
+                if slave in fixed:
+                    continue
+                terms = tuple(sorted((int(m), float(c)) for m, c in constraints[slave]))
+                mpc_items.append((int(slave), terms))
+            # Duck-typed cache protocol (BSP ConstraintReductionCache); no BSP import.
+            key = (
+                int(n_gdof),
+                topo,
+                fixed,
+                tuple(mpc_items),
+                bonds,
+                str(self._bc_mode or ""),
+                str(self._cap_tie_mode or ""),
+                str(self._interface_constraint_mode or ""),
+                self._modifier_key,
+            )
+            # Propagate fixity exactly as ConstrainGlobalShellSystem does so the
+            # cached ReductionOperator matches the production constrain→reduce path.
+            constrained, _ = ConstrainGlobalShellSystem().run(
+                constraints, set(fixed), int(n_gdof), collect_maps=False,
+            )
+            operator = ReductionOperator.build(
+                constrained,
+                int(n_gdof),
+                bc_mode=str(self._bc_mode or ""),
+                cap_tie_mode=str(self._cap_tie_mode or ""),
+                interface_constraint_mode=str(self._interface_constraint_mode or ""),
+                modifier_key=self._modifier_key,
+            )
+            store = getattr(cache, "store", None)
+            if callable(store):
+                store(
+                    key,
+                    constraint_set=constraint_set,
+                    constrained=constrained,
+                    reduction_operator=operator,
+                )
+            self._reduction_operator = operator
+            self._constraint_reduction_cache_key = key
+        elif cache is not None:
+            refuse = getattr(cache, "record_refusal", None)
+            if callable(refuse):
+                refuse()
+        return constraint_set
+
     def _prepare_station_system(self) -> tuple[np.ndarray, list[Any], str]:
         """Assemble section + nodal RHS from station facade inputs.
 
         Returns ``(f_nodal, zones, provenance_tag)``.
         """
-        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.compose import (
-            build_section_constraint_set,
-        )
         from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.types import (
             constraint_equations_to_solver_dict,
         )
@@ -425,17 +597,13 @@ class SectionLinearStaticRunner:
             ),
         )
         ndof = int(asm.cache.n_dof_node)
-        constraint_set = build_section_constraint_set(
-            asm,
-            interface_constraint_mode=self._interface_constraint_mode,
-            cap_tie_mode=self._cap_tie_mode,
-            bc_mode=self._bc_mode,
-            shell_midlines=(
-                self._shell_midlines
-                if self._shell_midlines is not None
-                else getattr(getattr(panel_topology, "shell_inputs", None), "midlines", None)
-            ),
+        midlines = (
+            self._shell_midlines
+            if self._shell_midlines is not None
+            else getattr(getattr(panel_topology, "shell_inputs", None), "midlines", None)
         )
+        with self._phase_collector.phase(PHASE_COMPOSE_CONSTRAINTS):
+            constraint_set = self._resolve_constraint_set(asm, midlines)
         constraints = constraint_equations_to_solver_dict(constraint_set.equations)
         fixed = set(constraint_set.fixed_dofs)
         self.constraint_set = constraint_set
@@ -702,6 +870,7 @@ class SectionLinearStaticRunner:
                 bc_mode=self._bc_mode,
                 cap_tie_mode=self._cap_tie_mode,
                 interface_constraint_mode=self._interface_constraint_mode,
+                modifier_key=self._modifier_key,
                 collect_maps=collect,
             )
             self._reduction_operator = reducer.last_operator
@@ -897,11 +1066,14 @@ class SectionLinearStaticRunner:
                 self.n_gdof,
                 k_rr_modifier=k_rr_modifier,
                 factor=self.factor,
+                factor_k_identity=self._factor_k_identity,
                 operator=self._reduction_operator,
                 collect_maps=collect,
                 bc_mode=self._bc_mode,
                 cap_tie_mode=self._cap_tie_mode,
                 interface_constraint_mode=self._interface_constraint_mode,
+                modifier_key=self._modifier_key,
+                phase_collector=self._phase_collector,
             )
             self.constrained = result.constrained
             self.reduced = result.reduced
@@ -912,9 +1084,9 @@ class SectionLinearStaticRunner:
             self.index_maps.reconstruction_map = result.reconstruction_map
             self.T = result.T
             self.factor = result.factor
-            self._factor_k_identity = (
-                k_reduced_identity(self.reduced.K_reduced) if self.factor is not None else None
-            )
+            # Own the identity of the matrix that was actually factored — never
+            # invent an identity from the current K for an unverified factor.
+            self._factor_k_identity = result.factor_k_identity
             self.fixed = set(self.constrained.fixed)
             if result.operator is not None:
                 self._reduction_operator = result.operator
@@ -1109,9 +1281,16 @@ class SectionLinearStaticRunner:
         first_d = self.solve_linear_system_only(
             f_override=f_vectors[0], k_rr_modifier=k_rr_modifier,
         )
-        out = [first_d]
+        out = [np.asarray(first_d, dtype=float)]
+        # Empty reduced space (all DOFs fixed): first solution is valid zeros;
+        # replicate it rather than discarding the first solve.
+        if self.reduced is not None and len(self.reduced.independent) == 0:
+            return [np.asarray(first_d, dtype=float) for _ in f_vectors]
         if self.factor is None or self.reduced is None or self._solver is None:
-            return [np.zeros(self.n_gdof)] * len(f_vectors)
+            # Keep the valid first solution; only pad remaining RHS with zeros.
+            while len(out) < len(f_vectors):
+                out.append(np.zeros(self.n_gdof, dtype=float))
+            return out
         for f_vec in f_vectors[1:]:
             if self.global_sys is None:
                 break

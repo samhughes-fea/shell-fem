@@ -7,7 +7,7 @@ the constrained/reduced systems, ``T``, solution, and reconstructed field.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Hashable
 
 import numpy as np
 import scipy.sparse as sp
@@ -17,6 +17,14 @@ from numpy.typing import NDArray
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.types import (
     SectionConstraintSet,
     constraint_equations_to_solver_dict,
+)
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.solve.solve_phase_timing import (
+    PHASE_CONSTRAIN_GLOBAL_SYSTEM,
+    PHASE_RECONSTRUCT_GLOBAL_FIELD,
+    PHASE_REDUCE_CONSTRAINED_SYSTEM,
+    PHASE_SOLVE_REDUCED_SYSTEM,
+    PhaseCollector,
+    _NULL_PHASE_COLLECTOR,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.reduction.constrain_global import (
     ConstrainGlobalShellSystem,
@@ -62,6 +70,7 @@ class ConstrainedSolveResult:
     quality_ok: bool = True
     quality_reason: str = ""
     operator: ReductionOperator | None = None
+    factor_k_identity: tuple[Hashable, ...] | None = None
 
 
 def solve_constrained_system(
@@ -71,42 +80,56 @@ def solve_constrained_system(
     *,
     k_rr_modifier: KrrModifier | None = None,
     factor: spla.SuperLU | None = None,
+    factor_k_identity: tuple[Hashable, ...] | None = None,
     operator: ReductionOperator | None = None,
     collect_maps: bool = True,
     bc_mode: str = "",
     cap_tie_mode: str = "",
     interface_constraint_mode: str = "",
+    modifier_key: Hashable = None,
+    phase_collector: PhaseCollector | None = None,
 ) -> ConstrainedSolveResult:
     """Constrain → reduce → solve → reconstruct. No station policy inference."""
+    collector = phase_collector if phase_collector is not None else _NULL_PHASE_COLLECTOR
     constraints = constraint_equations_to_solver_dict(constraint_set.equations)
     fixed = set(constraint_set.fixed_dofs)
-    constrained, constraint_map = ConstrainGlobalShellSystem().run(
-        constraints, fixed, int(n_gdof), collect_maps=collect_maps
-    )
+    with collector.phase(PHASE_CONSTRAIN_GLOBAL_SYSTEM):
+        constrained, constraint_map = ConstrainGlobalShellSystem().run(
+            constraints, fixed, int(n_gdof), collect_maps=collect_maps
+        )
     reducer = ReduceConstrainedShellSystem()
-    reduced, reduction_map = reducer.run(
-        global_sys,
-        constrained,
-        int(n_gdof),
-        k_rr_modifier=k_rr_modifier,
-        constraint_map=constraint_map or None,
-        operator=operator,
-        bc_mode=bc_mode,
-        cap_tie_mode=cap_tie_mode,
-        interface_constraint_mode=interface_constraint_mode,
-        collect_maps=collect_maps,
-    )
-    # New K_rr from this reduction: only reuse factor when identity still matches.
-    solver = SolveReducedShellSystem(reduced, factor=factor, strict_factor_identity=False)
-    solved = solver.solve()
-    field, reconstruction_map = ReconstructGlobalShellField().run(
-        reduced,
-        solved,
-        set(constrained.fixed),
-        int(n_gdof),
-        reduction_map=reduction_map or None,
-        collect_maps=collect_maps,
-    )
+    with collector.phase(PHASE_REDUCE_CONSTRAINED_SYSTEM):
+        reduced, reduction_map = reducer.run(
+            global_sys,
+            constrained,
+            int(n_gdof),
+            k_rr_modifier=k_rr_modifier,
+            constraint_map=constraint_map or None,
+            operator=operator,
+            bc_mode=bc_mode,
+            cap_tie_mode=cap_tie_mode,
+            interface_constraint_mode=interface_constraint_mode,
+            modifier_key=modifier_key,
+            collect_maps=collect_maps,
+        )
+    # Production: discard/refactor on identity mismatch; never invent identity.
+    with collector.phase(PHASE_SOLVE_REDUCED_SYSTEM):
+        solver = SolveReducedShellSystem(
+            reduced,
+            factor=factor,
+            factor_k_identity=factor_k_identity,
+            strict_factor_identity=False,
+        )
+        solved = solver.solve()
+    with collector.phase(PHASE_RECONSTRUCT_GLOBAL_FIELD):
+        field, reconstruction_map = ReconstructGlobalShellField().run(
+            reduced,
+            solved,
+            set(constrained.fixed),
+            int(n_gdof),
+            reduction_map=reduction_map or None,
+            collect_maps=collect_maps,
+        )
     return ConstrainedSolveResult(
         constrained=constrained,
         reduced=reduced,
@@ -123,6 +146,7 @@ def solve_constrained_system(
         quality_ok=bool(solver.last_quality_ok),
         quality_reason=str(solver.last_quality_reason or ""),
         operator=reducer.last_operator,
+        factor_k_identity=solver.factor_k_identity,
     )
 
 
