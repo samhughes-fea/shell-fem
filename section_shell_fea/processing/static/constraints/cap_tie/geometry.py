@@ -200,6 +200,76 @@ def _resolve_skin_panel(
     )
 
 
+def _cap_tie_geometry_identity(
+    panel_maps: list[PanelGlobalMap],
+    node_meta: GlobalNodeMeta,
+    *,
+    shell_midlines: Sequence[Any] | None,
+    cap_kind: str,
+    skin_kind: str,
+) -> tuple[Any, ...]:
+    """Immutable identity for caching ``build_cap_skin_ties`` products."""
+    panels: list[tuple[Any, ...]] = []
+    for pm in panel_maps:
+        g_arr = np.asarray(pm.global_nodes, dtype=int).ravel()
+        s_arr = np.asarray(pm.s_nodes, dtype=float).ravel()
+        panels.append(
+            (
+                str(pm.panel_label),
+                tuple(int(g) for g in g_arr.tolist()),
+                tuple(float(s) for s in s_arr.tolist()),
+            )
+        )
+    yz = np.asarray(node_meta.yz, dtype=np.float64)
+    yz_fp = (
+        tuple(yz.shape),
+        hash(yz.tobytes()) if yz.size else 0,
+    )
+    bonds: list[tuple[Any, ...]] = []
+    for m in shell_midlines or ():
+        kind = str(getattr(m, "kind", ""))
+        label = str(getattr(m, "label", ""))
+        bond_rows: list[tuple[Any, ...]] = []
+        for bond in tuple(getattr(m, "bonds", ()) or ()):
+            pts = np.asarray(getattr(bond, "points", ()), dtype=np.float64)
+            host = np.asarray(getattr(bond, "host_points", ()), dtype=np.float64)
+            bond_rows.append(
+                (
+                    str(getattr(bond, "host_label", "")),
+                    hash(pts.tobytes()) if pts.size else 0,
+                    hash(host.tobytes()) if host.size else 0,
+                    tuple(pts.shape),
+                    tuple(host.shape),
+                )
+            )
+        bonds.append((kind, label, tuple(bond_rows)))
+    return (str(cap_kind), str(skin_kind), tuple(panels), yz_fp, tuple(bonds))
+
+
+@dataclass
+class CapTieGeometryCache:
+    """Exact-key cache of immutable cap-tie link geometry (WP4 D4.3)."""
+
+    key: tuple[Any, ...] | None = None
+    report: CapTieReport | None = None
+    hits: int = 0
+    misses: int = 0
+
+    def clear(self) -> None:
+        self.key = None
+        self.report = None
+        self.hits = 0
+        self.misses = 0
+
+
+_CAP_TIE_GEOMETRY_CACHE = CapTieGeometryCache()
+
+
+def clear_cap_tie_geometry_cache() -> None:
+    """Drop the process-local cap-tie geometry cache (tests / station reset)."""
+    _CAP_TIE_GEOMETRY_CACHE.clear()
+
+
 def build_cap_skin_ties(
     panel_maps: list[PanelGlobalMap],
     node_meta: GlobalNodeMeta,
@@ -207,6 +277,7 @@ def build_cap_skin_ties(
     shell_midlines: Sequence[Any] | None = None,
     cap_kind: str = "cap",
     skin_kind: str = "skin",
+    geometry_cache: CapTieGeometryCache | None = None,
 ) -> CapTieReport:
     """Build rigid-link geometry from SG-017 bonds (FEA-CT-001).
 
@@ -214,7 +285,31 @@ def build_cap_skin_ties(
     aligned ``host_points`` foot is read, and masters/weights come only from the
     named host skin panel. ``shell_midlines`` is required whenever any cap panel
     is present.
+
+    Immutable link geometry is cached under a complete content identity
+    (panel numbering, node coordinates, StripBond polylines, kinds).
     """
+    cache = geometry_cache if geometry_cache is not None else _CAP_TIE_GEOMETRY_CACHE
+    identity = _cap_tie_geometry_identity(
+        panel_maps,
+        node_meta,
+        shell_midlines=shell_midlines,
+        cap_kind=cap_kind,
+        skin_kind=skin_kind,
+    )
+    if cache.key == identity and cache.report is not None:
+        cache.hits += 1
+        # Return a shallow copy so callers can mutate notes without corrupting
+        # the cached product; links remain the immutable CapTieLink tuples.
+        cached = cache.report
+        return CapTieReport(
+            mode=cached.mode,
+            links=list(cached.links),
+            caps_seen=cached.caps_seen,
+            caps_tied=cached.caps_tied,
+            caps_skipped_already_shared=list(cached.caps_skipped_already_shared),
+            notes=list(cached.notes),
+        )
     report = CapTieReport(mode="skin_offset")
 
     skin_maps = [pm for pm in panel_maps if kind_of(pm.panel_label) == skin_kind and len(pm.s_nodes)]
@@ -356,15 +451,27 @@ def build_cap_skin_ties(
             f"max={max(diag_gaps):.3e} m med={float(np.median(diag_gaps)):.3e} m "
             "(diagnostic only; membership from StripBond)"
         )
+    cache.key = identity
+    cache.report = CapTieReport(
+        mode=report.mode,
+        links=list(report.links),
+        caps_seen=report.caps_seen,
+        caps_tied=report.caps_tied,
+        caps_skipped_already_shared=list(report.caps_skipped_already_shared),
+        notes=list(report.notes),
+    )
+    cache.misses += 1
     return report
 
 
 __all__ = [
     "CAP_TIE_MODES",
+    "CapTieGeometryCache",
     "CapTieLink",
     "CapTieReport",
     "bonds_by_cap_panel_label",
     "build_cap_skin_ties",
+    "clear_cap_tie_geometry_cache",
     "kind_of",
     "panel_label_for_strip",
     "project_onto_polyline",

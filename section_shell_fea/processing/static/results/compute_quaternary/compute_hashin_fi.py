@@ -66,6 +66,8 @@ def interface_shear_screening_from_tau(
     ``(tau_13/S13)**2 + (tau_23/S23)**2``.  Missing authoritative ``S13`` or
     ``S23`` makes the result unavailable/needs-review; an ``S12`` fallback is
     available only as explicitly labelled compatibility provenance.
+
+    This scalar path is the exactness oracle for the panel-batched helper.
     """
     plies = list(getattr(lam, "plies", None) or [])
     tau = np.asarray(tau_iface, dtype=np.float64)
@@ -129,31 +131,178 @@ def interface_shear_screening_from_tau(
     )
 
 
-def interlaminar_allowable_pa(ply: Any) -> float:
+def interface_shear_screening_from_tau_batch(
+    tau_iface_batch: NDArray[np.float64],
+    lam: Any,
+    *,
+    trusted_mask: NDArray[np.bool_] | None = None,
+    allow_s12_fallback: bool = False,
+    recovery_mode: str = "fsdt_interface_parabolic",
+) -> list[InterfaceShearScreeningResult]:
+    """Panel-batched interface-shear screening matching the scalar oracle.
+
+    Laminate-static strengths/angles are resolved once. Rotations and
+    ``(tau/S)**2`` ratios are evaluated across rows for all candidate
+    interface×side slots. Early-return missing-strength behaviour matches the
+    scalar path (first missing candidate in oracle loop order).
+    """
+    from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+        rotate_transverse_shear_E_to_M,
+    )
+
+    plies = list(getattr(lam, "plies", None) or [])
+    tau = np.asarray(tau_iface_batch, dtype=np.float64)
+    if tau.ndim != 3:
+        raise ValueError("tau_iface_batch must be (n_rows, n_iface, 2)")
+    n_rows = int(tau.shape[0])
+    if trusted_mask is None:
+        trusted_mask = np.ones(n_rows, dtype=bool)
+    else:
+        trusted_mask = np.asarray(trusted_mask, dtype=bool).ravel()
+        if trusted_mask.size != n_rows:
+            raise ValueError("trusted_mask length must match n_rows")
+
+    unavailable = InterfaceShearScreeningResult(
+        float("nan"), True, recovery_mode, "unavailable"
+    )
+    out: list[InterfaceShearScreeningResult] = [unavailable for _ in range(n_rows)]
+    if len(plies) < 2:
+        return out
+    n_iface = len(plies) + 1
+    if tau.shape[1] < n_iface or tau.shape[2] != 2:
+        return out
+
+    # Resolve laminate-static candidate table (oracle loop order).
+    cand_iface: list[int] = []
+    cand_side: list[str] = []
+    cand_angle: list[float] = []
+    cand_s13: list[float] = []
+    cand_s23: list[float] = []
+    provenance = "authoritative_s13_s23"
+    early: InterfaceShearScreeningResult | None = None
+    for interface in range(1, len(plies)):
+        for ply_index, side in ((interface - 1, "lower"), (interface, "upper")):
+            ply, angle = plies[ply_index]
+            s13 = float(getattr(ply, "S13", 0.0) or 0.0)
+            s23 = float(getattr(ply, "S23", 0.0) or 0.0)
+            if s13 <= 0.0 or s23 <= 0.0:
+                if not allow_s12_fallback:
+                    early = InterfaceShearScreeningResult(
+                        float("nan"),
+                        True,
+                        recovery_mode,
+                        "missing_s13_s23",
+                        governing_interface=interface,
+                        governing_side=side,
+                    )
+                    break
+                fallback = float(getattr(ply, "S12", 0.0) or 0.0)
+                if fallback <= 0.0:
+                    early = InterfaceShearScreeningResult(
+                        float("nan"),
+                        True,
+                        recovery_mode,
+                        "missing_strength",
+                        governing_interface=interface,
+                        governing_side=side,
+                    )
+                    break
+                s13 = s13 if s13 > 0.0 else fallback
+                s23 = s23 if s23 > 0.0 else fallback
+                provenance = "compatibility_s12_fallback"
+            cand_iface.append(interface)
+            cand_side.append(side)
+            cand_angle.append(float(angle))
+            cand_s13.append(s13)
+            cand_s23.append(s23)
+        if early is not None:
+            break
+    if early is not None:
+        for r in range(n_rows):
+            if not trusted_mask[r]:
+                continue
+            tau_r = tau[r, :n_iface]
+            if not np.all(np.isfinite(tau_r)):
+                continue
+            out[r] = early
+        return out
+    if not cand_iface:
+        return out
+
+    n_cand = len(cand_iface)
+    iface_idx = np.asarray(cand_iface, dtype=int)
+    angles = np.asarray(cand_angle, dtype=np.float64)
+    s13_a = np.asarray(cand_s13, dtype=np.float64)
+    s23_a = np.asarray(cand_s23, dtype=np.float64)
+    needs_review = provenance != "authoritative_s13_s23"
+
+    for r in range(n_rows):
+        if not trusted_mask[r]:
+            continue
+        tau_r = tau[r, :n_iface]
+        if not np.all(np.isfinite(tau_r)):
+            continue
+        best_fi = -1.0
+        best_i = 0
+        best_r13 = float("nan")
+        best_r23 = float("nan")
+        for i in range(n_cand):
+            t13, t23 = rotate_transverse_shear_E_to_M(
+                float(tau_r[iface_idx[i], 0]),
+                float(tau_r[iface_idx[i], 1]),
+                float(angles[i]),
+            )
+            ratio13 = float(t13) / float(s13_a[i])
+            ratio23 = float(t23) / float(s23_a[i])
+            fi = ratio13 * ratio13 + ratio23 * ratio23
+            if fi > best_fi:
+                best_fi = fi
+                best_i = i
+                best_r13 = ratio13
+                best_r23 = ratio23
+        out[r] = InterfaceShearScreeningResult(
+            failure_index=float(best_fi),
+            needs_review=needs_review,
+            recovery_mode=recovery_mode,
+            strength_provenance=provenance,
+            governing_interface=int(cand_iface[best_i]),
+            governing_side=cand_side[best_i],
+            tau13_ratio=float(best_r13),
+            tau23_ratio=float(best_r23),
+        )
+    return out
+
+
+def interlaminar_allowable_pa(ply: Any, *, allow_s12_fallback: bool = False) -> float:
     """Interface-shear allowable [Pa] for a single ply (diagnostic path).
 
     Prefers the real interlaminar shear strength ``S13`` (1-3 / through-thickness
-    shear); falls back to in-plane ``S12`` only when ``S13`` is absent (legacy /
-    isotropic plies). Returns ``0.0`` when neither is available (caller should
-    skip interlaminar FI).
+    shear). ``S12`` is used only when ``allow_s12_fallback=True`` (explicit
+    legacy/demo compatibility — FEA-FI-002). Returns ``0.0`` when neither is
+    available (caller should skip interlaminar FI).
     """
     s13 = float(getattr(ply, "S13", 0.0) or 0.0)
     if s13 > 0.0:
         return s13
-    return float(getattr(ply, "S12", 0.0) or 0.0)
+    if allow_s12_fallback:
+        return float(getattr(ply, "S12", 0.0) or 0.0)
+    return 0.0
 
 
-def interlaminar_allowable_from_lam(lam: Any) -> float:
+def interlaminar_allowable_from_lam(
+    lam: Any, *, allow_s12_fallback: bool = False
+) -> float:
     """First-ply interlaminar allowable for a laminate (canonical laminate policy).
 
-    Interlaminar FI uses the **first ply** S13 (S12 fallback). This matches the
-    optimiser scalar path and avoids silently taking a more permissive mid-stack
-    ply when allowables differ through the thickness.
+    Interlaminar FI uses the **first ply** S13. S12 substitution requires
+    ``allow_s12_fallback=True`` (FEA-FI-002). This matches the optimiser scalar
+    path and avoids silently taking a more permissive mid-stack ply when
+    allowables differ through the thickness.
     """
     if lam is None or not getattr(lam, "plies", None):
         return 0.0
     ply0 = lam.plies[0][0]
-    return interlaminar_allowable_pa(ply0)
+    return interlaminar_allowable_pa(ply0, allow_s12_fallback=allow_s12_fallback)
 
 
 def ply_strength_vectors_from_lam(
@@ -415,6 +564,7 @@ __all__ = [
     "InterfaceShearScreeningResult",
     "batched_interlaminar_fi",
     "interface_shear_screening_from_tau",
+    "interface_shear_screening_from_tau_batch",
     "interlaminar_fi_from_interface_tau",
     "interlaminar_fi_from_row",
     "interlaminar_fi_from_row_fsdt",

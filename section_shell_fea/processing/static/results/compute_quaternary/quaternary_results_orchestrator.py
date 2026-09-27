@@ -21,7 +21,7 @@ from .compute_extreme_fibre_fi import (
 )
 from .compute_hashin_fi import (
     batched_interlaminar_fi,
-    interface_shear_screening_from_tau,
+    interface_shear_screening_from_tau_batch,
     interlaminar_allowable_from_lam,
     ply_hashin_fi_modes,
     ply_strength_vectors_from_lam,
@@ -193,12 +193,14 @@ class ShellQuaternaryResultsOrchestrator:
                 and ply_results.tau_iface.size > 0
             )
             if authoritative_interfaces:
+                tau_batch = ply_results.tau_iface[idx_arr, : n_ply_true + 1]
+                results = interface_shear_screening_from_tau_batch(
+                    tau_batch,
+                    lam,
+                    trusted_mask=shear_trusted,
+                )
                 for local_index, row_index in enumerate(idx_arr):
-                    result = interface_shear_screening_from_tau(
-                        ply_results.tau_iface[row_index, : n_ply_true + 1],
-                        lam,
-                        trusted=bool(shear_trusted[local_index]),
-                    )
+                    result = results[local_index]
                     if np.isfinite(result.failure_index):
                         fi_il[local_index] = result.failure_index
                     bad[local_index] = result.needs_review
