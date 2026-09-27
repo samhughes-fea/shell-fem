@@ -55,9 +55,9 @@ python src/blade_structure_precompute/examples/section_selection/e2e_section_sel
 
 Log path for this closeout attempt: `docs/runs/e2e_section_selection/wp5_followon_2D-F_no_plots.log`.
 
-Compare against WP0 freeze: acceptance, digests, FE calls, cache hit/miss/refusal counters, governing locations/modes, and `stage_timings_s.section_selection`.
+**Status at closeout:** pin **launched and in flight** (pass-1 station-level FE for all 16 stations after upstream Scale/IF/Feasibility/Stiffness). Append warm `stage_timings_s.section_selection`, acceptance, digests, FE calls, cache counters, and governing locations/modes to this file when the job finishes. Do not treat a contested/partial run as a performance oracle.
 
-This job remains an **exclusive-window** pin (shared rotor/data contention). Record warm medians in this file when the exclusive window is available; do not treat a contested run as a performance oracle.
+Compare against WP0 freeze and prior `docs/runs/e2e_section_selection/wp_s5_2D-F_run*.log` when complete.
 
 ## D5.4 — Delivery slices (Conventional Commits)
 
