@@ -151,7 +151,7 @@ def test_hashin_fi_golden_pure_shear_envelope():
 def test_six_series_airfoil_converted_for_multicell_geometry() -> None:
     """Spanwise six-series polygon must be resampled to [upper; lower] LEâ†’TE."""
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca import airfoil_vertices_from_spanwise
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.sectorial_warping import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.sectorial_warping import (
         open_outline_from_airfoil,
         polygon_area_signed,
     )
@@ -258,7 +258,7 @@ def test_mitc4_edge_shear_traction_integrated_uniform_field():
 
 def test_vlasov_shear_centre_finite():
     """compute_section_vlasov returns finite shear centre and positive I_omega_E."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
 
     air, panels, webs_geom, midlines, loops = _panel_topology_vlasov_fixture("0012", [0.35])
     vlasov = compute_section_vlasov(
@@ -273,7 +273,7 @@ def test_vlasov_shear_centre_finite():
 
 def test_vlasov_zero_bimoment_gives_zero_stress():
     """With B=0, warping normal stress must be identically zero."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
 
     air, panels, webs_geom, midlines, loops = _panel_topology_vlasov_fixture("0012", [0.35])
     vlasov = compute_section_vlasov(
@@ -352,7 +352,7 @@ def test_vlasov_nonzero_bimoment_activates_stress():
     B=0   â†’ sigma_omega zero everywhere.
     Scaling: sigma_omega scales linearly with B.
     """
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
 
     air, panels, webs_geom, midlines, loops = _panel_topology_vlasov_fixture("2412", [0.35])
 
@@ -383,7 +383,7 @@ def test_vlasov_nonzero_bimoment_activates_stress():
 
 def test_vlasov_nonzero_dBdx_activates_warping_shear():
     """dB_dx=1e3 with B=0 â†’ q_omega non-zero on at least one skin panel."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
 
     air, panels, webs_geom, midlines, loops = _panel_topology_vlasov_fixture("2412", [0.35])
 
@@ -425,7 +425,7 @@ def _box_airfoil(n: int = 6, width: float = 1.0, height: float = 0.5) -> np.ndar
 
 def test_vlasov_batho_single_cell_box():
     """Rectangular single-cell box: n_cells==1, I_omega_E>0, omega_hat_v non-trivial."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
     from blade_structure_utilities.geometry_utilities.section_contract.cell_wall_loop import CellWallLoop
     from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import (
         ShellMidlineStrip,
@@ -483,7 +483,7 @@ def test_vlasov_batho_single_cell_box():
 
 def test_vlasov_batho_two_cell():
     """Two-cell section (mid web): n_cells==2 and I_omega_E differs from single-cell."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
     from blade_structure_utilities.geometry_utilities.section_contract.cell_wall_loop import CellWallLoop
     from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import (
         ShellMidlineStrip,
@@ -584,7 +584,7 @@ def test_vlasov_batho_two_cell():
 
 def test_vlasov_refuses_webs_without_midlines():
     """Multi-cell Batho without producer midlines/loops raises FEA-L-004."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import (
         compute_section_vlasov,
     )
 

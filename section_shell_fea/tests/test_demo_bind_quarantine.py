@@ -9,7 +9,7 @@ import pytest
 
 
 def test_shell_panel_topology_requires_zones_or_explicit_demo_bind():
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
 

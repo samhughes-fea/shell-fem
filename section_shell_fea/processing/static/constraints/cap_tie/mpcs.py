@@ -13,7 +13,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     W,
     gdof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     GlobalNodeMeta,
     PanelGlobalMap,
 )

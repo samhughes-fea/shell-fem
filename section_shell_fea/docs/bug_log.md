@@ -318,10 +318,14 @@ carried E/M only in prose. Cross-package consumers could not validate frames
 - `ShellPanelResultants.frame` — required `FrameTag`, must be `FRAME_E`
 - `ShellElementalResults.resultant_frame` — `FRAME_E`
 - `ShellPlyResults.mid_surface_frame` / `ply_material_frame` — `FRAME_E` / `FRAME_M`
+- `StationCLPTShellResult.mid_surface_frame` / `ply_material_frame` — same E/M pair
+- `SectionShellRecoveryBundle.pierce_frame` / `ThinWallResult.pierce_frame` —
+  `FRAME_B` for elastic-centroid `y_e`/`z_e` (section pierce plane)
 - Tertiary orchestrator meta stamps the same tags
 
 ### Verification
-Import/construct smoke; tertiary suite; refuse wrong tags in `__post_init__`.
+Import/construct smoke; tertiary suite; refuse wrong tags in `__post_init__`
+(where enforced). Bundle pierce tag covered in `test_recovery_frame_tags.py`.
 
 ---
 
@@ -347,9 +351,454 @@ marks demos-only.
 
 ---
 
+<a id="fea-ccx-001"></a>
+## FEA-CCX-001 — CalculiX SFV→N11/N12 used nearest-YZ / kind fallback
+
+**Status:** Fixed — 2026-09-25
+**Area:** `calculix_ccx/sfv_panel_loads.py`
+
+### Symptom / evidence
+`sfv_to_n11_n12` preferred samples by strip label, then fell back to
+`sfv.by_kind(panel.kind)` and finally **all** samples; within the chosen pool
+it picked the nearest YZ sample per mesh station. Same identity defect class as
+FEA-L-001 / FEA-CT-001 — loads from another strip could bleed onto a panel.
+
+### Root cause
+Adapter re-derived membership by proximity / kind instead of requiring strip
+label identity and arc placement on the panel polyline
+(`COINCIDENCE_TOL_M = 1e-9`).
+
+### Fix
+- Membership: exact label match only (`skin:a` / bare strip `a` forms).
+- Placement: locate each matched sample on the panel polyline; interpolate
+  `f_x`/`f_s` in arc-s onto mesh stations.
+- No kind-wide or global-nearest fallback — unmatched panels get zeros.
+
+### Verification
+`calculix_ccx/tests/test_sfv_panel_loads.py` (label+arc, bare strip, refuse
+kind bleed, empty → zeros).
+
+---
+
+<a id="fea-ccx-002"></a>
+## FEA-CCX-002 — Cap ``*EQUATION`` re-picked nearest masters
+
+**Status:** Fixed — 2026-09-25
+**Area:** `calculix_ccx/cap_skin_ties.py`, `section_export.py`,
+`ccx_cascade_mesh_convergence.py`
+
+### Symptom / evidence
+After FEA-CT-001, ``*TIE`` membership was StripBond-correct, but
+``cap_tie_export="equation"`` still equated each slave to the **nearest** master
+element node by XYZ. Cascade silently switched tie → equation on any TIE
+failure, masking the defect.
+
+### Root cause
+Equation path rediscovered masters by proximity instead of reusing the bond-foot
+segment/weights already computed for ``*TIE`` surfaces (same class as MITC4
+``CapTieLink``).
+
+### Fix
+- `CcxCapEquationLink` + `CcxCapSkinTieSurface.equation_links` recorded at bond
+  locate time (named-host polyline masters + interpolating weights).
+- `_emit_cap_skin_ties` equation mode emits weighted multi-master ``*EQUATION``;
+  refuses empty links (no nearest rediscovery).
+- Cascade no longer auto-falls back to equation; callers must pass
+  `cap_tie_export="equation"` explicitly.
+
+### Verification
+`calculix_ccx/tests/test_joint_validation.py::test_equation_fallback_export`
+(requires `equation_links`; deck has ``*EQUATION``).
+
+---
+
+<a id="fea-c-001"></a>
+## FEA-C-001 — Elastic centroid silently skipped failed panels
+
+**Status:** Fixed — 2026-09-25
+**Area:** `validation/section_centroid.py`
+
+### Symptom / evidence
+`compute_elastic_centroid_from_panels` caught broad ``Exception``, warned, and
+``continue``d; empty A11 sum returned ``(0.0, 0.0)``. Pierce axis identity was
+masked when ABD failed or all panels were skipped.
+
+### Fix
+Raise with panel label on ABD failure or short geometry; refuse zero A11 sum
+(no silent origin pierce).
+
+### Verification
+`validation/tests/test_section_centroid.py` (raise paths).
+
+---
+
+<a id="fea-r-002"></a>
+## FEA-R-002 — Mesh / load / Vlasov pierce coords untagged
+
+**Status:** Fixed — 2026-09-25
+**Area:** `pre_processing/mesh/shell_mesh_map.py` (`GlobalNodeMeta`),
+`containers/load_channel_types.py` (`SectionExternalLoadRequest`),
+`loading/thin_wall/section_vlasov.py` (`SectionVlasovResult`)
+
+### Symptom / evidence
+FEA-R-001 tagged recovery DTOs; mesh pierce `yz`, traction outline points, and
+Vlasov shear-centre coords still lacked validated `FrameTag` (ARCH-MUST-016).
+
+### Fix
+- `GlobalNodeMeta.frame = FRAME_B` (required)
+- `SectionExternalLoadRequest.traction_pierce_frame = FRAME_B`
+- `SectionVlasovResult.pierce_frame = FRAME_B`
+
+### Verification
+`tests/test_recovery_frame_tags.py` (mesh + load request refuse wrong tags).
+
+---
+
+<a id="fea-fi-002"></a>
+## FEA-FI-002 — Interlaminar allowable silently used S12 for missing S13
+
+**Status:** Fixed — 2026-09-25
+**Area:** `compute_quaternary/compute_hashin_fi.py`
+(`interlaminar_allowable_pa` / `interlaminar_allowable_from_lam`)
+
+### Symptom / evidence
+Scalar interlaminar path substituted in-plane ``S12`` whenever ``S13`` was
+absent, under/over-stating interface FI without provenance. Authoritative
+`interface_shear_screening_from_tau` already gated S12 behind
+`allow_s12_fallback`.
+
+### Fix
+Default: return ``0.0`` (caller skips FI) when S13 missing. ``S12`` only when
+`allow_s12_fallback=True` (explicit legacy/demo).
+
+### Verification
+`tests/test_interlaminar_s13_exactness.py`.
+
+---
+
 <a id="fea-l-003-pkg"></a>
 ## Cross-ref: FEA-L-003 traction nearest (loading)
 
 Logged under
 [`pre_processing/loading/docs/bug_log.md#fea-l-003`](../pre_processing/loading/docs/bug_log.md#fea-l-003);
-deferred with SL-014.
+**Fixed** 2026-09-26 — refuse proximity; Channel B via labelled SFV / FEA-L-001.
+
+<a id="fea-l-004-pkg"></a>
+## Cross-ref: FEA-L-004 Vlasov nearest membership (loading)
+
+Logged under
+[`pre_processing/loading/docs/bug_log.md#fea-l-004`](../pre_processing/loading/docs/bug_log.md#fea-l-004);
+**Fixed** 2026-09-25 — midlines / loops / coincidence (see loading log).
+
+---
+
+<a id="fea-ccx-003"></a>
+## FEA-CCX-003 — CCX / diagnostics web kind substring bleed
+
+**Status:** Fixed — 2026-09-25
+**Area:** `calculix_ccx/thin_wall_loads.py`,
+`processing/static/diagnostics/equilibrium_checks.py`
+
+### Symptom / evidence
+`"web" in label.lower()` treated labels like `skin:webbed_…` as webs (same
+bleed FEA-L-004 removed from Vlasov).
+
+### Fix
+Unified `kind_of(label) == "web"` (cap_tie helper).
+
+### Verification
+`tests/test_kind_and_sc_exactness.py`.
+
+---
+
+<a id="fea-l-005"></a>
+## FEA-L-005 — Vlasov silent singular Batho + fake ``I_ω``
+
+**Status:** Fixed — 2026-09-25
+**Area:** `loading/thin_wall/section_vlasov.py`
+
+### Symptom / evidence
+`LinAlgError` on Batho → `c_vec = 0` (open-section ω̂ for closed multi-cell);
+`I_omega_E < 1e-60` → clamp to ``1.0`` inventing finite σ_ω/q_ω.
+
+### Fix
+Raise with FEA-L-005 on singular Batho and near-zero ``I_ω`` (no silent clamp).
+
+### Verification
+Existing Vlasov suites still pass on well-posed sections; raise paths covered by
+docstring contract / unit probes as needed.
+
+---
+
+<a id="fea-r-003"></a>
+## FEA-R-003 — Bundle / CLPT FrameTag defaults unenforced
+
+**Status:** Fixed — 2026-09-25
+**Area:** `station_analysis_types.py`, `local_clpt_shell.py`
+
+### Symptom / evidence
+FEA-R-001 added pierce / E/M defaults but bundle, `ThinWallResult`, and
+`StationCLPTShellResult` did not `require_frame_tag` / refuse wrong tags.
+
+### Fix
+`__post_init__` validation mirroring FEA-R-001 / FEA-R-002.
+
+### Verification
+`tests/test_recovery_frame_tags.py` refuse wrong pierce / E/M tags.
+
+---
+
+<a id="fea-sc-001"></a>
+## FEA-SC-001 — Opt-in SC axis silent ``t=0.01`` default
+
+**Status:** Fixed — 2026-09-25 (multi-cell SC path closed as FEA-SC-002)
+**Area:** `loading/shear_centre_loading_axis.py`
+
+### Symptom / evidence
+`thickness_m … or 0.01` invented wall thickness when missing; SC was
+outer-skin-only until FEA-SC-002.
+
+### Fix
+Raise when `thickness_m` missing/≤0 (FEA-SC-001). Full SC via
+`shear_centre_from_midlines` when loops present is [FEA-SC-002](#fea-sc-002)
+(also Fixed).
+
+### Verification
+`tests/test_kind_and_sc_exactness.py`; `tests/test_eq_sc_exactness.py`.
+
+---
+
+<a id="fea-jn-001"></a>
+## FEA-JN-001 — MITC4 re-clustered junctions the strip mesh already emitted
+
+**Status:** Fixed — 2026-09-25
+**Area:** `pre_processing/mesh/connected_panel_topology.py`
+
+### Symptom / evidence
+`build_connected_panel_maps` called `cluster_points(endpoints, endpoint_tol)`
+after consuming `section_strip_mesh`, ignoring producer
+``SectionStripMesh.clusters``. CalculiX already used
+`clusters_from_section_strip_mesh` — MITC4 rediscovered membership by proximity.
+
+### Fix
+Prefer producer clusters; validate every panel endpoint appears in exactly one
+cluster; refuse FE re-clustering (``endpoint_tol`` unused).
+
+### Verification
+`tests/test_jn_t_bk_exactness.py`; assembly / buckling / hybrid suites.
+
+---
+
+<a id="fea-t-001"></a>
+## FEA-T-001 — Isotropic laminate invents ``t=1e-3``
+
+**Status:** Fixed — 2026-09-25
+**Area:** `element_library/formulation_factory.py`
+(`_isotropic_to_laminate_definition`)
+
+### Symptom / evidence
+Missing zone/lam thickness fell through to silent ``1e-3`` m (same class as
+FEA-SC-001).
+
+### Fix
+Raise with FEA-T-001 when thickness missing/≤0.
+
+### Verification
+`tests/test_jn_t_bk_exactness.py`.
+
+---
+
+<a id="fea-bk-001"></a>
+## FEA-BK-001 — Buckling panel inputs invent thickness / width
+
+**Status:** Fixed — 2026-09-25
+**Area:** `simulation_runner/section_linear_buckling_runner.py`,
+`api/linear_buckling.py`
+
+### Symptom / evidence
+Missing thickness → ``1e-3``; missing width → ``1.0`` m into eigenbuckling.
+
+### Fix
+Require positive thickness (from ``panel_thickness_m`` or row) and positive
+``panel_widths_m`` (or arc-derived from ``panel_maps.s_nodes``); raise otherwise.
+
+### Verification
+`tests/test_jn_t_bk_exactness.py`; `test_section_linear_buckling_runner.py`.
+
+---
+
+<a id="fea-eq-001"></a>
+## FEA-EQ-001 — Diagnostic junctions by proximity; fallbacks green-pass
+
+**Status:** Fixed — 2026-09-25
+**Area:** `processing/static/diagnostics/equilibrium_checks.py`
+
+### Symptom / evidence
+`_build_endpoint_clusters_raw` rediscovered interfaces by geometric proximity
+(same class as FEA-JN-001). ``field-fallback`` / ``centroid-fallback`` N12
+modes could still set ``resultant_pass`` True. Degenerate panels invented a
+``(1,0)`` end tangent.
+
+### Fix
+- Optional ``section_strip_mesh`` / ``producer_clusters`` on
+  ``check_panel_equilibrium`` / ``check_cluster_equilibrium``.
+- ``resultant_pass`` authoritative only for ``traction-vector-strict``;
+  ``resultant_metric_ok`` keeps the numeric gate for informational modes.
+- ``_panel_end_tangent`` raises on degenerate geometry (FEA-EQ-001).
+
+### Verification
+`tests/test_eq_sc_exactness.py`; equilibrium suite in
+`test_section_shell_model.py`.
+
+---
+
+<a id="fea-sc-002"></a>
+## FEA-SC-002 — Opt-in SC ignored ``cell_wall_loops`` when present
+
+**Status:** Fixed — 2026-09-25
+**Area:** `loading/shear_centre_loading_axis.py`
+
+### Symptom / evidence
+Even with ``ShellMeshInputs.cell_wall_loops``, SC used outer-skin sectorial
+estimate only (multi-cell wrong vs thin_wall_section).
+
+### Fix
+When midlines + loops present, call ``shear_centre_from_midlines``. Else keep
+outer-skin path (FEA-SC-001 thickness refuse). Skin selection also accepts
+``kind_of(label) == "skin"``.
+
+### Verification
+`tests/test_eq_sc_exactness.py`.
+
+**Note:** Vlasov Batho / panel map identity closed as
+[FEA-L-004](../pre_processing/loading/docs/bug_log.md#fea-l-004). Sectorial-ω̂
+in `thin_wall_section` closed as
+[TW-002](../../../geometry_utilities/section_thin_wall_model/docs/bug_log.md#tw-002).
+
+---
+
+<a id="fea-ccx-004"></a>
+## FEA-CCX-004 — CCX recovery invented unit edge length
+
+**Status:** Fixed — 2026-09-25
+**Area:** `calculix_ccx/results.py`
+
+### Symptom / evidence
+Zero-length panel edges used ``length = … or 1.0``, inventing a 1 m tangent
+basis for stress → resultant conversion (masking degenerate mesh geometry).
+
+### Fix
+Raise with FEA-CCX-004 on non-positive edge length (three call sites: element
+membrane recovery paths and panel-station helper).
+
+### Verification
+Raise contract in `results.py`; covered by CCX recovery paths that always
+emit positive edge lengths on valid meshes.
+
+---
+
+<a id="fea-v-001"></a>
+## FEA-V-001 — Validation interlaminar ref invented ``t=1e-3``
+
+**Status:** Fixed — 2026-09-25
+**Area:** `validation/section_integrals.py`
+(`physical_interlaminar_shear_from_sigma_gradient`)
+
+### Symptom / evidence
+``zones[0].lam.t … or 1e-3`` invented wall thickness for the spanwise
+σ-gradient interlaminar reference (same class as FEA-T-001 / FEA-SC-001).
+
+### Fix
+Require positive ``lam.t``; raise FEA-V-001 otherwise.
+
+### Verification
+Raise contract in `section_integrals.py`.
+
+
+---
+
+<a id="fea-eq-002"></a>
+## FEA-EQ-002 — Section carries no axial membrane force: bending moment never reaches N11
+
+**Status:** Open — found 2026-09-27, not fixed
+**Area:** `pre_processing/loading/section_force_vector_to_nodal_load.py` (axial load split),
+`processing/static/constraints/junction/supports.py` (`build_clamp_supports`),
+`calculix_ccx/section_export.py` (`_cload_entries`, `_support_node_ccx_ids`)
+**Root log:** [BL-044](../../../../../../docs/bug_log.md#bl-044)
+
+### Symptom / evidence
+
+Found while building a MITC4 ↔ CalculiX cross-check for the CDFAM deck. Station:
+`2D-F`, NACA 2412, chord 1 m, catalogue materials 13 / 17 / 13, realised gauges
+4.0 / 12.155 / 5.0 mm, production chain `SectionGeometryRunner` →
+`SectionBindRunner` → `build_section_strip_mesh` → `SectionLoadsRunner`
+(thin-wall, Channel C) → `SectionLinearStaticRunner(load_channel="thinwall",
+cap_tie_mode="skin_offset")`. Recovered elemental resultants
+(`secondary_results.elemental_results.resultant_rows`) integrated over the strip
+mesh (`Σ N · ds`, `Σ N · y · ds` per element, `mesh.panel_meshes[i].yz_nodes`):
+
+| Applied (pure) | ∫N11 ds | ∫N11·y ds | Where the load went |
+|---|---|---|---|
+| N = 1.0e5 N | **3.3e-3 N** | 2.4e-3 N·m | RBM pin `u_x` reaction at nodes 0,1 = **−99 957 N** |
+| M_flap = 8.0e4 N·m | 2.4e-2 N | **−1.5e-2 N·m** | ∫N12·y ds = −3.27e4 N·m (in-plane shear) |
+| V_flap = 1.0e4 N | 13 N | 6 N·m | shear path; axial as expected ≈ 0 |
+
+The load itself is right: the SFV reproduces the applied resultants to 1e-12 and
+`Σ f[U_X] = N` exactly. The response is wrong: the section does not stretch, so
+N11 — the membrane force that carries bending in every blade section — is
+essentially zero, and the moment is carried (partly) by in-plane shear instead.
+
+CalculiX fed the same SFV (`sfv_to_n11_n12` → `solve_global_coupled_ccx`) recovers
+∫N11·y ds ≈ −3.25e4 N·m of the applied 8.0e4 — also short, differently.
+
+### Root cause (suspected; to confirm before fixing)
+
+The slice has **no end face that can react axial load**:
+
+1. **Supports.** `build_clamp_supports` clamps `(W, BETA_S, BETA_X)` at panel
+   endpoints on both layers and pins `u_x` at **two nodes only** (RBM pin). The
+   CCX export mirrors this (`_support_node_ccx_ids`: `U_Z, TH_X, TH_Y` at
+   endpoints + `U_X, U_Y` at two anchor nodes).
+2. **MITC4 load split.** `section_force_vector_to_nodal_load` puts
+   `0.5 · f_axial` on the bottom node **and** `0.5 · f_axial` on the top node of
+   every pair — same sign on both end faces. A slice loaded identically on both
+   faces in `x` translates or warps; it is not stretched, so ε11 ≈ 0 and the
+   whole net axial force drains to the two-node pin.
+3. **CCX load split.** `_cload_entries` loads the **top layer only**. With the
+   bottom face free in `x` except the two anchors, the axial load reaches the
+   anchors through a mixture of membrane and shear paths — hence ~41 %, not 0 %
+   and not 100 %.
+
+A beam slice under moment needs equal and **opposite** axial tractions on its two
+end faces (or one face reacted in `u_x`), so that N11 = σ t is uniform along x.
+
+### Consequences
+
+- Every MITC4 Hashin FI omits bending stress: section-selection station FIs are
+  1e-6 … 3.5e-3 on the passing 2D-F run `2026-09-26_04-38-13`, so the FE FI gate
+  cannot bind — the same *vacuous gate* class as root BL-009.
+- `tests/test_layup_analytic_matches_fe.py` passes for the wrong reason: the
+  analytic FI is evaluated on the FE's own `resultant_rows`, so it inherits the
+  missing N11 rather than checking it.
+- The existing hard gate (LOAD_APPLICATION_DOUBLE_COUNTING.md) reconstructs R from
+  the **load vector** `f`, never from the **solved response**, so it cannot see
+  this.
+- The MITC4 ↔ CalculiX comparison validates neither: both share the support set.
+- Slide 36 of the CDFAM deck ("peak Hashin FI 0.51") inherits this; slide 39
+  states it as an open item.
+
+### Reproduce
+
+Scratch probe `fe_equilibrium_probe.py` (session scratchpad, 2026-09-27): the
+three pure cases above through the production runners, printing ∫N·ds, ∫N·x ds,
+∫N·y ds and the RBM-pin reaction.
+
+### Proposed fix direction (not implemented)
+
+- Decide the slice contract explicitly: reacted root face (`u_x` clamped on the
+  bottom layer, loads on the top) **or** self-equilibrated antisymmetric end
+  tractions (−½ bottom, +½ top) with a generalised-plane-strain constraint.
+- Add a **response** equilibrium gate after solve: ∫N11 ds = N,
+  ∫N11·(y, x) ds = (M_flap, M_edge) and the shear resultants within 1e-6 —
+  refuse the result otherwise, per the package's no-masking rule.
+- Re-run the CCX cross-check only after both models share a correct contract.

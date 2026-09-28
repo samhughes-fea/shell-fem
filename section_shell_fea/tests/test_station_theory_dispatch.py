@@ -30,7 +30,11 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.di
 )
 
 
-def _request(theory: ShellTheory) -> StationTheorySolveRequest:
+def _request(
+    theory: ShellTheory,
+    *,
+    with_prebuilt: bool = False,
+) -> StationTheorySolveRequest:
     return StationTheorySolveRequest(
         theory=theory,
         section_view=None,
@@ -48,6 +52,9 @@ def _request(theory: ShellTheory) -> StationTheorySolveRequest:
         n_elements_per_panel=None,
         target_element_length_m=1.0,
         min_elements_per_panel=2,
+        section_strip_mesh=object() if with_prebuilt else None,
+        panel_topology=object() if with_prebuilt else None,
+        section_force_vector=object() if with_prebuilt else None,
     )
 
 
@@ -86,14 +93,40 @@ def test_require_shell_theory_supports_returns_capability() -> None:
 
 
 def test_dispatch_routes_fsdt_to_periodic_hashin(monkeypatch) -> None:
+    monkeypatch.setattr(std, "fsdt_periodic_station_hashin", lambda *a, **k: {"solver": "fsdt"})
+    res = dispatch_station_theory(_request(ShellTheory.FSDT, with_prebuilt=True))
+    assert res.fsdt_periodic_extra == {"solver": "fsdt"}
+    assert res.backend_extra is None
+
+
+def test_dispatch_fsdt_requires_prebuilt_products() -> None:
+    with pytest.raises(ValueError, match="prebuilt"):
+        dispatch_station_theory(_request(ShellTheory.FSDT, with_prebuilt=False))
+
+
+def test_dispatch_fsdt_demo_convenience_warns_and_builds(monkeypatch) -> None:
     monkeypatch.setattr(
         "blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh.build_section_strip_mesh",
         lambda *a, **k: object(),
     )
+    monkeypatch.setattr(
+        "blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api."
+        "shell_panel_topology.shell_panel_topology_from_shell_inputs",
+        lambda *a, **k: object(),
+    )
+    monkeypatch.setattr(
+        "blade_structure_utilities.load_utilities.section_loads.shape_section_force_vector",
+        lambda *a, **k: object(),
+    )
     monkeypatch.setattr(std, "fsdt_periodic_station_hashin", lambda *a, **k: {"solver": "fsdt"})
-    res = dispatch_station_theory(_request(ShellTheory.FSDT))
+    req = _request(ShellTheory.FSDT, with_prebuilt=False)
+    # Convenience path needs shell_inputs for SFV shaping when load_field is None.
+    from dataclasses import replace
+
+    req = replace(req, shell_inputs=object())
+    with pytest.warns(UserWarning, match="dispatch_fsdt_demo_convenience"):
+        res = std.dispatch_fsdt_demo_convenience(req)
     assert res.fsdt_periodic_extra == {"solver": "fsdt"}
-    assert res.backend_extra is None
 
 
 def test_fsdt_traction_requires_sfv_no_overlay(monkeypatch) -> None:
@@ -136,7 +169,7 @@ def test_fsdt_traction_requires_sfv_no_overlay(monkeypatch) -> None:
             return _FakeResults()
 
     import blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner as slsr
-    import blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology as spt
+    import blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology as spt
 
     monkeypatch.setattr(slsr, "SectionLinearStaticRunner", _FakeRunner)
     monkeypatch.setattr(spt, "shell_panel_topology_from_shell_inputs", lambda *_a, **_k: object())
@@ -188,6 +221,7 @@ def test_fsdt_traction_requires_sfv_no_overlay(monkeypatch) -> None:
             Mz=0.0,
             T=1.0,
             section_strip_mesh=object(),
+            panel_topology=object(),
             load_field=lf,
         )
 
@@ -201,6 +235,7 @@ def test_fsdt_traction_requires_sfv_no_overlay(monkeypatch) -> None:
         Mz=0.0,
         T=1.0,
         section_strip_mesh=object(),
+        panel_topology=object(),
         load_field=lf,
         section_force_vector=object(),
     )

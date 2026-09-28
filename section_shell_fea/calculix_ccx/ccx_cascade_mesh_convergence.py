@@ -16,7 +16,7 @@ import numpy as np
 from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
     BeamResultantVector,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
     shell_panel_topology_from_shell_inputs,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.cascade_mesh_convergence import (

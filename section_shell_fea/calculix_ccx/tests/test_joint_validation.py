@@ -106,6 +106,8 @@ def test_equation_fallback_export():
         cap_tie_mode="skin_offset",
         shell_midlines=shell.midlines,
     )
+    assert mesh.cap_skin_ties
+    assert all(tie.equation_links for tie in mesh.cap_skin_ties)
     with tempfile.TemporaryDirectory() as tmp:
         path = write_section_inp(
             mesh,
@@ -118,6 +120,8 @@ def test_equation_fallback_export():
         text = path.read_text(encoding="utf-8")
         assert "*EQUATION" in text
         assert "*TIE" not in text
+        # Weighted two-master form uses three terms (slave + two masters).
+        assert ", 3" in text or "\n3\n" in text
 
 
 def test_run_joint_validation_offline_decks():

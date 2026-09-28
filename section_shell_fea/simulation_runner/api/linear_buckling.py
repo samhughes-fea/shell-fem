@@ -104,8 +104,25 @@ def run_section_linear_buckling_from_static(
         derived: list[float] = []
         for pm in asm.panel_maps:
             s = np.asarray(getattr(pm, "s_nodes", []), dtype=float)
-            derived.append(float(s[-1] - s[0]) if s.size >= 2 else 1.0)
+            if s.size < 2:
+                raise ValueError(
+                    f"panel {getattr(pm, 'panel_label', None)!r}: cannot derive "
+                    "buckling width from s_nodes; pass panel_widths_m= "
+                    "(FEA-BK-001)"
+                )
+            w = float(abs(s[-1] - s[0]))
+            if w <= 0.0:
+                raise ValueError(
+                    f"panel {getattr(pm, 'panel_label', None)!r}: derived "
+                    f"buckling width is {w!r} (FEA-BK-001)"
+                )
+            derived.append(w)
         widths = derived
+    if widths is None:
+        raise ValueError(
+            "panel_widths_m required when assembly has no panel_maps "
+            "(refusing silent width=1.0; FEA-BK-001)"
+        )
     panel_inputs = panel_inputs_from_nested_resultants(
         nested,
         station_index=0,

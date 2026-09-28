@@ -295,7 +295,7 @@ def build_capped_catalogue_fixture(
     from blade_structure_utilities.mesh_utilities.section_mesh import (
         build_section_strip_mesh,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
 
@@ -339,7 +339,7 @@ def run_mitc4_kind_peaks_from_shell(
     from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
         BeamResultantVector,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (

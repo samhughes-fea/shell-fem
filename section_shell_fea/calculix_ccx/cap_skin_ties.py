@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     PanelGlobalMap,
     interp_yz_nodes,
 )
@@ -38,8 +38,21 @@ _MIN_TOL_M = 1e-6
 
 
 @dataclass(frozen=True)
+class CcxCapEquationLink:
+    """Per-slave weighted masters for ``*EQUATION`` export (FEA-CCX-002).
+
+    Mirrors MITC4 ``CapTieLink``: bond-named host polyline foot → two master
+    CCX nodes with interpolating weights. No nearest-master rediscovery.
+    """
+
+    slave_ccx_node: int
+    master_ccx_nodes: tuple[int, int]
+    weights: tuple[float, float]
+
+
+@dataclass(frozen=True)
 class CcxCapSkinTieSurface:
-    """One cap→skin bonded interface for CalculiX ``*TIE`` export."""
+    """One cap→skin bonded interface for CalculiX ``*TIE`` / ``*EQUATION`` export."""
 
     name: str
     cap_label: str
@@ -49,6 +62,7 @@ class CcxCapSkinTieSurface:
     position_tolerance: float
     max_gap_m: float
     n_projections: int
+    equation_links: tuple[CcxCapEquationLink, ...] = ()
 
 
 def _ccx_id(mesh: CcxSectionMesh, gn: int) -> int | None:
@@ -154,6 +168,7 @@ def build_cap_skin_tie_surfaces(
         slave_nodes: set[int] = set()
         master_eids: set[int] = set()
         skin_labels: set[str] = set()
+        equation_links: list[CcxCapEquationLink] = []
         gaps: list[float] = []
         n_proj = 0
         cap_yz = interp_yz_nodes(cap.s_nodes, zones[cap.panel_index])
@@ -182,17 +197,33 @@ def build_cap_skin_tie_surfaces(
                         f"cap {cap.panel_label!r}: host skin {skin.panel_label!r} "
                         f"layer {layer!r} has no usable mesh polyline"
                     )
-                _gids, pts = poly
+                gids, pts = poly
                 d_mesh, seg, t_param = _project_onto_polyline(foot, pts)
                 if seg < 0:
                     raise ValueError(
                         f"cap {cap.panel_label!r}: bond foot could not be located on "
                         f"host skin mesh {skin.panel_label!r}"
                     )
+                m0_gn = int(gids[int(seg)])
+                m1_gn = int(gids[int(seg) + 1])
+                m0 = _ccx_id(mesh, m0_gn)
+                m1 = _ccx_id(mesh, m1_gn)
+                if m0 is None or m1 is None:
+                    raise ValueError(
+                        f"cap {cap.panel_label!r}: host skin masters "
+                        f"{m0_gn}/{m1_gn} have no CCX node ids"
+                    )
                 slave_nodes.add(int(ccx_nid))
                 skin_labels.add(skin.panel_label)
                 gaps.append(float(np.linalg.norm(q - foot)))
                 n_proj += 1
+                equation_links.append(
+                    CcxCapEquationLink(
+                        slave_ccx_node=int(ccx_nid),
+                        master_ccx_nodes=(int(m0), int(m1)),
+                        weights=(float(1.0 - t_param), float(t_param)),
+                    )
+                )
                 spi = int(skin.panel_index)
                 for eid in skin_seg_to_eids.get((spi, int(seg)), []):
                     master_eids.add(int(eid))
@@ -220,6 +251,7 @@ def build_cap_skin_tie_surfaces(
                 position_tolerance=float(tol),
                 max_gap_m=max_gap,
                 n_projections=n_proj,
+                equation_links=tuple(equation_links),
             )
         )
     return surfaces
@@ -234,6 +266,7 @@ def resolve_cap_tie_mode(cap_tie_mode: str, *, has_caps: bool) -> str:
 
 
 __all__ = [
+    "CcxCapEquationLink",
     "CcxCapSkinTieSurface",
     "build_cap_skin_tie_surfaces",
     "resolve_cap_tie_mode",

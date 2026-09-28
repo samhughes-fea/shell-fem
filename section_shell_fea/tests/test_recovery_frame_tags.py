@@ -183,7 +183,7 @@ def test_recovery_bundle_pierce_frame_is_b():
 
 
 def test_global_node_meta_and_load_request_pierce_frame():
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
         GlobalNodeMeta,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.load_channel_types import (

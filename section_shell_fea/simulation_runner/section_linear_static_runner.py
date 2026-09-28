@@ -21,7 +21,7 @@ from blade_structure_utilities.geometry_utilities.section_contract.shell_midline
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import ShellFormulationCache
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
     ShellPanelTopology,
 )
 from blade_structure_utilities.load_utilities.section_loads import (
@@ -633,7 +633,7 @@ class SectionLinearStaticRunner:
         surface_aliases = {"surface_traction", "traction", "b", "channel_b"}
 
         if channel_l in thinwall_aliases:
-            from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
+            from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.load_application import (
                 section_force_vector_to_nodal_load,
             )
 
@@ -657,7 +657,7 @@ class SectionLinearStaticRunner:
             channel_used = "thinwall"
             provenance_tag = "SectionLinearStaticRunner.execute + thinwall"
         elif channel_l in surface_aliases:
-            from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
+            from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.load_application import (
                 section_force_vector_to_nodal_load,
             )
 
@@ -682,7 +682,7 @@ class SectionLinearStaticRunner:
             channel_used = "surface_traction"
             provenance_tag = "SectionLinearStaticRunner.execute + surface_traction"
         elif channel_l in equipollent_aliases:
-            from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
+            from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.load_application import (
                 section_force_vector_to_nodal_load,
             )
 

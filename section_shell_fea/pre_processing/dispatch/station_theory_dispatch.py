@@ -1,8 +1,15 @@
-"""Per-station shell theory dispatch for the strip-mesh orchestration path."""
+"""Per-station shell theory dispatch for the strip-mesh orchestration path.
+
+Production path: accept prebuilt mesh / panel topology (frozen zones) / SFV and
+select the registered FE formulation only. Mesh building, SFV shaping, and
+demo-bind are not owned here — compose those in BSP L4-EVAL (or the explicit
+non-production convenience helper below).
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import warnings
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable
 
@@ -16,7 +23,12 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 
 @dataclass(frozen=True)
 class StationTheorySolveRequest:
-    """Inputs shared by FSDT / CCX station solves."""
+    """Inputs shared by FSDT / CCX station solves.
+
+    Production dispatch requires ``section_strip_mesh``, ``panel_topology``
+    (frozen zones), and ``section_force_vector``. Density kwargs are retained
+    only for the non-production convenience helper.
+    """
 
     theory: ShellTheory
     section_view: Any
@@ -36,6 +48,9 @@ class StationTheorySolveRequest:
     min_elements_per_panel: int
     load_field: Any | None = None
     external_backend_options: dict[str, Any] | None = None
+    section_strip_mesh: Any | None = None
+    panel_topology: Any | None = None
+    section_force_vector: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -64,20 +79,14 @@ def fsdt_periodic_station_hashin(
 ) -> dict[str, Any]:
     """Linear-static FSDT cascade + Hashin FI summary for orchestration JSON.
 
-    Usable face traction is applied on the contour-supported linear-static RHS
-    (same free set as beam loads). Beam-only stations use the cascade without
-    Channel B overlay. Requires ``section_strip_mesh=`` (density is owned
-    outside FE; dispatch builds the mesh once before calling this helper).
-
-    Thinwall path requires a frozen ``section_force_vector=`` shaped outside FE.
-    Prefer ``panel_topology=`` with pre-bound zones; omitted topology may
-    demo-bind via ``shell_panel_topology_from_shell_inputs(..., allow_demo_bind=True)``.
+    Requires ``section_strip_mesh=`` (density owned outside FE), frozen
+    ``panel_topology`` (zones from bind / L4), and frozen
+    ``section_force_vector`` shaped outside FE. When ``load_field`` carries a
+    usable TractionField, Channel B is selected and SFV is mandatory
+    (FEA-L-003: no proximity face-load overlay).
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.interface.traction_load_adapter import (
         traction_points_from_load_field,
-    )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-        shell_panel_topology_from_shell_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
         SectionLinearStaticRunner,
@@ -89,6 +98,12 @@ def fsdt_periodic_station_hashin(
             "mesh_utilities.section_mesh.build_section_strip_mesh "
             "(density is owned outside FE)."
         )
+    if panel_topology is None:
+        raise ValueError(
+            "panel_topology with frozen zones is required; compose via L4-EVAL / "
+            "SectionBindRunner. Demo convenience must use "
+            "dispatch_fsdt_demo_convenience (not production dispatch)."
+        )
     if (
         n_elements_per_panel is not None
         or target_element_length_m is not None
@@ -99,29 +114,20 @@ def fsdt_periodic_station_hashin(
             "pass a prebuilt section_strip_mesh= instead."
         )
 
-    if panel_topology is None:
-        panel_topology = shell_panel_topology_from_shell_inputs(
-            shell_inputs, section=section_view, allow_demo_bind=True
-        )
-    traction_field = None
-    traction_points = None
-    used_traction = False
-    if load_field is not None:
-        traction_points = traction_points_from_load_field(load_field)
-        if traction_points is not None:
-            traction_field = load_field.traction_field
-            used_traction = True
-
-    # Default Channel C (thinwall). When usable face traction is present, use
-    # Channel B alone (do not stack tip-integrated V with matching face traction).
-    load_channel = "surface_traction" if used_traction else "thinwall"
+    has_traction = (
+        load_field is not None
+        and traction_points_from_load_field(load_field) is not None
+    )
+    # Default Channel C. Usable face traction selects Channel B; SFV required.
+    load_channel = "surface_traction" if has_traction else "thinwall"
     sfv = section_force_vector
-    if load_channel == "thinwall" and sfv is None:
+    if sfv is None:
         raise ValueError(
-            "section_force_vector is required for thinwall; shape SFV with "
-            "section_loads outside FE (FE applies frozen SFV only)."
+            f"section_force_vector is required for load_channel={load_channel!r}; "
+            "shape SFV with section_loads outside FE (FE applies frozen SFV only; "
+            "FEA-L-003 refuses proximity TractionField overlay)."
         )
-    strip_mesh = section_strip_mesh
+
     static = SectionLinearStaticRunner(
         panel_topology=panel_topology,
         N=N,
@@ -130,9 +136,7 @@ def fsdt_periodic_station_hashin(
         My=My,
         Mz=Mz,
         T=T,
-        traction_field=traction_field,
-        traction_points_yz=traction_points,
-        section_strip_mesh=strip_mesh,
+        section_strip_mesh=section_strip_mesh,
         load_channel=load_channel,
         section_force_vector=sfv,
     ).execute()
@@ -161,7 +165,8 @@ def fsdt_periodic_station_hashin(
         fi_by_panel.append(pmax)
     return {
         "solver": "fsdt_linear_static_cascade",
-        "used_traction": bool(used_traction or static.used_traction),
+        "load_channel": str(static.load_channel_used),
+        "used_traction": False,  # FEA-L-003: proximity overlay removed
         "max_fi_hashin": max_fi,
         "needs_review": needs_review,
         "fi_by_panel": [float(x) for x in fi_by_panel],
@@ -170,7 +175,65 @@ def fsdt_periodic_station_hashin(
     }
 
 
+def _require_prebuilt_fsdt_products(request: StationTheorySolveRequest) -> None:
+    missing = [
+        name
+        for name, value in (
+            ("section_strip_mesh", request.section_strip_mesh),
+            ("panel_topology", request.panel_topology),
+            ("section_force_vector", request.section_force_vector),
+        )
+        if value is None
+    ]
+    if missing:
+        raise ValueError(
+            "Production station dispatch requires prebuilt "
+            + ", ".join(missing)
+            + ". Compose mesh/zones/SFV in BSP L4-EVAL "
+            "(station_evaluation_workflow / station_preparation_workflow); "
+            "for demos/tests use dispatch_fsdt_demo_convenience()."
+        )
+
+
 def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResult:
+    """Production FSDT handler: formulation select over frozen worker products only."""
+    _require_prebuilt_fsdt_products(request)
+    return StationTheorySolveResult(
+        fsdt_periodic_extra=fsdt_periodic_station_hashin(
+            request.section_view,
+            request.shell_inputs,
+            N=request.N,
+            Vy=request.Vy,
+            Vz=request.Vz,
+            My=request.My,
+            Mz=request.Mz,
+            T=request.T,
+            section_strip_mesh=request.section_strip_mesh,
+            section_force_vector=request.section_force_vector,
+            panel_topology=request.panel_topology,
+            load_field=request.load_field,
+        )
+    )
+
+
+def dispatch_fsdt_demo_convenience(
+    request: StationTheorySolveRequest,
+) -> StationTheorySolveResult:
+    """Non-production helper: mesh + demo-bind + SFV shape, then FSDT dispatch.
+
+    Emits a warning. Not an L4 sequencer and not the production ownership home.
+    Prefer BSP ``station_evaluation_workflow`` / ``station_preparation_workflow``.
+    """
+    warnings.warn(
+        "dispatch_fsdt_demo_convenience builds mesh, demo-binds zones, and shapes "
+        "SFV inside FE dispatch; use only for demos/tests. Production composition "
+        "belongs in BSP L4-EVAL.",
+        UserWarning,
+        stacklevel=2,
+    )
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+        shell_panel_topology_from_shell_inputs,
+    )
     from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
         BEAM_LOAD_AXIS_YZ,
         BeamResultantVector,
@@ -183,19 +246,25 @@ def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResu
         build_section_strip_mesh,
     )
 
-    # Density ownership: build once at the dispatch boundary, then hand a mesh
-    # into the FE shim (no remesh / density kwargs on the solve path).
-    strip_mesh = build_section_strip_mesh(
-        request.shell_inputs,
-        n_elements_per_panel=request.n_elements_per_panel,
-        target_element_length_m=request.target_element_length_m,
-        min_elements_per_panel=request.min_elements_per_panel,
-    )
-    # Named FE-PREP convenience: registry path still shapes SFV here so
-    # fsdt_periodic_station_hashin itself only applies a frozen vector.
-    # Production L4 must shape via SectionLoadsRunner before the runner.
-    sfv = None
-    if request.load_field is None and request.shell_inputs is not None:
+    strip_mesh = request.section_strip_mesh
+    if strip_mesh is None:
+        strip_mesh = build_section_strip_mesh(
+            request.shell_inputs,
+            n_elements_per_panel=request.n_elements_per_panel,
+            target_element_length_m=request.target_element_length_m,
+            min_elements_per_panel=request.min_elements_per_panel,
+        )
+
+    panel_topology = request.panel_topology
+    if panel_topology is None:
+        panel_topology = shell_panel_topology_from_shell_inputs(
+            request.shell_inputs,
+            section=request.section_view,
+            allow_demo_bind=True,
+        )
+
+    sfv = request.section_force_vector
+    if sfv is None and request.load_field is None and request.shell_inputs is not None:
         resultants = BeamResultantVector.from_named(
             N=request.N,
             Vy=request.Vy,
@@ -211,21 +280,14 @@ def _dispatch_fsdt(request: StationTheorySolveRequest) -> StationTheorySolveResu
             getattr(request.shell_inputs, "midlines", None),
             cell_wall_loops=getattr(request.shell_inputs, "cell_wall_loops", None),
         )
-    return StationTheorySolveResult(
-        fsdt_periodic_extra=fsdt_periodic_station_hashin(
-            request.section_view,
-            request.shell_inputs,
-            N=request.N,
-            Vy=request.Vy,
-            Vz=request.Vz,
-            My=request.My,
-            Mz=request.Mz,
-            T=request.T,
-            section_strip_mesh=strip_mesh,
-            section_force_vector=sfv,
-            load_field=request.load_field,
-        )
+
+    prepared = replace(
+        request,
+        section_strip_mesh=strip_mesh,
+        panel_topology=panel_topology,
+        section_force_vector=sfv,
     )
+    return _dispatch_fsdt(prepared)
 
 
 _StationSolverFn = Callable[["StationTheorySolveRequest"], "StationTheorySolveResult"]
@@ -287,6 +349,7 @@ def dispatch_station_theory(request: StationTheorySolveRequest) -> StationTheory
 __all__ = [
     "StationTheorySolveRequest",
     "StationTheorySolveResult",
+    "dispatch_fsdt_demo_convenience",
     "dispatch_station_theory",
     "fsdt_periodic_station_hashin",
     "register_station_solver",

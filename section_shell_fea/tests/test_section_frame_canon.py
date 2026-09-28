@@ -31,7 +31,7 @@ from blade_structure_utilities.geometry_utilities.coordinate_frames import (
     rotate_ply_stress_E_to_M,
     section_normal_2d,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.builders.outline_frames import (
+from blade_structure_utilities.load_utilities.section_loads.surface_traction.outline_frames import (
     blade_outline_to_unit_chord,
     blade_to_naca_rotation,
 )
@@ -250,7 +250,7 @@ class TestTransformsAreNotReimplemented:
         np.testing.assert_allclose(got[1], section_normal_2d(pts[2] - pts[0]), atol=1e-12)
 
     def test_mesh_map_normal_delegates(self):
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
             normal_2d,
         )
 

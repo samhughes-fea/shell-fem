@@ -20,7 +20,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     PanelGlobalMap,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.buckling.operations.assemble_geometric import (
@@ -94,13 +94,23 @@ def panel_inputs_from_nested_resultants(
         thickness = (
             float(panel_thickness_m[pi])
             if panel_thickness_m is not None and pi < len(panel_thickness_m)
-            else float(getattr(source, "thickness_m", 0.0) or 1e-3)
+            else float(getattr(source, "thickness_m", 0.0) or 0.0)
         )
-        width = (
-            float(panel_widths_m[pi])
-            if panel_widths_m is not None and pi < len(panel_widths_m)
-            else 1.0
-        )
+        if not np.isfinite(thickness) or thickness <= 0.0:
+            raise ValueError(
+                f"panel {label!r}: thickness_m missing or ≤0; refusing silent "
+                f"t=1e-3 default (FEA-BK-001)"
+            )
+        if panel_widths_m is None or pi >= len(panel_widths_m):
+            raise ValueError(
+                f"panel {label!r}: panel_widths_m required; refusing silent "
+                f"width=1.0 m default (FEA-BK-001)"
+            )
+        width = float(panel_widths_m[pi])
+        if not np.isfinite(width) or width <= 0.0:
+            raise ValueError(
+                f"panel {label!r}: width_m must be positive; got {width!r} (FEA-BK-001)"
+            )
         abd = None
         if panel_abd is not None and pi < len(panel_abd) and panel_abd[pi] is not None:
             abd = np.asarray(panel_abd[pi], dtype=float)
@@ -110,8 +120,8 @@ def panel_inputs_from_nested_resultants(
                 panel_index=pi,
                 station_index=si,
                 length_m=float(length_m),
-                width_m=max(float(width), 1e-12),
-                thickness_m=max(float(thickness), 1e-12),
+                width_m=float(width),
+                thickness_m=float(thickness),
                 abd=abd,
                 membrane_resultants=source.to_N_vec(),
                 bending_resultants=source.to_M_vec(),

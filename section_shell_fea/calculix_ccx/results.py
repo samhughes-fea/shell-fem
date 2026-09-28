@@ -199,7 +199,12 @@ def map_ccx_stresses_to_panel_resultants(
             (_x0, y0, z0) = mesh.nodes[n0]
             (_x1, y1, z1) = mesh.nodes[n1]
             dy, dz = y1 - y0, z1 - z0
-            length = float(np.hypot(dy, dz)) or 1.0
+            length = float(np.hypot(dy, dz))
+            if length <= 0.0:
+                raise ValueError(
+                    f"CCX element {elem.eid} on panel {pi}: zero-length edge "
+                    f"(nodes {n0}/{n1}); refusing silent length=1.0 (FEA-CCX-004)"
+                )
             ty, tz = dy / length, dz / length
             ny, nz = -tz, ty
             if r is None:
@@ -648,7 +653,12 @@ def apply_frd_bending_to_panel_resultants(
             (_x0, y0, z0) = mesh.nodes[n0]
             (_x1, y1, z1) = mesh.nodes[n1]
             dy, dz = y1 - y0, z1 - z0
-            length = float(np.hypot(dy, dz)) or 1.0
+            length = float(np.hypot(dy, dz))
+            if length <= 0.0:
+                raise ValueError(
+                    f"CCX element {elem.eid} on panel {pi}: zero-length edge "
+                    f"(nodes {n0}/{n1}); refusing silent length=1.0 (FEA-CCX-004)"
+                )
             ty, tz = dy / length, dz / length
             mx, my, mxy = bending_moments_from_frd_ips(
                 ip_rows, thickness=float(res.thickness_m or 0.0), ty=ty, tz=tz,
@@ -899,7 +909,12 @@ def _element_membrane_from_stress(
     (_x0, y0, z0) = mesh_nodes[n0]
     (_x1, y1, z1) = mesh_nodes[n1]
     dy, dz = y1 - y0, z1 - z0
-    length = float(np.hypot(dy, dz)) or 1.0
+    length = float(np.hypot(dy, dz))
+    if length <= 0.0:
+        raise ValueError(
+            f"CCX panel {panel_label!r} station {station_index}: zero-length edge "
+            f"(nodes {n0}/{n1}); refusing silent length=1.0 (FEA-CCX-004)"
+        )
     ty, tz = dy / length, dz / length
     ny, nz = -tz, ty
     if r is None:

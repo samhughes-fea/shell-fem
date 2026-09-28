@@ -148,7 +148,7 @@ def test_torsion_about_shear_centre_opt_in_reconstructs_T():
     assert static.resultants is not None
     assert static.resultants.about_xy == pytest.approx((y_sc, z_sc), rel=0, abs=1e-9)
     assert static.assembly is not None and static.f_nodal is not None
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.load_application import (
         section_force_vector_to_nodal_load,
     )
 

@@ -21,6 +21,9 @@ section_geometry → section_contract → section_mesh
 
 Canonical import: `blade_structure_utilities.fem_utilities.section_shell_fea`.
 
+Authoritative sizing cascade:
+[`section_selection/docs/package_boundaries.md`](../../../blade_structure_precompute/module/section_selection/docs/package_boundaries.md#1-pipeline-sketch).
+
 ### Boundary
 
 | | |

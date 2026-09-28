@@ -15,11 +15,11 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     GlobalNodeMeta,
     PanelGlobalMap,
 )
-from blade_structure_utilities.geometry_utilities.thin_wall_section import (
+from blade_structure_utilities.geometry_utilities.section_thin_wall_model import (
     COINCIDENCE_TOL_M,
 )
 

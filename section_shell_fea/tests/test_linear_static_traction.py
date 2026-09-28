@@ -113,7 +113,7 @@ def test_channel_b_sfv_applies_via_fea_l001() -> None:
     sfv = traction_field_to_section_force_vector(tf, outline=outline, L_x=1.0)
     asm = _assemble(panel_topology, ne=3)
     ndof = int(asm.cache.n_dof_node)
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.section_force_vector_to_nodal_load import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.load_application import (
         section_force_vector_to_nodal_load,
     )
 

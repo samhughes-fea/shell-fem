@@ -14,6 +14,11 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+    FRAME_B,
+    FrameTag,
+    require_frame_tag,
+)
 from .shell_theory_capabilities import ShellAnalysisRegime
 
 
@@ -44,8 +49,17 @@ class SectionExternalLoadRequest:
     )
     traction_field: Any | None = None
     traction_points_yz: NDArray[np.float64] | None = None
+    traction_pierce_frame: FrameTag = FRAME_B
 
     def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "traction_pierce_frame", require_frame_tag(self.traction_pierce_frame)
+        )
+        if self.traction_pierce_frame != FRAME_B:
+            raise ValueError(
+                f"SectionExternalLoadRequest.traction_pierce_frame must be {FRAME_B!r}; "
+                f"got {self.traction_pierce_frame!r} (FEA-R-002)"
+            )
         f6 = np.asarray(self.f_beam_mode, dtype=np.float64).ravel()
         if f6.size != 6:
             raise ValueError(f"f_beam_mode must have length 6, got {f6.size}")

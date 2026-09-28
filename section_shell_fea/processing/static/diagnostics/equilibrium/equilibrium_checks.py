@@ -57,7 +57,7 @@ def _normal_2d(t: np.ndarray) -> np.ndarray:
     Re-exported from the mesh map so the ``+x3`` convention has one owner —
     ``coordinate_frames.section_normal_2d``.
     """
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
         normal_2d,
     )
 
@@ -349,7 +349,7 @@ def check_panel_equilibrium(
     """
     clusters_in = producer_clusters
     if clusters_in is None and section_strip_mesh is not None:
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
             clusters_from_section_strip_mesh,
         )
 
@@ -648,7 +648,7 @@ def check_cluster_equilibrium(
     """
     clusters_in = producer_clusters
     if clusters_in is None and section_strip_mesh is not None:
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
             clusters_from_section_strip_mesh,
         )
 

@@ -17,6 +17,12 @@ import numpy as np
 from numpy.typing import NDArray
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellPanelResultants
+from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+    FRAME_E,
+    FRAME_M,
+    FrameTag,
+    require_frame_tag,
+)
 
 
 @dataclass
@@ -37,6 +43,22 @@ class StationCLPTShellResult:
     M_vec: np.ndarray
     sig_ply_mat_mid: list[np.ndarray] | None = None
     eps_ply_mat_mid: list[np.ndarray] | None = None
+    mid_surface_frame: FrameTag = FRAME_E
+    ply_material_frame: FrameTag = FRAME_M
+
+    def __post_init__(self) -> None:
+        self.mid_surface_frame = require_frame_tag(self.mid_surface_frame)
+        self.ply_material_frame = require_frame_tag(self.ply_material_frame)
+        if self.mid_surface_frame != FRAME_E:
+            raise ValueError(
+                f"StationCLPTShellResult.mid_surface_frame must be {FRAME_E!r}; "
+                f"got {self.mid_surface_frame!r} (FEA-R-003)"
+            )
+        if self.ply_material_frame != FRAME_M:
+            raise ValueError(
+                f"StationCLPTShellResult.ply_material_frame must be {FRAME_M!r}; "
+                f"got {self.ply_material_frame!r} (FEA-R-003)"
+            )
 
 
 def solve_station_clpt_shell(
