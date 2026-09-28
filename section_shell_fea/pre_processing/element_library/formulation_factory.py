@@ -23,7 +23,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     panel_abd_tuple_from_lam,
     panel_constitutive_spec_from_lam,
 )
-from ..topology.shell_mesh_map import PanelGlobalMap
+from ..mesh.shell_mesh_map import PanelGlobalMap
 from .shell_element_base import ShellElementBase
 from .phase_timing import (
     PHASE_ELEMENT_FORCE_VECTORS,

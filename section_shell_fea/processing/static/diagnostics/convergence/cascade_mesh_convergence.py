@@ -40,7 +40,7 @@ from blade_structure_utilities.geometry_utilities.section_geometry.api.factory i
 from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import (
     AirfoilSDF,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
     shell_panel_topology_from_shell_inputs,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (

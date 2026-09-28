@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.global_numbering import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
     DEFAULT_BC_MODE,
     attach_cluster_node_meta,
 )
@@ -47,7 +47,7 @@ _TB_LIKE_MODES = frozenset(
 
 
 def _mpc_clusters(topology: Any, *, interface_constraint_mode: str) -> list:
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.global_numbering import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
         cluster_is_kind_crossing,
     )
 

@@ -46,7 +46,7 @@ def __getattr__(name: str) -> Any:
             'run_section_linear_buckling_from_static': run_section_linear_buckling_from_static,
         }[name]
     if name == 'ShellPanelTopology':
-        from .pre_processing.topology.api.shell_panel_topology import ShellPanelTopology
+        from .pre_processing.mesh.api.shell_panel_topology import ShellPanelTopology
 
         return ShellPanelTopology
     if name == 'extract_shell_full_element_results':

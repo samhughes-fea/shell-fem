@@ -21,7 +21,7 @@ from blade_structure_utilities.geometry_utilities.section_contract.shell_midline
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import ShellFormulationCache
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
     ShellPanelTopology,
 )
 from blade_structure_utilities.load_utilities.section_loads import (

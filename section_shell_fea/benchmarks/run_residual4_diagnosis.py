@@ -25,10 +25,10 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
     cluster_is_kind_crossing,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
     shell_panel_topology_from_shell_inputs,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.connected_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.connected_panel_topology import (
     build_connected_panel_maps,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh

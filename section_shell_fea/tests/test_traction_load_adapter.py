@@ -196,7 +196,7 @@ def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, Section
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.traction_face_load import (
         _skin_node_pairs,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (

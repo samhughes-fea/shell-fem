@@ -10,11 +10,11 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     W,
     gdof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.global_numbering import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
     DEFAULT_BC_MODE,
     normalize_bc_mode,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
     PanelGlobalMap,
 )
 

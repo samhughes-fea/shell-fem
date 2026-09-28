@@ -110,7 +110,7 @@ def test_dispatch_fsdt_demo_convenience_warns_and_builds(monkeypatch) -> None:
         lambda *a, **k: object(),
     )
     monkeypatch.setattr(
-        "blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api."
+        "blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api."
         "shell_panel_topology.shell_panel_topology_from_shell_inputs",
         lambda *a, **k: object(),
     )
@@ -169,7 +169,7 @@ def test_fsdt_traction_requires_sfv_no_overlay(monkeypatch) -> None:
             return _FakeResults()
 
     import blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner as slsr
-    import blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology as spt
+    import blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology as spt
 
     monkeypatch.setattr(slsr, "SectionLinearStaticRunner", _FakeRunner)
     monkeypatch.setattr(spt, "shell_panel_topology_from_shell_inputs", lambda *_a, **_k: object())

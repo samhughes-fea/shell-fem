@@ -20,7 +20,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
     PanelGlobalMap,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.buckling.operations.assemble_geometric import (

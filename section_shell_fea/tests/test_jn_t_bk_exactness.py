@@ -10,7 +10,7 @@ import pytest
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory import (
     _isotropic_to_laminate_definition,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.connected_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.connected_panel_topology import (
     _validate_producer_clusters,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_buckling_runner import (

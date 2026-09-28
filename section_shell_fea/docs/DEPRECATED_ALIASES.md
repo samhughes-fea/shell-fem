@@ -28,17 +28,17 @@ inbound usage is zero.
 | `SectionLinearStaticRunner(about_yz=...)` | `about_xy=...` | `simulation_runner/section_linear_static_runner.py` | **warns** |
 | `BeamResultantVector.about_yz` / `.with_about_yz` | `.about_xy` / `.with_about_xy` | `section_contract/beam_resultant_vector.py` | **warns** |
 | `SectionDeformationAverage1a.about_yz` | `.about_xy` | `processing/static/results/compute_primary/section_deformation_average.py` | **warns** |
-| `build_shell_panel_topology` | build `ShellMeshInputs` via mesh handoff, then `shell_panel_topology_from_shell_inputs` | `pre_processing/topology/api/shell_panel_topology.py` | **warns** (tests still use factory wrapper) |
+| `build_shell_panel_topology` | build `ShellMeshInputs` via mesh handoff, then `shell_panel_topology_from_shell_inputs` | `pre_processing/mesh/api/shell_panel_topology.py` | **warns** (tests still use factory wrapper) |
 | `ShellPanelTopology.panels` | `.zones` | same | **warns** |
 | `ThinWallResult.panels` / related `.panels` | `.zones` | FE result types | **warns** / migrate |
 | Scalar `N,Vy,Vz,M22,Mz,T` kwargs alone | `resultants=BeamResultantVector` | `SectionLinearStaticRunner` | **silent** (centroid-referenced) |
 | `SectionShellRecoveryBundle.y_sc` / `.z_sc` | `.y_e` / `.z_e` (elastic centroid, **not** shear centre) | `station_analysis_types.py` | **silent** dual-write |
 | `assemble_global_shell` | `assemble_section_from_zones` | `processing/static/operations/global_shell_assembly.py` | **legacy** (8-tuple shim through next major) |
-| `connected_assembly_core` numbering/MPC symbols | `pre_processing.topology.global_numbering` / `processing.static.constraints` | `processing/static/operations/connected_assembly_core.py` | **silent** shim |
-| `pre_processing.mesh.shell_mesh_map` | `pre_processing.topology.shell_mesh_map` | `pre_processing/mesh/shell_mesh_map.py` | **warns** (import) |
-| `pre_processing.mesh.global_numbering` | `pre_processing.topology.global_numbering` | `pre_processing/mesh/global_numbering.py` | **warns** (import) |
-| `pre_processing.mesh.connected_panel_topology` | `pre_processing.topology.connected_panel_topology` | `pre_processing/mesh/connected_panel_topology.py` | **warns** (import) |
-| `pre_processing.mesh.api.shell_panel_topology` | `pre_processing.topology.api.shell_panel_topology` | `pre_processing/mesh/api/shell_panel_topology.py` | **warns** (import) |
+| `connected_assembly_core` numbering/MPC symbols | `pre_processing.mesh.global_numbering` / `processing.static.constraints` | `processing/static/operations/connected_assembly_core.py` | **silent** shim |
+| `pre_processing.topology.shell_mesh_map` | `pre_processing.mesh.shell_mesh_map` | `pre_processing/topology/shell_mesh_map.py` | **warns** (import) |
+| `pre_processing.topology.global_numbering` | `pre_processing.mesh.global_numbering` | `pre_processing/topology/global_numbering.py` | **warns** (import) |
+| `pre_processing.topology.connected_panel_topology` | `pre_processing.mesh.connected_panel_topology` | `pre_processing/topology/connected_panel_topology.py` | **warns** (import) |
+| `pre_processing.topology.api.shell_panel_topology` | `pre_processing.mesh.api.shell_panel_topology` | `pre_processing/topology/api/shell_panel_topology.py` | **warns** (import) |
 | `pre_processing.loading.section_force_vector_to_nodal_load` | `processing.static.operations.assembly.load_application` | `pre_processing/loading/section_force_vector_to_nodal_load.py` | **warns** (import) |
 | `operations/cap_tie_constraints` | `processing.static.constraints.cap_tie` | `processing/static/operations/cap_tie_constraints.py` | **silent** shim |
 | `operations/{prepare_local,assemble_global,section_assembly,constrain_global,reduce_constrained,solve_reduced,solve_constrained,reconstruct_field,disassemble_field,solve_states,physics_contract}` | same names under `operations/{preparation,assembly,reduction,solution,recovery,contracts}/` | root `operations/*.py` aliases | **silent** (one-cycle) |

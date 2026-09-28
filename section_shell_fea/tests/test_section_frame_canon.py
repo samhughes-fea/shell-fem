@@ -250,7 +250,7 @@ class TestTransformsAreNotReimplemented:
         np.testing.assert_allclose(got[1], section_normal_2d(pts[2] - pts[0]), atol=1e-12)
 
     def test_mesh_map_normal_delegates(self):
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
             normal_2d,
         )
 

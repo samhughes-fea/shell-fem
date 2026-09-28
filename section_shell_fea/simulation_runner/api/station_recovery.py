@@ -24,7 +24,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
     ShellPanelTopology,
     shell_panel_topology_from_shell_inputs,
 )

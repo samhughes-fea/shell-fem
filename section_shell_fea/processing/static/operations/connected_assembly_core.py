@@ -2,7 +2,7 @@
 
 Canonical homes:
 - DOF layout: ``pre_processing.containers.analysis_dof_layout``
-- numbering: ``pre_processing.topology.global_numbering``
+- numbering: ``pre_processing.mesh.global_numbering``
 - MPCs / supports: ``processing.static.constraints``
 """
 
@@ -17,7 +17,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     W,
     gdof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.global_numbering import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
     DEFAULT_BC_MODE,
     apply_shared_cluster_frame_to_cache,
     assign_global_nodes_cluster_basis,

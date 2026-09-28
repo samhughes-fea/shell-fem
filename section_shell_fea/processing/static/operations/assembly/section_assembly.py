@@ -23,7 +23,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory import (
     build_formulation_cache,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
     GlobalNodeMeta,
     PanelGlobalMap,
     collect_global_node_meta,
@@ -34,7 +34,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
 )
 from blade_structure_utilities.material_utilities.section_bind import MaterialZone
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.connected_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.connected_panel_topology import (
     ConnectedPanelTopology,
     build_connected_panel_maps,
 )
@@ -132,7 +132,7 @@ def assemble_section_from_zones(
     )
     mode = str(interface_constraint_mode or "shared")
     if mode == "shared_cluster_frame":
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.global_numbering import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
             apply_shared_cluster_frame_to_cache,
         )
 
@@ -148,7 +148,7 @@ def assemble_section_from_zones(
     )
     # Virtual cluster-ref geometry only. MPCs/supports are composed later.
     if getattr(topology, "cluster_layer_node", None):
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.global_numbering import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
             attach_cluster_node_meta,
         )
 

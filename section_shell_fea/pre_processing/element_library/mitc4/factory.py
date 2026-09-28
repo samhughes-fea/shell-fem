@@ -16,7 +16,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.constitutive.panel_abd import (
     panel_abd_tuple_from_lam,
 )
-from ...topology.shell_mesh_map import PanelGlobalMap
+from ...mesh.shell_mesh_map import PanelGlobalMap
 from ..formulation_factory import ShellElementFactory, _element_L_s, _panel_kappa_nodes
 from .mitc4_quad4_element import (
     Mitc4ElementGeometry,

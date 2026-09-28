@@ -12,7 +12,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
     _PanelGlobalMap,
     _dof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
     panel_maps_from_section_strip_mesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory import (

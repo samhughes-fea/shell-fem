@@ -7,11 +7,11 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.global_numbering import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.global_numbering import (
     DEFAULT_BC_MODE,
     is_contour_support,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import interp_yz_nodes
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import interp_yz_nodes
 from .mesh import CcxSectionMesh, _sanitize_elset_name
 
 _U_X, _U_Y, _U_Z = 0, 1, 2
