@@ -12,7 +12,7 @@ tolerance was widened.
 | Topic | WP0 (before) | After WP1–WP4 |
 |-------|--------------|---------------|
 | Formulation selection | `resolve_element_factory(shell_theory)` via `_ELEMENT_FACTORY_REGISTRY` | `formulation_id` primary: `build_formulation_cache(..., formulation_id=...)` / `resolve_element_factory(shell_theory, formulation_id=...)` resolving from the unified `registry._FORMULATIONS` graph; the theory→factory map is a thin compat façade |
-| Registration hooks | descriptor / factory / kernel / projector / constitutive_adapter | + optional `template_key_strategy`, `validate_element`, `validate_cache` (all `None` for MITC4 initially) |
+| Registration hooks | descriptor / factory / kernel / projector / constitutive_adapter | + optional `template_key_strategy`, `validate_element`, `validate_cache` (MITC4 registers concrete validators) |
 | Element geometry record | `L_s` recomputed independently by assembly (blended), recovery (plain), buckling (plain) | `L_s` / `L_s_donnell` / `L_x` / `formulation_id` **persisted** on `ShellStiffnessObject` / `ShellForceObject`; recovery and buckling prefer `stiff.L_s` |
 | Secondary kernel default | `resolve_kernel(theory or "mitc4")` (unsafe when `theory is None`) | `_resolve_secondary_kernel` prefers `cache.formulation_id` via `resolve_kernel_by_id`; `None` → `ShellTheory.FSDT`; strings mapped safely |
 | MITC4 template reuse | rounded module `_KE_TEMPLATE_CACHE` keys | exact per-build `ShellFormulationTemplateCache` (float bits); module cache is compat-only, now exact + stats/clear |
@@ -112,9 +112,11 @@ vectorisation was added (einsum path already vectorised over Gauss points).
   (the serialization round-trip test uses `to_json_dict` / `from_json_dict` directly).
   Registered as `compat-fe-loading-io-load-field-json` for removal once confirmed dead;
   not deleted in this cleanup.
-- **MITC4 validation hooks** (`validate_element` / `validate_cache`) are wired into
-  the registration contract but left `None` for MITC4; the always-on
-  `validate_formulation_cache_shapes` remains the guard.
+- **MITC4 validation hooks** (`validate_element` / `validate_cache`) are invoked
+  automatically by `build_formulation_cache` (see
+  `element_library/docs/FORMULATION_VALIDATION_LIFECYCLE.md`). MITC4 registers
+  concrete validators in `mitc4/validation.py`; the always-on
+  `validate_formulation_cache_shapes` remains the first cache guard.
 
 ## Test results
 
@@ -147,7 +149,7 @@ until **2026-11-30**.
 |---|---|---|
 | Relocate `traction_face_load` helpers with warning shims | Deferred | Keep current homes; move only with a registered expiry shim |
 | Relocate `shear_centre_loading_axis` with warning shims | Deferred | Same shim policy as mesh/loading compatibility layer |
-| MITC4 `validate_element` / `validate_cache` hooks | Deferred | Leave `None` until live-element/cache hook semantics and exact validators are specified |
+| MITC4 `validate_element` / `validate_cache` hooks | **Done (WP7)** | Lifecycle specified; generic wiring; MITC4 concrete validators registered |
 | Retire `_ELEMENT_FACTORY_REGISTRY` façade | Deferred | Requires governance text that distinguishes native formulation registration from external CalculiX solve dispatch |
 | Delete `pre_processing/mesh` and `pre_processing/loading` shims | **Not in scope** | Shims stay; registered expiry **2026-11-30** |
 
