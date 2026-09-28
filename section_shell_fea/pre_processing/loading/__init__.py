@@ -1,18 +1,15 @@
-"""Compat barrel — Channel B / station-load products live on ``section_loads``.
+"""Internal FE loading adapter home over BSU ``section_loads``.
 
-FE-owned SFV → nodal apply:
-``processing.static.operations.assembly.load_application.section_force_vector_to_nodal_load``.
-``beam_resultants_to_nodal_load`` is regression/reference only.
+Owns FE-specific preparation helpers (skin-pair traction geometry, shear-centre
+loading axis) and quarantined regression oracles. Does **not** shape loads and
+does not re-export Channel B / station-load products.
 
-Accessing section_loads re-exports from this package emits ``DeprecationWarning``.
-FE-owned submodules under this tree (e.g. ``traction_face_load``) remain importable
-without that barrel warning.
+Canonical SFV → nodal apply lives in
+``processing.static.operations.assembly.load_application``.
+Import load DTOs from ``blade_structure_utilities.load_utilities.section_loads``.
 """
 
 from __future__ import annotations
-
-import warnings
-from typing import Any
 
 from .beam_resultants_to_nodal_load import (
     beam_resultants_to_nodal_load,
@@ -21,60 +18,15 @@ from .beam_resultants_to_nodal_load import (
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.load_application import (
     section_force_vector_to_nodal_load,
 )
-
-_SECTION_LOADS_EXPORTS = frozenset(
-    {
-        "DistributedStationLoadSpec",
-        "IncidentAeroSpec",
-        "LoadFieldProvenance",
-        "SectionLoadsJobConfig",
-        "SectionStationLoadField",
-        "StationAeroContext",
-        "build_station_load_field",
-    }
+from .shear_centre_loading_axis import (
+    shear_centre_about_yz_from_outer_skin,
+    shear_centre_about_yz_from_panel_topology,
 )
 
 __all__ = [
-    "DistributedStationLoadSpec",
-    "IncidentAeroSpec",
-    "LoadFieldProvenance",
-    "SectionLoadsJobConfig",
-    "SectionStationLoadField",
-    "StationAeroContext",
     "beam_resultants_to_nodal_load",
-    "build_station_load_field",
     "integrate_nodal_load_resultants",
     "section_force_vector_to_nodal_load",
+    "shear_centre_about_yz_from_outer_skin",
+    "shear_centre_about_yz_from_panel_topology",
 ]
-
-
-def __getattr__(name: str) -> Any:
-    if name in _SECTION_LOADS_EXPORTS:
-        warnings.warn(
-            "Import Channel B / station-load products from "
-            "blade_structure_utilities.load_utilities.section_loads. "
-            "FE pre_processing.loading is a temporary re-export barrel.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        from blade_structure_utilities.load_utilities.section_loads.surface_traction.station_load import (
-            DistributedStationLoadSpec,
-            IncidentAeroSpec,
-            LoadFieldProvenance,
-            SectionLoadsJobConfig,
-            SectionStationLoadField,
-            StationAeroContext,
-            build_station_load_field,
-        )
-
-        mapping = {
-            "DistributedStationLoadSpec": DistributedStationLoadSpec,
-            "IncidentAeroSpec": IncidentAeroSpec,
-            "LoadFieldProvenance": LoadFieldProvenance,
-            "SectionLoadsJobConfig": SectionLoadsJobConfig,
-            "SectionStationLoadField": SectionStationLoadField,
-            "StationAeroContext": StationAeroContext,
-            "build_station_load_field": build_station_load_field,
-        }
-        return mapping[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

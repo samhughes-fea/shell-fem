@@ -23,7 +23,7 @@ def assembled_5df():
     from blade_structure_utilities.mesh_utilities.section_mesh import (
         build_section_strip_mesh,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (

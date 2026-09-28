@@ -106,7 +106,7 @@ def test_transformed_basis_composer_adds_junction_equations(assembled_5df):
     from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
 

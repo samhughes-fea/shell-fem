@@ -1,4 +1,4 @@
-"""Mesh API: shell panel topology section geometry builders."""
+"""Topology API: shell panel topology builders."""
 
 from .shell_panel_topology import (
     ShellPanelTopology,

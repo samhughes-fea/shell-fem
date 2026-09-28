@@ -102,12 +102,14 @@ touching any generic module:
 5. **Register** — from a `register_<formulation>()` hook, call
    `register_formulation(ShellFormulationRegistration(descriptor=..., factory_cls=...,
    kernel=..., projector=..., template_key_strategy=None, validate_element=None,
-   validate_cache=None))`. Optional hooks (`template_key_strategy`,
-   `validate_element`, `validate_cache`) may start as `None`.
+   validate_cache=None))`.   Optional hooks (`template_key_strategy`,
+  `validate_element`, `validate_cache`) may start as `None`; MITC4 registers
+  concrete element/cache validators (see
+  [`docs/FORMULATION_VALIDATION_LIFECYCLE.md`](docs/FORMULATION_VALIDATION_LIFECYCLE.md)).
 6. **Build** — callers select it with
-   `build_formulation_cache(..., formulation_id="MY-FORMULATION")` (primary) or via
-   `shell_theory=` (resolves the theory default). `register_element_factory` remains
-   a thin compatibility façade over the same graph.
+  `build_formulation_cache(..., formulation_id="MY-FORMULATION")` (primary) or via
+  `shell_theory=` (resolves the theory default via `default_formulation_id`).
+  See [`docs/FORMULATION_AND_SOLVE_DISPATCH.md`](docs/FORMULATION_AND_SOLVE_DISPATCH.md).
 
 Generic modules (`formulation_factory.py`, `registry.py`, `contracts.py`,
 `shell_element_base.py`, `formulation_validation.py`) must not import a formulation's

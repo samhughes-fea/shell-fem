@@ -1,24 +1,35 @@
-# loading — apply SectionForceVector → nodal loads
+# loading — FE load adaptation over BSU section_loads
 
-↑ Parent computable set: [`../../README.md` §2](../../README.md#2-computable-set)
+Internal FE home for adapting BSU load products into FE preparation metadata
+and nodal application helpers.
 
-Project a shaped `SectionForceVector` (SFV) onto MITC4 nodal degrees of freedom as
-absolute forces — contour densities become the shell right-hand side without this
-home owning thin-wall or aero shaping.
+↑ Parent: [`../README.md`](../README.md) · Package: [`../../README.md`](../../README.md)
 
-## Purpose / ownership
+## Ownership
 
-| Owns | Does **not** own | Why |
-|------|------------------|-----|
-| Compat shims / regression helpers in this tree | SFV *shaping* ([`section_loads`](../../../../load_utilities/section_loads/README.md)) | One SFV product; FE only applies |
-| Legacy `beam_resultants_to_nodal_load` (quarantined) | TractionField / XFOIL staging (`section_loads.surface_traction`) | Regression/reference only; production apply is SFV |
-| Skin node-pair helpers still used by the oracle | MITC4 `Ke` / assemble / solve | Stiffness and solve live elsewhere |
+| Package | Owns |
+|---------|------|
+| [`load_utilities.section_loads`](../../../../load_utilities/section_loads/README.md) | Channel A/B shaping, station-load DTOs, equipollence, `SectionForceVector` |
+| [`processing/.../assembly/load_application.py`](../../processing/static/operations/assembly/load_application.py) | SFV → nodal DOF application |
+| **`pre_processing.loading` (this home)** | FE-specific skin-pair / refusal adapters, shear-centre loading-axis adapters, quarantined regression oracles |
+| Public `section_shell_fea` barrel | Canonical worker export surface |
 
-**Canonical apply:** [`../../processing/static/operations/assembly/load_application.py`](../../processing/static/operations/assembly/load_application.py)
-(`section_force_vector_to_nodal_load`). This `loading/` tree re-exports Channel B
-products from `section_loads` with `DeprecationWarning`.
+Import `SectionForceVector` and station-load products from the public
+`load_utilities.section_loads` barrel. This package does **not** re-export Channel B
+builders and must not call `SectionLoadsRunner.execute()` during FE execution —
+orchestration supplies frozen load products.
 
----
+`builders/`, `api/`, and `containers/` remain warning-alias shims for one
+migration cycle (expires **2026-11-30**). Prefer BSU imports in new code.
+
+## Retained FE adapters
+
+| Path | Role |
+|------|------|
+| [`traction_face_load.py`](traction_face_load.py) | Skin-pair / refusal geometry for FE apply |
+| [`shear_centre_loading_axis.py`](shear_centre_loading_axis.py) | Loading-axis adapter; SC from BSU section-property / thin-wall kernels |
+| [`section_force_vector_to_nodal_load.py`](section_force_vector_to_nodal_load.py) | Compat re-export of processing apply (warns) |
+| [`beam_resultants_to_nodal_load.py`](beam_resultants_to_nodal_load.py) | **Regression-only** oracle — not a production apply path |
 
 ## Mathematics
 
@@ -32,76 +43,22 @@ skin node pair in curvilinear **C** DOFs \([u_x,u_s,w]\):
 \tfrac12\,(f_x,\,f_s,\,f_w)\,\mathrm{d}s\,L_x.
 \]
 
-Nearest-pair matching uses B-plane sample coordinates vs skin midline
-locations. Equipollence of the *shaped* SFV is a loads-worker concern; this home
-only projects densities onto DOFs.
-
-Weak-form RHS term corresponding to this projection:
-
-\[
-\delta W_{\mathrm{ext}}
-=
-\int_{\partial\Omega}
-\delta\mathbf{u}^{\mathsf{T}}\,\mathbf{t}\,\mathrm{d}s
-\;\approx\;
-\delta\mathbf{d}^{\mathsf{T}}\,\mathbf{f}.
-\]
-
----
-
-## Exact I/O
-
-### `section_force_vector_to_nodal_load(node_meta, sfv, *, ndof=6, L_x=1.0, f=None) -> ndarray`
-
-| In | `node_meta` (skin pairs), `SectionForceVector`, strip length \(L_x\) |
-| Out | Global load vector `f` length `n_nodes * ndof` |
-| Side effect | Accumulates into provided `f` when given |
-
-| Path | Role |
-|------|------|
-| [`section_force_vector_to_nodal_load.py`](section_force_vector_to_nodal_load.py) | **Product** apply path |
-| [`beam_resultants_to_nodal_load.py`](beam_resultants_to_nodal_load.py) | Legacy / comparison helpers |
-| [`traction_face_load.py`](traction_face_load.py) | Skin pair geometry helpers |
-
-Staging / XFOIL: import from
-`blade_structure_utilities.load_utilities.section_loads` (or
-`section_loads.surface_traction.station_load`).
-
----
+Equipollence of the *shaped* SFV is a loads-worker concern; this home only
+adapts geometry and projects densities onto DOFs via the processing apply owner.
 
 ## Call graph
 
 ```mermaid
 flowchart LR
-  sfv[SectionForceVector] --> apply[section_force_vector_to_nodal_load]
-  meta[node_meta_skin_pairs] --> apply
-  Lx[L_x] --> apply
+  bsu[section_loads SFV] --> orch[orchestration]
+  orch --> apply[load_application]
+  meta[FE skin-pair meta] --> apply
   apply --> f[nodal_f]
+  sc[shear_centre_loading_axis] --> orch
 ```
-
----
-
-## PNG pointers
-
-| Figure | Meaning |
-|--------|---------|
-| Upstream shaped SFV / equipollence | [`section_loads` visualisation](../../../../load_utilities/section_loads/visualisation/README.md) |
-| Station mesh receiving loads | [`../../visualisation/output/section_centerline_mesh_v2/section_mesh_2C-F_i000.png`](../../visualisation/output/section_centerline_mesh_v2/section_mesh_2C-F_i000.png) |
-
----
-
-## Provenance / what happens today
-
-| Claim | Today |
-|-------|-------|
-| Product FI RHS | Runner applies SFV via this home |
-| Channel B construction | Moved to `section_loads`; FE re-exports are temporary |
-| Double-count risk | Callers must not stack tip-integrated \(V\) with Channel B — see [`../../docs/LOAD_APPLICATION_DOUBLE_COUNTING.md`](../../docs/LOAD_APPLICATION_DOUBLE_COUNTING.md) |
 
 ## See also
 
-- [`../../README.md`](../../README.md) — package README · computable set §2
-- [`../../../../docs/CASCADE_GLOSSARY.md`](../../../../docs/CASCADE_GLOSSARY.md)
-- [`../../docs/README.md`](../../docs/README.md)
 - [`../../../../load_utilities/section_loads/README.md`](../../../../load_utilities/section_loads/README.md)
-- [`../../simulation_runner/README.md`](../../simulation_runner/README.md)
+- [`../../docs/DEPRECATED_ALIASES.md`](../../docs/DEPRECATED_ALIASES.md)
+- [`../../docs/TAXONOMY.md`](../../docs/TAXONOMY.md)

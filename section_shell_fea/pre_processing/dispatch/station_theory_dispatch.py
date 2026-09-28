@@ -231,7 +231,7 @@ def dispatch_fsdt_demo_convenience(
         UserWarning,
         stacklevel=2,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
     from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (

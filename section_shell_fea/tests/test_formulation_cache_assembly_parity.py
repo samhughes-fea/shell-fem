@@ -22,7 +22,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
     _dof,
     panel_abd_tuple_from_lam,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
     panel_maps_from_section_strip_mesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import assemble_section_system

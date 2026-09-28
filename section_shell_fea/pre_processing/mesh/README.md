@@ -1,90 +1,38 @@
-# mesh — FE mesh map / panel topology
+# mesh — FE mesh adaptation over BSU section_mesh
 
-Kernel-agnostic strip → global node map and `ShellPanelTopology` builders.
+Internal FE home for adapting BSU strip meshes into FE topology.
 
 ↑ Parent: [`../README.md`](../README.md) · Package: [`../../README.md`](../../README.md)
 
-## Purpose / ownership
+## Ownership
 
-| Owns | Does **not** own |
-|------|------------------|
-| `shell_mesh_map` global node numbering / connectivity | Strip Q4 discretisation ([`section_mesh`](../../../../mesh_utilities/section_mesh/README.md)) |
-| `ShellPanelTopology` geometry seam | Midline CSG ([`section_geometry`](../../../../geometry_utilities/section_geometry/README.md)) |
-| Junction clustering / panel endpoint maps | Element `Ke` kernels; SFV shaping |
+| Package | Owns |
+|---------|------|
+| [`mesh_utilities.section_mesh`](../../../../mesh_utilities/section_mesh/README.md) | Strip-mesh generation and typed handoff (`SectionStripMesh`, `ShellMeshInputs`, `SectionMeshRunner`) |
+| **`pre_processing.mesh` (this home)** | FE maps, global numbering, junction clustering, `ShellPanelTopology` |
+| Public `section_shell_fea` barrel | Canonical worker export surface |
 
-**Locked:** production passes a caller-owned `SectionStripMesh`. This home maps
-it into FE panel topology; it does **not** remesh on `execute()`.
+Import `SectionStripMesh` and related products from the public
+`mesh_utilities.section_mesh` barrel. This package does **not** re-export the
+upstream mesh worker and must not call `SectionMeshRunner.execute()` during FE
+execution — orchestration supplies frozen strip products.
 
----
+`naca_profile.py` remains an FE-demo helper only.
 
-## Mathematics
-
-Per-panel element count from target edge length (when not overridden):
-
-\[
-n_e
-=
-\max\!\Big(1,\;
-\lceil L_{\mathrm{arc}} / \ell_{\mathrm{target}} \rceil
-\Big),
-\qquad
-\ell_{\mathrm{target}}
-=
-f_{\mathrm{frac}}\,c.
-\]
-
-Default production frac is owned by `section_mesh`
-(`TARGET_ELEMENT_LENGTH_FRAC ≈ 0.012`). Junction nodes are clustered in the
-section plane; DOFs live in curvilinear **C** on each facet (**C ≡ E**).
-
-Connectivity is Q4 along the strip: four nodes × `ndof` → element DOF map
-consumed by assemble.
-
----
+`pre_processing.topology` is a logic-free warning-alias package for one
+migration cycle (expires **2026-11-30**).
 
 ## Exact I/O
 
 | Path | Role |
 |------|------|
-| [`shell_mesh_map.py`](shell_mesh_map.py) | Node maps, `effective_n_elements_spec`, panel end tangents |
-| [`api/shell_panel_topology.py`](api/shell_panel_topology.py) | `ShellPanelTopology`, builders from `ShellMeshInputs` |
-| [`connected_panel_topology.py`](connected_panel_topology.py) | Connected-section topology helpers |
-| [`naca_profile.py`](naca_profile.py) | FE-demo thin-wall LE→TE helpers only — production outer polygons → [`section_geometry.sdf.naca`](../../../../geometry_utilities/section_geometry/sdf/naca.py) |
-
-### `ShellPanelTopology`
-
-| Field | Role |
-|-------|------|
-| `shell_inputs` | `ShellMeshInputs` polylines (solve path — no SDF re-eval) |
-| `zones` | Bound `MaterialZone` tuple |
-| `webs_geom` / `n_cells` | Multi-cell topology |
-| `section` | Optional viz / SDF host only |
-
-| In | Bound zones + mesh inputs / strip mesh |
-| Out | Topology DTO for runner / assembly orchestra |
-
----
-
-## PNG pointers
-
-| Figure | Meaning |
-|--------|---------|
-| Section centerline mesh | ![mesh](../../visualisation/output/section_centerline_mesh_v2/section_mesh_2C-F_i000.png) |
-| More layouts | [`../../visualisation/output/section_centerline_mesh_v2/`](../../visualisation/output/section_centerline_mesh_v2/) |
-| GCI refinement ladders | [`../../visualisation/output/gci_study_mitc4/plots/ladder_governing_fi.png`](../../visualisation/output/gci_study_mitc4/plots/ladder_governing_fi.png) |
-
----
-
-## Provenance / what happens today
-
-| Claim | Today |
-|-------|-------|
-| Remesh ownership | Outside FE — caller supplies strip mesh |
-| Shared with CCX | Same topology seam for quarantined CCX decks |
-| Defect K | Shared DOF junctions — see [`../../docs/SHELL_MODEL.md`](../../docs/SHELL_MODEL.md) |
+| [`shell_mesh_map.py`](shell_mesh_map.py) | Node maps, panel endpoints, junction clustering |
+| [`global_numbering.py`](global_numbering.py) | Global node assignment / cluster frames |
+| [`connected_panel_topology.py`](connected_panel_topology.py) | Connected multi-panel maps |
+| [`api/shell_panel_topology.py`](api/shell_panel_topology.py) | `ShellPanelTopology` handoff DTO |
+| [`naca_profile.py`](naca_profile.py) | FE-demo NACA helpers |
 
 ## See also
 
-- [`../../docs/TAXONOMY.md`](../../docs/TAXONOMY.md)
 - [`../../../../mesh_utilities/section_mesh/README.md`](../../../../mesh_utilities/section_mesh/README.md)
-- [`../element_library/README.md`](../element_library/README.md)
+- [`../../docs/TAXONOMY.md`](../../docs/TAXONOMY.md)

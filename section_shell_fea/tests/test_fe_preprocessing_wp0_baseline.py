@@ -23,7 +23,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.el
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.mitc4.element import (
     mitc4_stiffness_contributions,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
     panel_maps_from_section_strip_mesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.buckling.operations.assemble_geometric import (

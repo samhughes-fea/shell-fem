@@ -32,9 +32,15 @@ import numpy as np
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.sectorial_warping import (
     shear_center_outer_skin_loop,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
-    kind_of,
-)
+
+
+def _kind_of_label(label: str) -> str:
+    """Panel kind from label prefix (``skin:`` / ``cap:`` / ``web:``).
+
+    Local classifier — avoids importing processing constraint geometry from
+    pre-processing loading adapters.
+    """
+    return label.split(":", 1)[0] if ":" in label else "panel"
 
 
 def shear_centre_about_yz_from_outer_skin(
@@ -73,7 +79,7 @@ def shear_centre_about_yz_from_panel_topology(
         m
         for m in midlines
         if str(getattr(m, "kind", "")).lower() == "skin"
-        or kind_of(str(getattr(m, "label", ""))) == "skin"
+        or _kind_of_label(str(getattr(m, "label", ""))) == "skin"
     ]
     if not skins:
         raise ValueError(

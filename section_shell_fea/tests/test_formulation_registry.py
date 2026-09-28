@@ -73,6 +73,23 @@ def test_mitc4_projector_forces_sigma33_zero() -> None:
     assert r_caps[0] == "modelled"
 
 
+def test_unregistered_formulation_id_fails_deterministically() -> None:
+    import pytest
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory import (
+        resolve_element_factory,
+    )
+
+    with pytest.raises(ValueError, match="No formulation registered"):
+        resolve_element_factory(formulation_id="NOT-A-REAL-FORMULATION")
+
+
+def test_element_factory_facade_retired() -> None:
+    import blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory as ff
+
+    assert not hasattr(ff, "_ELEMENT_FACTORY_REGISTRY")
+    assert not hasattr(ff, "register_element_factory")
+
+
 def test_mitc4_register_is_idempotent() -> None:
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.mitc4.registration import (
         register_mitc4_fsdt,

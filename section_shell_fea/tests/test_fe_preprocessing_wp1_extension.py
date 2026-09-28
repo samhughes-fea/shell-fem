@@ -48,7 +48,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topo
     build_shell_panel_topology,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
     panel_maps_from_section_strip_mesh,
 )
 
@@ -190,7 +190,7 @@ def _fake_descriptor():
 
 
 def _register_fake():
-    calls = {"template_key": 0, "validate_element": 0}
+    calls = {"template_key": 0, "validate_element": 0, "validate_cache": 0}
 
     def _template_key_strategy(element):
         calls["template_key"] += 1
@@ -201,6 +201,11 @@ def _register_fake():
         if element.dof_per_node != _FAKE_NDOF:
             raise ValueError("bad ndof")
 
+    def _validate_cache(cache):
+        calls["validate_cache"] += 1
+        if cache.formulation_id != _FAKE_ID:
+            raise ValueError("bad cache formulation_id")
+
     register_formulation(
         ShellFormulationRegistration(
             descriptor=_fake_descriptor(),
@@ -209,6 +214,7 @@ def _register_fake():
             projector=_StubProjector(),
             template_key_strategy=_template_key_strategy,
             validate_element=_validate_element,
+            validate_cache=_validate_cache,
         )
     )
     return calls
@@ -258,10 +264,10 @@ def test_fake_formulation_registers_and_builds_without_mitc4_imports():
             assert stiff.global_dof_indices is not None
             assert stiff.global_dof_indices.size == 4 * _FAKE_NDOF
             assert stiff.K_e.shape == (4 * _FAKE_NDOF, 4 * _FAKE_NDOF)
-            # WP1 validation hook exercised on live elements.
-            registration.validate_element(
-                type("E", (), {"dof_per_node": _FAKE_NDOF})()
-            )
+
+        # Validation hooks are invoked automatically by build_formulation_cache.
+        assert calls["validate_element"] == len(cache.stiffness_objects)
+        assert calls["validate_cache"] == 1
 
         # Template-key strategy + recovery/projection hooks are callable.
         key = registration.template_key_strategy(cache.stiffness_objects[0])
@@ -274,7 +280,6 @@ def test_fake_formulation_registers_and_builds_without_mitc4_imports():
             {"N11": 1.0, "Q1": 3.0}
         )
         assert values[0] == 1.0 and caps[0] == "modelled"
-        assert calls["validate_element"] > 0
     finally:
         sys.meta_path.remove(finder)
         clear_formulation_registry_for_tests()

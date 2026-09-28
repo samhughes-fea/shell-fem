@@ -29,7 +29,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from blade_structure_utilities.load_utilities.section_loads import SectionForceVector
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
     normal_2d,
     strip_identity_at_node,
 )

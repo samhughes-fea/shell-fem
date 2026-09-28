@@ -9,7 +9,7 @@ from __future__ import annotations
 import warnings
 from typing import Any
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
     ShellPanelTopology,
     build_shell_panel_topology as _deprecated_build_shell_panel_topology,
 )

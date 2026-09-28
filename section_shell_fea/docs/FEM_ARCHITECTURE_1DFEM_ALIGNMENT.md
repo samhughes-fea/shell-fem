@@ -33,7 +33,7 @@ Verdict categories:
 |------------------------------|----------|---------------------|---------|
 | `pre_processing/containers/` formulation DTOs | **A** | `element_library/gauss_point_data.py` (active) | In step |
 | `processing/static/operations/solve_states.py` | **A** | `processing/static/results/containers/global_results.py` | **Closed** — relocated under `processing/` |
-| `pre_processing/element_library/` + `resolve_element_factory` | **A / D (mechanism)** | `ElementFactory.ELEMENT_CLASS_MAP` | Landed; imperative register for CCX gating |
+| `pre_processing/element_library/` + `resolve_element_factory` | **A / D (mechanism)** | `ElementFactory.ELEMENT_CLASS_MAP` | Unified `formulation_id` graph; CalculiX on solve registry |
 | `pre_processing/mesh/`, `pre_processing/loading/` | **B** | none | Keep |
 | `processing/static/operations/` stage classes | **A** | `processing/static/operations/*` | Direct |
 | `processing/static/diagnostics/` | **A** | same relative place | Direct |
@@ -53,7 +53,9 @@ Verdict categories:
 2. **Quaternary results tier** — composite Hashin / Von Mises FI.
 3. **`orchestration/precompute/`** parallel station orchestration — outside this package.
 4. **Library-style runner API** — `from_cache` / typed dataclasses vs 1d-fem job results trees (**category D**; not unfinished drift).
-5. **Registration mechanism** — imperative `register_element_factory()` for CCX opt-in gating.
+5. **Registration mechanism** — native formulations via `formulation_id` /
+   `ShellFormulationRegistration`; CalculiX opt-in via `shell_solve_registry`
+   (not the retired theory-keyed element-factory façade).
 6. **BC realisation** — elimination via `T` vs 1d-fem penalty + condensation (stages still separate).
 
 Do **not** reintroduce Channel-A / periodic product surfaces for alignment theatre.
