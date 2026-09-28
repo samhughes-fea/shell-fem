@@ -720,10 +720,9 @@ Raise contract in `section_integrals.py`.
 <a id="fea-eq-002"></a>
 ## FEA-EQ-002 — Section carries no axial membrane force: bending moment never reaches N11
 
-**Status:** Open — found 2026-09-27, not fixed
-**Area:** `pre_processing/loading/section_force_vector_to_nodal_load.py` (axial load split),
-`processing/static/constraints/junction/supports.py` (`build_clamp_supports`),
-`calculix_ccx/section_export.py` (`_cload_entries`, `_support_node_ccx_ids`)
+**Status:** Open — found 2026-09-27; diagnosis revised 2026-09-28; **implementation deferred**
+**Area:** station BVP (supports, load application, recovery gate, CCX export),
+not a load-vector defect
 **Root log:** [BL-044](../../../../../../docs/bug_log.md#bl-044)
 
 ### Symptom / evidence
@@ -795,10 +794,116 @@ three pure cases above through the production runners, printing ∫N·ds, ∫N·
 
 ### Proposed fix direction (not implemented)
 
-- Decide the slice contract explicitly: reacted root face (`u_x` clamped on the
-  bottom layer, loads on the top) **or** self-equilibrated antisymmetric end
-  tractions (−½ bottom, +½ top) with a generalised-plane-strain constraint.
+~~Decide the slice contract explicitly: reacted root face (`u_x` clamped on the
+bottom layer, loads on the top) **or** self-equilibrated antisymmetric end
+tractions (−½ bottom, +½ top) with a generalised-plane-strain constraint.~~
+**Superseded 2026-09-28.** Reacted-root-everywhere is the wrong BVP (see below).
+
 - Add a **response** equilibrium gate after solve: ∫N11 ds = N,
   ∫N11·(y, x) ds = (M_flap, M_edge) and the shear resultants within 1e-6 —
-  refuse the result otherwise, per the package's no-masking rule.
+  refuse the result otherwise, per the package's no-masking rule. Still required,
+  but only after the BVP is the one that owns the station.
 - Re-run the CCX cross-check only after both models share a correct contract.
+
+### Potential fixes (2026-09-28) — not implemented
+
+Do not merge reacted-root-everywhere onto the production runner. A WIP
+bottom-face `U_X` + top-face axial patch recovered `Fx ≈ N` but only ~30–70%
+of `My`/`Mz` through N11; refinement did not close it. Composer “supports take
+precedence” also **drops bottom-layer cap `U_X` ties** when the whole inboard
+face is fixed.
+
+These are the former plan work packages, recorded here as potential fixes.
+
+**P1 — Freeze two BVPs (no production behavior change until a later delivery)**
+
+- Interior: prismatic unit cell
+  `u(x=L)−u(x=0) =` beam macro jump `(ε₀, κ_y, κ_z, T, V_y, V_z)`; **no
+  cut-face clamp**. That is the BVP already exported by
+  `write_section_inp_periodic`.
+- Station 0 only: a **different mesh** — multi-row clamped root segment
+  (`L ~ 2–3` diameters; `ROOT_SEGMENT_CCX_DIAGNOSTIC.md`). Inboard ring
+  clamped in all DOFs; outboard ring loaded with equipollent `R` and moments
+  transported by `V·L`; FI from the root-adjacent row, not the loaded cut.
+- Identity from the station workflow (`is_root` / `z`), never from mesh `x=0`.
+  A 1 m strip with local `U_X` fixed is not the root model.
+- Do **not** revive Channel-A `api.periodic` / `api.k6` / optimiser
+  `shell_fi_batch` as a second FI product. Periodic constraints belong on the
+  existing linear-static cascade (same SFV / quaternary FI).
+
+**P2 — Interior periodic MITC4**
+
+- Pair cut-face twins + 6 macro-jump DOFs in `build_section_constraint_set`.
+- Stop clamping `W`/`BETA` on both cut faces for interior stations; those
+  contour supports fight pairing and siphon moment.
+- Keep SFV / top-face work consistent with the macro modes.
+- **Cap ties:** expand periodic pairing through existing cap-tie masters. Do
+  not let new cut-face essential BCs drop bottom-layer `U_X` tie rows
+  (composer “supports win” is the current hazard).
+- Exit: pure `N`, `My`, `Mz` recover through N11 with correct sign; zero load
+  → zero recovered resultant; cap-tie / junction / load-application suites
+  stay green.
+
+**P3 — CCX interior parity**
+
+- Align the periodic deck with the same pairing as MITC4; no automatic
+  fallback or nearest-node repair (FEA-CCX-001 class).
+- Product writer (`_support_node_ccx_ids` / `_cload_entries`) and periodic
+  writer must not certify two different BVPs for the same station class.
+- Deck-level membership/resultant tests without requiring `ccx`; live
+  solve/recovery when the binary is present.
+
+**P4 — Root-segment production worker**
+
+- Promote `root_segment_mesh.py` / native multi-row equivalent from
+  diagnostic-only to the only station-0 production BVP.
+- Require explicit station identity; never infer root from local `x=0`.
+- Trust region remains the root-adjacent row (outboard `*CLOAD` is
+  Saint-Venant-approximate).
+
+**P5 — Station dispatch**
+
+- `station_evaluation_workflow` passes `is_root` / `z` into FE.
+- Interior → periodic linear-static cascade; station 0 → root segment.
+- `L_x` default 1 m is a dummy unit slice, not station spacing (same caveat
+  as `buckling_length_m`); do not treat it as a root length.
+
+**P6 — Fail-closed response gate and independent oracles**
+
+- Immutable report: prescribed, recovered, residual, relative error,
+  finite/pass, mesh identity for `Fx`, `My`, `Mz`.
+- Compare prescribed resultants **transported to the elastic centroid**,
+  with the same `Mz` sign as `integrate_nodal_load_resultants`
+  (`Mz += −fx·Δy`). FEA-L-001 (`Σ f[U_X]`) is not a response oracle.
+- Gate after secondary recovery and **before** governing FI is published;
+  `ValueError` containing `FEA-EQ-002` on fail; never warn-and-continue.
+- Also gate `N12` / `T` / `Vy` / `Vz` so a periodic repair cannot regress
+  shear/torsion silently.
+- N11 field shape (constant under pure `N`; linear with the correct
+  neutral-axis crossing under `My`/`Mz`), not integrals only. Recovery
+  today is mid-element (`η=0`); face vs midplane must be explicit.
+- Qualify **Channel C `thinwall`** (production) as well as Channel A
+  `equipollent` (characterization).
+- Replace circular `tests/test_layup_analytic_matches_fe.py` (analytic
+  Hashin on FE `resultant_rows`) with prescribed-load / laminate oracles.
+- Mesh-convergence on cap-free and cap-bearing sections; mixed
+  `N+My+Mz` superposition; transverse-shear control.
+- Requalify 2D-F production chain; mark superseded FE FI (including CDFAM
+  peak FI) only after every gate is green.
+
+### Completeness gaps any potential fix must close
+
+- No native periodic MITC4 product path today (CCX periodic export only).
+- No station identity into FE.
+- Dummy `L_x` / `buckling_length_m`.
+- Both-face contour clamps.
+- Composer drops overlapping cap-tie / junction slaves.
+- Load-vector oracle ≠ response oracle; `Mz` sign / reference-point mismatch
+  in the WIP gate.
+- Midplane-only N11 recovery.
+- Channel A vs Channel C.
+- Ungated shear/torsion.
+- Circular FI acceptance test.
+- Split CCX writers.
+- Root segment still diagnostic-only.
+- Published FE FI from the defective contract still in circulation.
