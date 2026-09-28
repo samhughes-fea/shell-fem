@@ -1,7 +1,16 @@
 # Processing architecture proposal — four-tier results pipeline
 
-**Status:** Phases 1–4 (four-tier split) implemented — `compute_quaternary/` exists with `compute_hashin_fi.py`, `compute_governing_element.py`, `quaternary_results_orchestrator.py`. **Phase 6 (quaternary scope tightening) implemented**: `ShellHashinFiResult` (`in_plane` + `interlaminar`) added to `container_hopper.py`; `compute_interlaminar_fi.py` removed, folded into `compute_hashin_fi.py`; new `compute_von_mises_fi.py`; `api/fi_recovery.von_mises_fi_from_row` facade added and wired into `section_optimisation/engine/shell_fi_eval.py`, replacing its inline call.  
-**Last updated:** 2026-07-08
+> **Current path:** `SectionLinearStaticRunner` owns P→S→T→Q. Formulation identity
+> comes from `ShellFormulationCache.formulation_id`. Interface shear is
+> diagnostic-only. Historical `section_optimisation/engine/shell_fi_eval.py`
+> references below are archaeology.
+
+**Status:** Phases 1–4 (four-tier split) implemented. **Phase 6 implemented**
+(`ShellHashinFiResult` in-plane + diagnostic interface shear; Von Mises for
+isotropic panels). Canonical FI recovery lives under
+`processing/static/results/api/fi_recovery.py` (re-exported from the worker
+barrel), not a deleted optimiser engine.
+**Last updated:** 2026-09-20
 
 This document proposes restructuring `section_shell_fea/processing/static/results/` from the current three-tier taxonomy (primary / secondary / tertiary) into a strict four-tier chain where each tier consumes only the result containers of the tier above it:
 

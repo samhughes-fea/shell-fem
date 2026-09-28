@@ -21,11 +21,12 @@ Assemble, constrain, and solve the linear-static shell system
 
 After element `Ke`/`Fe` are formed:
 
-1. **Assemble** global \(\mathbf{K}\), \(\mathbf{f}\).
-2. **Constrain** essential BCs (+ MPCs as configured).
-3. **Reduce** \(\mathbf{K}_r=\mathbf{T}^{\mathsf{T}}\mathbf{K}\mathbf{T}\), \(\mathbf{f}_r=\mathbf{T}^{\mathsf{T}}\mathbf{f}\).
-4. **Solve** \(\mathbf{K}_r\mathbf{q}=\mathbf{f}_r\); reconstruct \(\mathbf{d}=\mathbf{T}\mathbf{q}\).
-5. **Recover** through the cascade:
+1. **Assemble** global \(\mathbf{K}\) and element RHS \(f_{\mathrm{element}}\) once.
+2. **Compose** one immutable `SectionConstraintSet` (junction MPCs, supports, cap ties).
+3. **Combine** \(f_{\mathrm{total}} = f_{\mathrm{element}} + f_{\mathrm{station}}\) from the frozen SFV.
+4. **Constrain / reduce** \(\mathbf{K}_r=\mathbf{T}^{\mathsf{T}}\mathbf{K}\mathbf{T}\), \(\mathbf{f}_r=\mathbf{T}^{\mathsf{T}}\mathbf{f}\).
+5. **Solve** \(\mathbf{K}_r\mathbf{q}=\mathbf{f}_r\); reconstruct \(\mathbf{d}=\mathbf{T}\mathbf{q}\).
+6. **Recover** through the cascade:
 
 \[
 \mathrm{P}\ (U_e)
@@ -49,12 +50,19 @@ Stage classes: [`../../docs/SECTION_SOLVE_STAGES.md`](../../docs/SECTION_SOLVE_S
 
 | Path | Role |
 |------|------|
-| [`operations/`](operations/) | Prepare / assemble / constrain / reduce / solve / reconstruct / disassemble |
+| [`operations/`](operations/) | Family layout: `contracts/`, `preparation/`, `assembly/`, `reduction/`, `solution/`, `recovery/` (root paths are compatibility aliases) |
+| [`constraints/`](constraints/) | Junction MPCs, cap ties, supports, `SectionConstraintSet` composer |
 | [`results/`](results/) | Cascade `compute_*` tiers + bin types |
-| [`diagnostics/`](diagnostics/) | GCI, trust, loading/mesh plots, timings, cap-peak |
+| [`diagnostics/`](diagnostics/) | Family layout: `solve/`, `equilibrium/`, `convergence/`, `parity/`, `plots/` (root paths are compatibility aliases) |
+
+Performance / layout closeout:
+[`../../docs/STATIC_OPERATIONS_PERFORMANCE_REPORT.md`](../../docs/STATIC_OPERATIONS_PERFORMANCE_REPORT.md),
+[`../../docs/STATIC_PROCESSING_WP0_BASELINE.md`](../../docs/STATIC_PROCESSING_WP0_BASELINE.md).
 
 Public product is the cascade bin returned by
-[`../../simulation_runner/`](../../simulation_runner/README.md).
+[`../../simulation_runner/`](../../simulation_runner/README.md)
+(`SectionLinearStaticRunner.execute()` is the production lifecycle;
+`solve_constrained_system` is the internal kernel).
 
 | In | Formulation cache + nodal `f` + BC / topology |
 | Out | `CascadeBin` with P→S→T→Q + `diagnostics` |

@@ -71,12 +71,6 @@ def _fixed_dofs_simply_supported(n_nodes_s: int, *, ndof: int) -> list[int]:
     return list(set(fixed))
 
 
-def _g_eff_from_abd(abd: NDArray, thickness_m: float) -> float:
-    """Estimate transverse shear modulus from membrane A66 / thickness."""
-    a66 = float(np.asarray(abd, dtype=float)[2, 2])
-    return max(a66 / max(float(thickness_m), 1e-30), 1.0)
-
-
 def _assemble_elastic(
     *,
     kernel: StripElementKernel,
@@ -85,6 +79,7 @@ def _assemble_elastic(
     abd: NDArray,
     thickness_m: float,
     n_elements: int,
+    fsdt: Any | None = None,
 ) -> tuple[sp.csr_matrix, list[list[int]]]:
     """Assemble panel strip elastic stiffness (uniform L_s = width / n_elements)."""
     _coords, elements = _build_strip_mesh(n_elements)
@@ -93,14 +88,25 @@ def _assemble_elastic(
     n_dof = 2 * n_nodes_s * ndof
     L_s = float(width_m) / float(n_elements)
     L_x = float(length_m)
-    g_eff = _g_eff_from_abd(abd, thickness_m)
-    Ke = kernel.stiffness(
-        L_s,
-        L_x,
-        np.asarray(abd, dtype=float),
-        thickness=float(thickness_m),
-        G_eff=g_eff,
-    )
+    if fsdt is not None and hasattr(kernel, "stiffness_from_constitutive"):
+        Ke = kernel.stiffness_from_constitutive(
+            L_s, L_x, fsdt, thickness=float(thickness_m)
+        )
+    else:
+        # Legacy DTO compatibility only. Production inputs carry ``fsdt`` and
+        # therefore reuse the exact A_s assembled by the static formulation.
+        g_eff = max(
+            float(np.asarray(abd, dtype=float)[2, 2])
+            / max(float(thickness_m), 1e-30),
+            1.0,
+        )
+        Ke = kernel.stiffness(
+            L_s,
+            L_x,
+            np.asarray(abd, dtype=float),
+            thickness=float(thickness_m),
+            G_eff=g_eff,
+        )
     rows: list[int] = []
     cols: list[int] = []
     vals: list[float] = []
@@ -246,6 +252,7 @@ def solve_panel_linear_buckling_eigen(
         abd=abd,
         thickness_m=thickness,
         n_elements=n_el,
+        fsdt=inp.fsdt,
     )
     Kg = _assemble_geometric(
         shell_theory=shell_theory,

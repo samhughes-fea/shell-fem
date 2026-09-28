@@ -132,7 +132,7 @@ with |GCI| ≤ limit). Day-to-day and package confidence use magnitude counts.
 | T | `\|τ13\|` | Report-only | tracks null `\|Q1\|` |
 | T | `\|τ23\|` | Study-reported | tracks `\|Q2\|` |
 | Q | Hashin in-plane | **Study gate** | ≤10%: **34/40** (was 32); not CI |
-| Q | Hashin interlaminar | **Weak / study** | study CSV |
+| Q | FSDT interface-shear diagnostic | **Weak / study** | study CSV; not governing |
 | Q | `governing_fi` | **Study gate** | ≤10%: **34/40** (was 28); not CI |
 | Cap | kind peaks | Informational | `skin_offset` Defect K / tie policy |
 

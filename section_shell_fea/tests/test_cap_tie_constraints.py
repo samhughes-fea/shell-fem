@@ -15,56 +15,6 @@ import numpy as np
 import pytest
 
 
-@pytest.fixture(scope="module")
-def assembled_5df():
-    """Assemble a cap-bearing section; returns the SectionAssemblyResult."""
-    from blade_structure_utilities.geometry_utilities.section_geometry.api.factory import (
-        build_section_view,
-        resolve_system_type,
-    )
-    from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import AirfoilSDF
-    from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
-        shell_mesh_inputs_from_section,
-    )
-    from blade_structure_utilities.mesh_utilities.section_mesh import (
-        build_section_strip_mesh,
-    )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-        shell_panel_topology_from_shell_inputs,
-    )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
-        assemble_section_from_zones,
-    )
-
-    twist = float(np.deg2rad(34.1))
-    airfoil = AirfoilSDF.from_naca_series(
-        6, 63.0, 4.0, 15.0, n_points=200, chord=0.241, closed_te=True
-    )
-    section = build_section_view(
-        airfoil,
-        resolve_system_type("5D-F"),
-        twist_angle_rad=twist,
-        skin_thickness=0.001,
-        web_thickness=0.0015,
-        cap_height=0.004,
-    )
-    shell = shell_mesh_inputs_from_section(
-        section, twist_rad=twist, layout_key="5D-F", n_web_samples=20, n_cap_samples=80
-    )
-    mesh = build_section_strip_mesh(shell, target_element_length_frac=0.012, endpoint_tol=1e-6)
-    zones = list(shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True).zones)
-    nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
-    nxy = [np.zeros_like(v) for v in nx]
-    return assemble_section_from_zones(
-        zones,
-        nx,
-        nxy,
-        L_x=1.0,
-        interface_constraint_mode="shared",
-        section_strip_mesh=mesh,
-    )
-
-
 def _rigid_body_at(point_yz, tangent_yz, ndof, *, a, omega):
     """Rigid-body DOF values at one point, expressed in the frame ``tangent_yz``.
 
@@ -119,7 +69,9 @@ def test_ties_are_found_for_every_cap(assembled_5df):
     )
 
     asm = assembled_5df
-    report = build_cap_skin_ties(asm.panel_maps, asm.node_meta)
+    report = build_cap_skin_ties(
+        asm.panel_maps, asm.node_meta, shell_midlines=asm.shell_midlines
+    )
 
     assert report.caps_seen > 0, "fixture has no cap panels"
     assert report.caps_tied == report.caps_seen, (
@@ -138,12 +90,65 @@ def test_offsets_are_nonzero_and_bounded(assembled_5df):
     )
 
     asm = assembled_5df
-    report = build_cap_skin_ties(asm.panel_maps, asm.node_meta)
+    report = build_cap_skin_ties(
+        asm.panel_maps, asm.node_meta, shell_midlines=asm.shell_midlines
+    )
     lo, med, hi = report.offset_stats_mm()
 
     assert med > 0.1, f"median cap offset {med:.4f} mm — links have collapsed onto the skin"
     # Nothing should be tied across the section; a cap standoff is millimetres.
     assert hi < 50.0, f"max cap offset {hi:.3f} mm is implausibly large"
+
+
+def test_tie_skin_labels_match_strip_bonds(assembled_5df):
+    """FEA-CT-001: every link's skin_label is the bond host, not nearest skin."""
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
+        bonds_by_cap_panel_label,
+        build_cap_skin_ties,
+        panel_label_for_strip,
+    )
+
+    asm = assembled_5df
+    report = build_cap_skin_ties(
+        asm.panel_maps, asm.node_meta, shell_midlines=asm.shell_midlines
+    )
+    bonds_by_cap = bonds_by_cap_panel_label(asm.shell_midlines)
+    assert bonds_by_cap, "fixture midlines must carry StripBond entries"
+    for lk in report.links:
+        hosts = {
+            panel_label_for_strip(kind="skin", label=str(b.host_label))
+            for b in bonds_by_cap[lk.cap_label]
+        }
+        assert lk.skin_label in hosts, (
+            f"{lk.cap_label} tied to {lk.skin_label!r} but bonds only name {hosts}"
+        )
+
+
+def test_skin_offset_without_bonds_raises(assembled_5df):
+    """FEA-CT-001: refuse nearest-skin fallback when bonds are missing."""
+    from dataclasses import replace
+
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
+        build_cap_skin_ties,
+    )
+
+    asm = assembled_5df
+    stripped = tuple(
+        replace(m, bonds=()) if str(getattr(m, "kind", "")) == "cap" else m
+        for m in (asm.shell_midlines or ())
+    )
+    with pytest.raises(ValueError, match="no StripBond|FEA-CT-001"):
+        build_cap_skin_ties(asm.panel_maps, asm.node_meta, shell_midlines=stripped)
+
+
+def test_skin_offset_without_midlines_raises(assembled_5df):
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
+        build_cap_skin_ties,
+    )
+
+    asm = assembled_5df
+    with pytest.raises(ValueError, match="shell_midlines|FEA-CT-001"):
+        build_cap_skin_ties(asm.panel_maps, asm.node_meta, shell_midlines=None)
 
 
 def test_rigid_body_motion_passes_exactly(assembled_5df):
@@ -155,7 +160,11 @@ def test_rigid_body_motion_passes_exactly(assembled_5df):
     asm = assembled_5df
     ndof = int(asm.cache.n_dof_node)
     mpcs, report = build_cap_tie_constraints(
-        asm.panel_maps, asm.node_meta, ndof=ndof, mode="skin_offset"
+        asm.panel_maps,
+        asm.node_meta,
+        ndof=ndof,
+        mode="skin_offset",
+        shell_midlines=asm.shell_midlines,
     )
     assert mpcs, "no cap-tie constraints were produced"
 
@@ -191,7 +200,9 @@ def test_zero_offset_link_reduces_to_frame_rotation(assembled_5df):
         build_cap_skin_ties,
     )
 
-    found = build_cap_skin_ties(asm.panel_maps, asm.node_meta)
+    found = build_cap_skin_ties(
+        asm.panel_maps, asm.node_meta, shell_midlines=asm.shell_midlines
+    )
     src = found.links[0]
     zeroed = CapTieReport(
         mode="skin_offset",
@@ -250,7 +261,9 @@ def test_expands_master_that_is_already_a_slave(assembled_5df):
 
     asm = assembled_5df
     ndof = int(asm.cache.n_dof_node)
-    report = build_cap_skin_ties(asm.panel_maps, asm.node_meta)
+    report = build_cap_skin_ties(
+        asm.panel_maps, asm.node_meta, shell_midlines=asm.shell_midlines
+    )
     victim = report.links[0].master_nodes[0] * ndof  # u_x of a skin master
     free_master = victim + 1000  # synthetic independent DOF
     mpcs = cap_tie_constraints(
@@ -274,7 +287,9 @@ def test_skips_cap_slave_already_owned_by_junction(assembled_5df):
 
     asm = assembled_5df
     ndof = int(asm.cache.n_dof_node)
-    report = build_cap_skin_ties(asm.panel_maps, asm.node_meta)
+    report = build_cap_skin_ties(
+        asm.panel_maps, asm.node_meta, shell_midlines=asm.shell_midlines
+    )
     cap_ux = report.links[0].slave_node * ndof
     mpcs = cap_tie_constraints(
         report, asm.node_meta, ndof=ndof, existing={cap_ux: [(0, 1.0)]}

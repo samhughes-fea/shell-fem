@@ -31,12 +31,13 @@ from blade_structure_utilities.geometry_utilities.coordinate_frames import (
     rotate_ply_stress_E_to_M,
     section_normal_2d,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.builders.outline_frames import (
+from blade_structure_utilities.load_utilities.section_loads.surface_traction.outline_frames import (
     blade_outline_to_unit_chord,
     blade_to_naca_rotation,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
+    equipollent_section_force_vector,
 )
 from blade_structure_utilities.load_utilities.section_loads import (
     SectionOutlineGeometry,
@@ -169,6 +170,7 @@ class TestFailureIndexIsEvaluatedInM:
                     np.asarray(sig3, dtype=float).reshape(1, 3),
                     np.array([ply.Xt]), np.array([ply.Xc]),
                     np.array([ply.Yt]), np.array([ply.Yc]), np.array([ply.S12]),
+                    np.array([ply.S23]),
                 )[0]
             )
 
@@ -248,7 +250,7 @@ class TestTransformsAreNotReimplemented:
         np.testing.assert_allclose(got[1], section_normal_2d(pts[2] - pts[0]), atol=1e-12)
 
     def test_mesh_map_normal_delegates(self):
-        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
             normal_2d,
         )
 
@@ -348,20 +350,22 @@ class TestFlapEdgeMapReachesTheRightAxis:
             U_X,
             gdof,
         )
-        from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
-            SectionLinearStaticRunner,
-        )
         from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
             build_section_strip_mesh,
+        )
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import (
+            assemble_section_from_zones,
         )
 
         pt = build_shell_panel_topology("2412", [0.35], chord_m=CHORD, twist_rad=0.0)
         mesh = build_section_strip_mesh(pt.shell_inputs, n_elements_per_panel=6)
-        runner = SectionLinearStaticRunner(
-            panel_topology=pt, section_strip_mesh=mesh,
-            My=0.0, Mz=0.0, load_channel="equipollent",
-        ).execute()
-        node_meta = runner.assembly.node_meta
+        zones = list(pt.zones)
+        nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
+        nxy = [np.zeros_like(a) for a in nx]
+        asm = assemble_section_from_zones(
+            zones, nx, nxy, section_strip_mesh=mesh,
+        )
+        node_meta = asm.node_meta
 
         ch = blade_resultants_to_shell_channels(**named_resultants)
         vec = BeamResultantVector.from_named(

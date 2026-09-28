@@ -15,12 +15,13 @@ Related: [SHELL_MODEL.md](SHELL_MODEL.md),
 | Channel | Meaning | Mechanism |
 |---------|---------|-----------|
 | **C — thin-wall shaped** | Same \(R\), distributed via thin-wall \(\sigma/q\) on midlines | `section_loads.distribute_loads(..., channel="thinwall")` → `SectionForceVector` → `section_force_vector_to_nodal_load` (**default**) |
-| **A — equipollent beam resultants** | Station forces/moments \(R=(N,V_y,V_z,M_y,M_z,T)\) | `beam_resultants_to_nodal_load` → nodal \(f\) (opt-in) |
-| **B — surface tractions** | Skin pressure/shear on the section mesh | `load_channel="surface_traction"` → `traction_face_loads` alone (or BSU `surface_traction` → SFV) |
+| **A — equipollent beam resultants** | Station forces/moments \(R=(N,V_y,V_z,M_y,M_z,T)\) | `equipollent_shape_on_midlines` → `SectionForceVector` → `section_force_vector_to_nodal_load`. `beam_resultants_to_nodal_load` is regression/reference only. |
+| **B — surface tractions** | Skin pressure/shear on the section mesh | `section_loads.distribute_loads(..., channel="surface_traction")` → `SectionForceVector` → `section_force_vector_to_nodal_load` |
 
-Default: `SectionLinearStaticRunner(..., load_channel="thinwall")` with midlines from
-`shell_inputs` / `evaluate_station`. Opt-in `"equipollent"` or `"surface_traction"`.
-Channel C is a **load-shape** path only (not shell FI / ULS). Kernels live under
+Default: `SectionLinearStaticRunner(..., load_channel="thinwall", section_force_vector=sfv)`.
+Opt-in `"equipollent"` or `"surface_traction"` still apply a **frozen SFV**; FE does
+not select a load-shaping theory. Channel C is a **load-shape** path only (not shell
+FI / ULS). Kernels live under
 `blade_structure_utilities.load_utilities.section_loads.{thinwall,equipollent,surface_traction}`.
 
 Linear elasticity allows superposition only when the channels do not both claim the same
@@ -29,9 +30,10 @@ beam shears \(V_y\)/\(V_z\) that already include those forces.
 Channel A and Channel C are alternative beam mappers — never both.
 
 ```text
-BeamResultantVector R  ──► distribute_loads(thinwall) → SFV → …   ┐
-                     └──► beam_resultants_to_nodal_load (A)      ├─► f ─► solve()
-TractionField (B only) ──► traction_face_loads ──────────────────┘         (P→S→T→Q)
+BeamResultantVector R  ──► distribute_loads(thinwall) → SFV ──┐
+                     └──► equipollent_shape_on_midlines → SFV ├─► section_force_vector_to_nodal_load → f_station
+TractionField (B only) ──► surface_traction → SFV ────────────┘
+f_total = f_element + f_station  ─► constrain → reduce → solve ─► P→S→T→Q
 ```
 
 BC policy: `build_clamp_supports(..., bc_mode="contour_support")` (panel contour endpoints + RBM pin).

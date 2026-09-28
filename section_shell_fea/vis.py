@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from .processing.static.diagnostics.mesh_plots import (  # noqa: F401
+from .processing.static.diagnostics.plots.mesh_plots import (  # noqa: F401
     save_section_centerline_mesh_figure,
     taxonomy_plot_caption,
 )
-from .processing.static.diagnostics.example_plots import (  # noqa: F401
+from .processing.static.diagnostics.plots.example_plots import (  # noqa: F401
     save_clpt_fi_on_section_geometry,
     save_clpt_ply_figure,
     save_loads_provenance_png,

@@ -3,10 +3,12 @@
 For layer-by-layer fidelity vs 1d-fem see [FEM_ARCHITECTURE_1DFEM_ALIGNMENT.md](FEM_ARCHITECTURE_1DFEM_ALIGNMENT.md).
 Product surface: [LINEAR_STATIC_MAIN_TRACK_PHASE0.md](LINEAR_STATIC_MAIN_TRACK_PHASE0.md).
 
-**Last updated:** 2026-07-22 — Phase 0: Channel-A / `api.periodic` / `api.k6` /
+**Last updated:** 2026-09-20 — formulation registry, canonical projection, honest Hashin.
 `operations/periodic/` **removed**. Two runners only. Full-section buckling is the
 default buckling track. HSDT / clamped FE deleted; FSDT-only production; CalculiX
-opt-in via `register_calculix_ccx_backend()`. Package-level `api/` dissolved.
+opt-in via `register_calculix_ccx_backend()`. Worker `api/` barrel is retained as
+the `API_STANDARDS` seam; the unused `types/` barrel was removed because it
+shadowed stdlib `types` when tools ran from the package directory.
 
 ## 1d-fem mapping (current)
 
@@ -31,7 +33,7 @@ opt-in via `register_calculix_ccx_backend()`. Package-level `api/` dissolved.
 3. **`processing/`** — computes stage ops, assembly orchestra, results, diagnostics implementations.
 4. **`interface/`** — cross-package adapters only.
 
-**Separation:** pre_processing *prepares*; processing *computes*; simulation_runner *sequences and records*. No package-level `api/` façade.
+**Separation:** pre_processing *prepares*; processing *computes*; simulation_runner *sequences and records*. Worker `api/` re-exports the package `__all__` and is not a second sequencer.
 
 ## Production flows (FSDT)
 
@@ -55,11 +57,19 @@ static cascade (same mesh / K / T / secondary prestress)
 Panel-classical strip eigen remains available via `eigen_track="panel"`.
 
 **Deleted (do not revive):** Channel-A / Saint-Venant periodic product surfaces,
-`engine/`, package-level `api/`, HSDT, legacy clamped MITC4 monoliths.
+`engine/`, unused `types/` barrel, HSDT, legacy clamped MITC4 monoliths.
+Worker `api/` remains the public import seam.
 
 ## Element factory registry
 
-`register_element_factory` / `resolve_element_factory` in
-`pre_processing/element_library/formulation_factory.py`. FSDT→MITC4 registers at
-import; CalculiX remains opt-in and must not register the element factory at
-import time.
+Discrete formulations register in
+`pre_processing/element_library/registry.py` (keyed by formulation ID).
+`FSDT → MITC4-FSDT` is the default mapping. MITC4 self-registers lazily from
+`mitc4/registration.py`; generic factory modules do not import MITC4 at module
+load. CalculiX remains an opt-in backend and is not a native formulation.
+
+Canonical result projection is owned by each registration's
+`NativeToCanonicalShellProjector`. Frame mathematics stays in
+`geometry_utilities.coordinate_frames`.
+
+See [FORMULATION_CONTRACT.md](FORMULATION_CONTRACT.md).

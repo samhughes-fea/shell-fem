@@ -6,13 +6,13 @@ import json
 import sys
 from pathlib import Path
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.cap_peak_sampling import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.cap_peak_sampling import (
     run_cap_peak_study,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.cascade_mesh_convergence import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.cascade_mesh_convergence import (
     run_cascade_at_frac,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.grid_independence_study import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.grid_independence_study import (
     load_cotide_station_recipe,
 )
 

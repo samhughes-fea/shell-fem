@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.grid_independence_study import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.grid_independence_study import (
     LayoutDriftSummary,
     evaluate_layout_gates,
 )

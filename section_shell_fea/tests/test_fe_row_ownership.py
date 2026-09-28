@@ -28,6 +28,7 @@ _FORBIDDEN_LOADS_SYMBOLS = frozenset(
         "SectionLoadsRunner",
         "distribute_loads",
         "distribute_beam_resultants",
+        "equipollent_shape_on_midlines",
     }
 )
 
@@ -109,6 +110,7 @@ def _imported_names(path: Path) -> set[tuple[str, str]]:
     [
         "processing/static/operations",
         "processing/static/results",
+        "processing/static/constraints",
     ],
 )
 def test_solve_cascade_forbid_bind_policy_and_sfv_shaping(home: str) -> None:

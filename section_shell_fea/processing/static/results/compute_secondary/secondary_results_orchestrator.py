@@ -7,13 +7,14 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import numpy as np
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import ShellFormulationCache
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import FieldProvenance, ProvenanceKind, ShellPanelResultants
-from .....pre_processing.element_library.kernel import resolve_kernel
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import FieldProvenance, ProvenanceKind, ShellPanelResultants, ShellTheory
+from .....pre_processing.element_library.kernel import resolve_kernel, resolve_kernel_by_id
 from ..containers.container_hopper import ShellPrimaryResultSet, ShellSecondaryResultSet
 from ..containers.elemental_results import ShellElementalResults
 
@@ -118,6 +119,30 @@ def _element_L_s(
     return 1.0
 
 
+def _resolve_secondary_kernel(theory: str | ShellTheory | None, cache: ShellFormulationCache):
+    """Resolve the recovery kernel, preferring the cache's own ``formulation_id``.
+
+    ``theory is None`` no longer means the unsafe ``"mitc4"`` string default: the
+    cache's authoritative ``formulation_id`` selects the kernel (WP2); absent that
+    it falls back to ``ShellTheory.FSDT``. An explicit ``theory`` is honoured and
+    mapped to :class:`ShellTheory` safely.
+    """
+    if theory is None:
+        fid = str(getattr(cache, "formulation_id", "") or "")
+        if fid:
+            return resolve_kernel_by_id(fid)
+        return resolve_kernel(ShellTheory.FSDT)
+    if isinstance(theory, ShellTheory):
+        return resolve_kernel(theory)
+    token = str(theory).strip().lower()
+    if token in ("mitc4", "mitc4-fsdt", "fsdt"):
+        return resolve_kernel(ShellTheory.FSDT)
+    try:
+        return resolve_kernel(ShellTheory(token))
+    except ValueError:
+        return resolve_kernel(ShellTheory.FSDT)
+
+
 def _compute_secondary_resultants(
     cache: ShellFormulationCache,
     U_e: list,
@@ -129,29 +154,50 @@ def _compute_secondary_resultants(
     zones: list[Any] | None = None,
     provenance_tag: str = "processing.compute_secondary",
 ) -> ShellSecondaryResultSet:
-    kernel = resolve_kernel(theory or "mitc4")
+    kernel = _resolve_secondary_kernel(theory, cache)
     rows: list[ShellPanelResultants] = []
     for stiff, u_elem in zip(cache.stiffness_objects, U_e):
         pi = stiff.panel_index
         local_ei = int(stiff.local_element_index)
-        L_s = _element_L_s(
-            pi=pi,
-            local_element_index=local_ei,
-            panel_maps=panel_maps,
-            panel_meta=panel_meta,
-        )
+        # WP2: prefer the persisted assembly length (blended outboard L_s) so
+        # recovery agrees with the stiffness that produced ``U_e``; fall back to
+        # recomputed plain contour length only when the cache predates WP2.
+        L_s = float(getattr(stiff, "L_s", float("nan")))
+        if not math.isfinite(L_s) or L_s < 1e-30:
+            L_s = _element_L_s(
+                pi=pi,
+                local_element_index=local_ei,
+                panel_maps=panel_maps,
+                panel_meta=panel_meta,
+            )
         if L_s < 1e-30:
             continue
-        abd_stack = cache.panel_abd_stacks[pi] if pi < len(cache.panel_abd_stacks) else None
-        if abd_stack is None:
-            continue
-        ABD = abd_stack[0]
-        thickness = float(abd_stack[1])
-        G_eff = float(abd_stack[4])
-        res = kernel.recover_resultants(u_elem, L_s, L_x, ABD)
-        Q1, Q2 = kernel.recover_shear(
-            u_elem, L_s, L_x, G_eff=G_eff, thickness=thickness,
+        panel_spec = (
+            cache.panel_constitutive_specs[pi]
+            if pi < len(cache.panel_constitutive_specs)
+            else None
         )
+        if panel_spec is not None and hasattr(kernel, "recover_generalized"):
+            res = kernel.recover_generalized(
+                u_elem, L_s, L_x, panel_spec.fsdt
+            )
+            thickness = float(panel_spec.thickness_m)
+            Q1, Q2 = float(res["Q1"]), float(res["Q2"])
+        else:
+            abd_stack = (
+                cache.panel_abd_stacks[pi]
+                if pi < len(cache.panel_abd_stacks)
+                else None
+            )
+            if abd_stack is None:
+                continue
+            ABD = abd_stack[0]
+            thickness = float(abd_stack[1])
+            G_eff = float(abd_stack[4])
+            res = kernel.recover_resultants(u_elem, L_s, L_x, ABD)
+            Q1, Q2 = kernel.recover_shear(
+                u_elem, L_s, L_x, G_eff=G_eff, thickness=thickness,
+            )
         prov_kind = kernel.provenance_kind
         if Q1 is None:
             prov = {

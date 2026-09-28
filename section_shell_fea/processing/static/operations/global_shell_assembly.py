@@ -15,7 +15,7 @@ import scipy.sparse as sp
 from ....pre_processing.containers.fem_config import MITC4_DEFAULTS
 from ....pre_processing.containers.types import ShellTheory
 from ....pre_processing.constitutive.panel_abd import panel_abd_tuple_from_lam  # noqa: F401 — re-exported for tests
-from ....pre_processing.mesh.shell_mesh_map import (
+from ....pre_processing.topology.shell_mesh_map import (
     GlobalNodeMeta,
     PanelGlobalMap as _PanelGlobalMap,
     normal_2d as _normal_2d,

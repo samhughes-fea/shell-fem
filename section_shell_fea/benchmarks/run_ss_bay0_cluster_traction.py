@@ -6,20 +6,20 @@ import json
 import sys
 from pathlib import Path
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.cascade_mesh_convergence import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.cascade_mesh_convergence import (
     _build_shell,
     run_cascade_at_frac,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.equilibrium_checks import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.equilibrium.equilibrium_checks import (
     check_cluster_equilibrium,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.grid_independence_study import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.grid_independence_study import (
     load_cotide_station_recipe,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.connected_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.connected_panel_topology import (
     build_connected_panel_maps,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
     shell_panel_topology_from_shell_inputs,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh

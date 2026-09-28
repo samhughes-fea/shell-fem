@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 
 from blade_structure_utilities.material_utilities.failure import hashin_fi
-from blade_structure_utilities.material_utilities.laminate import FACE_MID, LaminateDefinition
+from blade_structure_utilities.material_utilities.laminate import FACE_INNER, FACE_MID, FACE_OUTER, LaminateDefinition
 from blade_structure_utilities.material_utilities.orthotropic import OrthotropicPly
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import ShellFormulationCache
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellPanelResultants
@@ -121,15 +121,21 @@ def test_quaternary_orchestrator_hashin_matches_direct_evaluation():
     Yt = np.array([p.Yt for p, _ in lam.plies])
     Yc = np.array([p.Yc for p, _ in lam.plies])
     S12 = np.array([p.S12 for p, _ in lam.plies])
+    S23 = np.array([p.S23 for p, _ in lam.plies])
     for ri in range(len(rows)):
         for pi in range(len(lam.plies)):
-            sig3 = tertiary.ply_results.sig_ply_mat[ri, pi, FACE_MID]
-            expected = float(
-                hashin_fi(
-                    sig3.reshape(1, 3),
-                    Xt[pi : pi + 1], Xc[pi : pi + 1], Yt[pi : pi + 1], Yc[pi : pi + 1], S12[pi : pi + 1],
-                )[0]
-            )
+            expected = 0.0
+            for face in (FACE_OUTER, FACE_INNER):
+                sig3 = tertiary.ply_results.sig_ply_mat[ri, pi, face]
+                expected = max(
+                    expected,
+                    float(
+                        hashin_fi(
+                            sig3.reshape(1, 3),
+                            Xt[pi : pi + 1], Xc[pi : pi + 1], Yt[pi : pi + 1], Yc[pi : pi + 1], S12[pi : pi + 1], S23[pi : pi + 1],
+                        )[0]
+                    ),
+                )
             assert quaternary.hashin_fi.in_plane[ri, pi] == pytest.approx(expected)
 
 
@@ -151,18 +157,25 @@ def test_quaternary_orchestrator_populates_hashin_mode_arrays():
     Yt = np.array([p.Yt for p, _ in lam.plies])
     Yc = np.array([p.Yc for p, _ in lam.plies])
     S12 = np.array([p.S12 for p, _ in lam.plies])
+    S23 = np.array([p.S23 for p, _ in lam.plies])
     for ri in range(len(rows)):
         for pi in range(len(lam.plies)):
-            sig3 = tertiary.ply_results.sig_ply_mat[ri, pi, FACE_MID]
-            ft, fc, mt, mc = hashin_fi_modes(
-                sig3.reshape(1, 3),
-                Xt[pi : pi + 1], Xc[pi : pi + 1], Yt[pi : pi + 1], Yc[pi : pi + 1], S12[pi : pi + 1],
-            )
-            assert hi.fi_ft[ri, pi] == pytest.approx(float(ft[0]))
-            assert hi.fi_fc[ri, pi] == pytest.approx(float(fc[0]))
-            assert hi.fi_mt[ri, pi] == pytest.approx(float(mt[0]))
-            assert hi.fi_mc[ri, pi] == pytest.approx(float(mc[0]))
-            env = max(float(ft[0]), float(fc[0]), float(mt[0]), float(mc[0]))
+            best = {"ft": 0.0, "fc": 0.0, "mt": 0.0, "mc": 0.0}
+            for face in (FACE_OUTER, FACE_INNER):
+                sig3 = tertiary.ply_results.sig_ply_mat[ri, pi, face]
+                ft, fc, mt, mc = hashin_fi_modes(
+                    sig3.reshape(1, 3),
+                    Xt[pi : pi + 1], Xc[pi : pi + 1], Yt[pi : pi + 1], Yc[pi : pi + 1], S12[pi : pi + 1], S23[pi : pi + 1],
+                )
+                best["ft"] = max(best["ft"], float(ft[0]))
+                best["fc"] = max(best["fc"], float(fc[0]))
+                best["mt"] = max(best["mt"], float(mt[0]))
+                best["mc"] = max(best["mc"], float(mc[0]))
+            assert hi.fi_ft[ri, pi] == pytest.approx(best["ft"])
+            assert hi.fi_fc[ri, pi] == pytest.approx(best["fc"])
+            assert hi.fi_mt[ri, pi] == pytest.approx(best["mt"])
+            assert hi.fi_mc[ri, pi] == pytest.approx(best["mc"])
+            env = max(best.values())
             assert hi.in_plane[ri, pi] == pytest.approx(env)
 
 
@@ -181,6 +194,8 @@ def test_quaternary_orchestrator_interlaminar_fi_positive_under_shear():
         fi_row, nr = tier4_interlaminar_fi_from_row(row, s_il=6e6, peak_factor=1.5)
         assert not nr
         assert fi == pytest.approx(fi_row)
+    assert quaternary.governing.get("criterion") != "hashin_il"
+    assert quaternary.governing.get("criterion_id") != "hashin_1980_3d"
 
 
 def test_governing_element_and_max_hashin_facades_are_reexported_from_tier4():

@@ -2,11 +2,18 @@
 
 Work-plan context for the 2026 cleanup/perf/maintainability refactor
 (facade removal, periodic assembly/K6 caches, batched CLPT Hashin, orchestration parallelisation).
-The planned tracks (A1–A4, B1–B2) are **complete** as of 2026-07-07; later SoC (R1–R15),
-vendor housekeeping, and the production FI feature track are also **complete**. This document
-records what landed; remaining items are parked research or optional polish only.
-Use [PERFORMANCE_OPTIMISATION_REPORT.md](PERFORMANCE_OPTIMISATION_REPORT.md) for ranked
-findings and deferred items.
+**Last updated:** 2026-09-20 — hardening: formulation identity through T/Q,
+Cotide locator, fail-closed governing status, BL-015 equipollence, JSON
+contracts, `api/` retained / `types/` removed.
+
+The planned tracks (A1–A4, B1–B2) are **complete**; later SoC (R1–R15),
+vendor housekeeping, and the production FI feature track are also **complete**.
+Historical Path C / `engine/` / `api/periodic` narrative below is archaeology.
+
+### Production baseline (current path)
+
+Canonical solve: `SectionLinearStaticRunner` → P→S→T→Q.
+Do not present removed Path C, `engine/`, or `api/periodic` as current.
 
 **Last updated:** 2026-07-22 — Phase 0 complete (Channel-A / `section_optimisation` removed).
 Full-section buckling landed on `SectionLinearBucklingRunner`. Remaining work is
@@ -21,13 +28,13 @@ Channel-A reintroduction.
 > `shell_fi_batch`). Treat them as archaeology. Live product truth is the Phase 0
 > memo + [SHELL_MODEL.md](SHELL_MODEL.md) header sections.
 
-### Production baseline gate (2026-07-22)
+### Production baseline gate (2026-09-20)
 
 | Suite | Command intent | Result |
 |-------|----------------|--------|
-| Package fast gate | `pytest blade_precompute/section_shell_fea -m "not slow and not ccx and not legacy"` | **240 passed**, 1 skipped, 2 deselected |
-| Orchestration shell / stage order | `pytest blade_precompute/orchestration -k "shell or pipeline_stage"` | **4 passed** |
-| Import boundary | no live `section_shell_fea.api.periodic` / `section_optimisation` imports | **OK** |
+| Package fast gate | `pytest src/blade_structure_utilities/fem_utilities/section_shell_fea -m "not slow and not ccx"` | **434 passed**, 14 deselected (slow/CCX) |
+| Cotide campaigns | included in the package fast gate (`test_grid_independence_study`, `test_cap_peak_sampling`) | **OK** after locator fix |
+| Import smoke | package barrel + subprocess from package cwd | **OK** (`types/` barrel removed) |
 | CCX E2E | `@pytest.mark.ccx` under `calculix_ccx/tests/` | Environment-gated (`ccx` on PATH); not part of the default gate |
 
 Import-boundary note (same day): Defect K harness routes edge traction through

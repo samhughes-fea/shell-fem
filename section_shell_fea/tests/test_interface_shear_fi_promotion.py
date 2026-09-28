@@ -51,8 +51,8 @@ def _row(*, qx: float = 100.0, qy: float = 50.0, t: float = 3e-3) -> ShellPanelR
     )
 
 
-def test_uniform_multi_ply_interface_fi_matches_scalar_peak():
-    """Homogeneous 2-ply: midplane interface recovers peak 1.5 |Q|/t (= scalar)."""
+def test_uniform_multi_ply_interface_fi_is_squared_component_criterion():
+    """Homogeneous 2-ply: the interface criterion is the squared scalar ratio."""
     p = _ply(1e-3)
     # Two plies place an interface at z=0 where the parabola peaks at 1.5 Q/h.
     lam = LaminateDefinition(plies=[(p, 0.0), (p, 0.0)])
@@ -62,7 +62,7 @@ def test_uniform_multi_ply_interface_fi_matches_scalar_peak():
     fi_scalar, nr_s = interlaminar_fi_from_row(row, s_il=s_il, peak_factor=1.5)
     assert not nr and not nr_s
     assert mode == "interface"
-    assert fi_iface == pytest.approx(fi_scalar, rel=1e-9, abs=1e-12)
+    assert fi_iface == pytest.approx(fi_scalar**2, rel=1e-9, abs=1e-12)
 
 
 def test_single_ply_uses_scalar_fallback():
@@ -71,7 +71,7 @@ def test_single_ply_uses_scalar_fallback():
     fi, nr, mode = interlaminar_fi_from_row_fsdt(row, lam, s_il=6e6)
     fi_scalar, _ = interlaminar_fi_from_row(row, s_il=6e6, peak_factor=1.5)
     assert not nr
-    assert mode == "scalar"
+    assert mode == "compatibility_scalar"
     assert fi == pytest.approx(fi_scalar)
 
 

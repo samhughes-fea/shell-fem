@@ -10,7 +10,10 @@ from .bundle_fi import (
 )
 from .compute_governing_element import max_hashin_fi_from_bundle, select_governing_hashin_element
 from .compute_hashin_fi import (
+    InterfaceShearScreeningResult,
     batched_interlaminar_fi,
+    interface_shear_screening_from_tau,
+    interface_shear_screening_from_tau_batch,
     interlaminar_fi_from_interface_tau,
     interlaminar_fi_from_row,
     interlaminar_fi_from_row_fsdt,
@@ -27,12 +30,15 @@ from .quaternary_results_orchestrator import ShellQuaternaryResultsOrchestrator
 
 __all__ = [
     "BundleQuaternaryFi",
+    "InterfaceShearScreeningResult",
     "ShellQuaternaryResultsOrchestrator",
     "batched_interlaminar_fi",
     "compute_quaternary_fi_from_panel_rows",
     "extreme_fibre_fi",
     "extreme_fibre_stress_from_ply_mat",
     "flatten_panel_resultant_rows",
+    "interface_shear_screening_from_tau",
+    "interface_shear_screening_from_tau_batch",
     "interlaminar_fi_from_interface_tau",
     "interlaminar_fi_from_row",
     "interlaminar_fi_from_row_fsdt",

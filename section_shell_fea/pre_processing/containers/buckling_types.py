@@ -14,6 +14,9 @@ from .shell_theory_capabilities import (
     validate_shell_configuration,
 )
 from .station_types import ShellStationProvenance
+from blade_structure_utilities.material_utilities.laminate import (
+    FSDTLaminateStiffness,
+)
 
 @dataclass
 class PanelBucklingResult:
@@ -65,6 +68,7 @@ class ShellPanelBucklingInput:
     material_label: str | None = None
     provenance: ShellStationProvenance = field(default_factory=ShellStationProvenance)
     source_resultant: ShellPanelResultants | None = None
+    fsdt: FSDTLaminateStiffness | None = None
 
     def __post_init__(self) -> None:
         if not self.panel_label.strip():
@@ -93,6 +97,9 @@ class ShellPanelBucklingInput:
             if not np.all(np.isfinite(abd)):
                 raise ValueError("abd must contain only finite values")
             object.__setattr__(self, "abd", abd.copy())
+        if self.fsdt is not None and self.abd is not None:
+            if not np.allclose(self.fsdt.ABD, self.abd):
+                raise ValueError("fsdt.ABD must match abd")
         if self.source_resultant is not None:
             if self.source_resultant.panel_label and self.source_resultant.panel_label != self.panel_label:
                 raise ValueError("source_resultant panel_label must match panel_label")

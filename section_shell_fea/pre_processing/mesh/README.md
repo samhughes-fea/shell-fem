@@ -49,7 +49,7 @@ consumed by assemble.
 | [`shell_mesh_map.py`](shell_mesh_map.py) | Node maps, `effective_n_elements_spec`, panel end tangents |
 | [`api/shell_panel_topology.py`](api/shell_panel_topology.py) | `ShellPanelTopology`, builders from `ShellMeshInputs` |
 | [`connected_panel_topology.py`](connected_panel_topology.py) | Connected-section topology helpers |
-| [`naca_profile.py`](naca_profile.py) | Profile helpers for diagnostics / demos |
+| [`naca_profile.py`](naca_profile.py) | FE-demo thin-wall LE→TE helpers only — production outer polygons → [`section_geometry.sdf.naca`](../../../../geometry_utilities/section_geometry/sdf/naca.py) |
 
 ### `ShellPanelTopology`
 

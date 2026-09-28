@@ -10,6 +10,11 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy.typing import NDArray
 
+from blade_structure_utilities.geometry_utilities.coordinate_frames import (
+    FRAME_B,
+    FrameTag,
+    require_frame_tag,
+)
 from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
 
 from .buckling_types import ShellStationBucklingBundle
@@ -21,7 +26,7 @@ from .station_types import (
 )
 
 if TYPE_CHECKING:
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import SectionVlasovResult
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import SectionVlasovResult
 
 @dataclass(frozen=True)
 class ThinWallResult:
@@ -48,6 +53,15 @@ class ThinWallResult:
     reference_resultants: ShellPanelResultants | None = None
     y_e: float | None = None
     z_e: float | None = None
+    pierce_frame: FrameTag = FRAME_B
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "pierce_frame", require_frame_tag(self.pierce_frame))
+        if self.pierce_frame != FRAME_B:
+            raise ValueError(
+                f"ThinWallResult.pierce_frame must be {FRAME_B!r}; "
+                f"got {self.pierce_frame!r} (FEA-R-003)"
+            )
 
     @property
     def panels(self) -> Any:
@@ -70,6 +84,7 @@ class ShellPanelSolveResult:
     panel_abd: Any | None = None
     panel_thickness_m: Any | None = None
     panel_G_eff: Any | None = None
+    panel_constitutive_specs: Any | None = None
     panel_labels: list[str] | None = None
     station_buckling: ShellStationBucklingBundle | None = None
     shell_midline_strips: tuple[ShellMidlineStrip, ...] = ()
@@ -120,6 +135,7 @@ class SectionShellRecoveryBundle:
     panel_abd: Any | None = None  # np.ndarray (n_panel, 6, 6)
     panel_thickness_m: Any | None = None  # (n_panel,)
     panel_G_eff: Any | None = None  # (n_panel,)
+    panel_constitutive_specs: Any | None = None
     panel_labels: list[str] | None = None
     station_buckling: ShellStationBucklingBundle | None = None
     shell_midline_strips: tuple[ShellMidlineStrip, ...] = ()
@@ -131,10 +147,18 @@ class SectionShellRecoveryBundle:
     # Set only by run_section_linear_static_from_resultants_mitc4; None for all Bredt-based paths.
     beam_mode_amplitudes: Any | None = None
     # Canonical elastic-centroid coordinates (prefer over y_sc/z_sc).
+    # Pierce plane is frame B (section Y–Z); ARCH-MUST-016.
     y_e: float | None = None
     z_e: float | None = None
+    pierce_frame: FrameTag = FRAME_B
 
     def __post_init__(self) -> None:
+        self.pierce_frame = require_frame_tag(self.pierce_frame)
+        if self.pierce_frame != FRAME_B:
+            raise ValueError(
+                f"SectionShellRecoveryBundle.pierce_frame must be {FRAME_B!r}; "
+                f"got {self.pierce_frame!r} (FEA-R-003)"
+            )
         if self.y_e is None:
             self.y_e = float(self.y_sc)
         if self.z_e is None:
@@ -165,6 +189,7 @@ class SectionShellRecoveryBundle:
             reference_resultants=self.reference_resultants,
             y_e=self.y_e,
             z_e=self.z_e,
+            pierce_frame=self.pierce_frame,
         )
 
     @property
@@ -177,6 +202,7 @@ class SectionShellRecoveryBundle:
             panel_abd=self.panel_abd,
             panel_thickness_m=self.panel_thickness_m,
             panel_G_eff=self.panel_G_eff,
+            panel_constitutive_specs=self.panel_constitutive_specs,
             panel_labels=self.panel_labels,
             station_buckling=self.station_buckling,
             shell_midline_strips=self.shell_midline_strips,

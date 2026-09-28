@@ -6,9 +6,12 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import (
     SectionVlasovResult,
     compute_section_vlasov,
+)
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
+    kind_of,
 )
 
 
@@ -20,13 +23,22 @@ def prepare_thin_wall_panel_loads(
     sig_p: list,
     B: float,
     dB_dx: float,
+    *,
+    shell_midlines: Any | None = None,
+    cell_wall_loops: Any | None = None,
 ) -> tuple[SectionVlasovResult, list[np.ndarray], list[np.ndarray]]:
-    """Vlasov warping + per-panel ``N11``/``N12`` nodal load arrays for global coupled solvers."""
+    """Vlasov warping + per-panel ``N11``/``N12`` nodal load arrays for global coupled solvers.
+
+    Multi-cell sections must pass ``shell_midlines`` / ``cell_wall_loops``
+    (FEA-L-004).
+    """
     t_web_mean = float(np.mean([p.lam.t for p in zones if len(p.s) >= 2])) if zones else None
     vlasov = compute_section_vlasov(
         airfoil, zones, B, dB_dx,
         webs_geom=list(webs_geom),
         t_web=t_web_mean,
+        shell_midlines=shell_midlines,
+        cell_wall_loops=cell_wall_loops,
     )
 
     nx_panels: list[np.ndarray] = []
@@ -38,7 +50,8 @@ def prepare_thin_wall_panel_loads(
             continue
         thickness = float(p.lam.t)
         sig_xx_arr = np.asarray(sig_p[pi], dtype=float)
-        is_web = "web" in str(getattr(p, "label", "")).lower()
+        # FEA-CCX-003: membership by kind prefix, not substring bleed.
+        is_web = kind_of(str(getattr(p, "label", ""))) == "web"
         if is_web:
             sig_w_nodes = np.zeros_like(sig_xx_arr)
         elif pi < len(vlasov.sigma_omega) and len(vlasov.sigma_omega[pi]) > 0:

@@ -82,6 +82,7 @@ def _build_station_buckling_bundle(
     )
     panel_abd = getattr(recovery_bundle, "panel_abd", None)
     panel_thickness = getattr(recovery_bundle, "panel_thickness_m", None)
+    panel_specs = getattr(recovery_bundle, "panel_constitutive_specs", None)
     panel_labels = list(getattr(recovery_bundle, "panel_labels", None) or [])
     panel_diagnostics = list(getattr(recovery_bundle, "all_panel_diagnostics", None) or [])
     if not all_panel_buckling:
@@ -120,6 +121,13 @@ def _build_station_buckling_bundle(
                 material_label=str(getattr(getattr(panel, "lam", None), "name", "") or label),
                 provenance=provenance,
                 source_resultant=source_resultant,
+                fsdt=(
+                    panel_specs[pi].fsdt
+                    if panel_specs is not None
+                    and pi < len(panel_specs)
+                    and panel_specs[pi] is not None
+                    else None
+                ),
             )
         )
         if pi < len(all_panel_buckling):

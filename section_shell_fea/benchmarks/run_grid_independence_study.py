@@ -16,7 +16,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.grid_independence_study import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.grid_independence_study import (
     run_grid_independence_study,
 )
 
@@ -146,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"wrote {out / 'gci_summary.csv'}", flush=True)
     print(f"wrote {out / 'plots'}", flush=True)
     try:
-        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.stability_scorecard import (
+        from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.stability_scorecard import (
             write_stability_scorecard,
         )
 

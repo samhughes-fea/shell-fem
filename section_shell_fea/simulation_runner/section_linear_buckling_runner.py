@@ -20,7 +20,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     PanelGlobalMap,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.buckling.operations.assemble_geometric import (
@@ -67,6 +67,7 @@ def panel_inputs_from_nested_resultants(
     panel_labels: Sequence[str] | None = None,
     panel_abd: Sequence[np.ndarray] | None = None,
     panel_thickness_m: Sequence[float] | None = None,
+    panel_constitutive_specs: Sequence[Any] | None = None,
     panel_widths_m: Sequence[float] | None = None,
     length_m: float = 1.0,
     provenance: ShellStationProvenance | None = None,
@@ -93,13 +94,23 @@ def panel_inputs_from_nested_resultants(
         thickness = (
             float(panel_thickness_m[pi])
             if panel_thickness_m is not None and pi < len(panel_thickness_m)
-            else float(getattr(source, "thickness_m", 0.0) or 1e-3)
+            else float(getattr(source, "thickness_m", 0.0) or 0.0)
         )
-        width = (
-            float(panel_widths_m[pi])
-            if panel_widths_m is not None and pi < len(panel_widths_m)
-            else 1.0
-        )
+        if not np.isfinite(thickness) or thickness <= 0.0:
+            raise ValueError(
+                f"panel {label!r}: thickness_m missing or ≤0; refusing silent "
+                f"t=1e-3 default (FEA-BK-001)"
+            )
+        if panel_widths_m is None or pi >= len(panel_widths_m):
+            raise ValueError(
+                f"panel {label!r}: panel_widths_m required; refusing silent "
+                f"width=1.0 m default (FEA-BK-001)"
+            )
+        width = float(panel_widths_m[pi])
+        if not np.isfinite(width) or width <= 0.0:
+            raise ValueError(
+                f"panel {label!r}: width_m must be positive; got {width!r} (FEA-BK-001)"
+            )
         abd = None
         if panel_abd is not None and pi < len(panel_abd) and panel_abd[pi] is not None:
             abd = np.asarray(panel_abd[pi], dtype=float)
@@ -109,8 +120,8 @@ def panel_inputs_from_nested_resultants(
                 panel_index=pi,
                 station_index=si,
                 length_m=float(length_m),
-                width_m=max(float(width), 1e-12),
-                thickness_m=max(float(thickness), 1e-12),
+                width_m=float(width),
+                thickness_m=float(thickness),
                 abd=abd,
                 membrane_resultants=source.to_N_vec(),
                 bending_resultants=source.to_M_vec(),
@@ -124,6 +135,13 @@ def panel_inputs_from_nested_resultants(
                 # Omit source_resultant: secondary rows use element index in
                 # station_index, which must not collide with the blade station id.
                 source_resultant=None,
+                fsdt=(
+                    panel_constitutive_specs[pi].fsdt
+                    if panel_constitutive_specs is not None
+                    and pi < len(panel_constitutive_specs)
+                    and panel_constitutive_specs[pi] is not None
+                    else None
+                ),
             )
         )
     return inputs
@@ -171,6 +189,7 @@ class SectionLinearBucklingRunner:
         self.n_gdof: int = 0
         self.shell_theory: ShellTheory = ShellTheory.FSDT
         self.Kg_global: sp.spmatrix | None = None
+        self.constraint_set: Any | None = None
 
     @classmethod
     def from_panel_inputs(
@@ -215,6 +234,7 @@ class SectionLinearBucklingRunner:
         L_x: float = 1.0,
         shell_theory: ShellTheory | None = None,
         provenance: ShellStationProvenance | None = None,
+        constraint_set: Any | None = None,
     ) -> "SectionLinearBucklingRunner":
         """Full-section path: reuse static ``K`` / ``T`` and secondary prestress."""
         runner = cls()
@@ -227,6 +247,7 @@ class SectionLinearBucklingRunner:
         runner.panel_inputs = list(panel_inputs)
         runner.n_gdof = int(n_gdof)
         runner.L_x = float(L_x)
+        runner.constraint_set = constraint_set
         runner._provenance = provenance or ShellStationProvenance()
         runner.shell_theory = shell_theory or getattr(
             runner._provenance, "shell_theory", None
@@ -298,11 +319,21 @@ class SectionLinearBucklingRunner:
             Kg_global=self.Kg_global,
             T=self.T,
             n_modes=int(n_modes),
-            extra_diagnostics={
-                "shell_theory": str(self.shell_theory),
-                "n_prestress_elements": len(prestress_map),
-                "n_panels": len(self.panel_inputs),
-            },
+        extra_diagnostics={
+            "shell_theory": str(self.shell_theory),
+            "n_prestress_elements": len(prestress_map),
+            "n_panels": len(self.panel_inputs),
+            **(
+                {
+                    "interface_constraint_mode": self.constraint_set.report.interface_constraint_mode,
+                    "cap_tie_mode": self.constraint_set.report.cap_tie_mode,
+                    "n_constraint_equations": len(self.constraint_set.equations),
+                    "n_fixed_dofs": len(self.constraint_set.fixed_dofs),
+                }
+                if getattr(self, "constraint_set", None) is not None
+                else {}
+            ),
+        },
         )
         state = section_state.as_eigen_state()
         self.eigen_states = [state]

@@ -1,4 +1,4 @@
-"""Parity: formulation-cache assembly matches legacy inline scatter."""
+"""Parity: typed formulation-cache assembly matches independent inline scatter."""
 
 from __future__ import annotations
 
@@ -8,7 +8,13 @@ import scipy.sparse as sp
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory import build_formulation_cache
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.mitc4.element import mitc4_stiffness
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.mitc4.element import (
+    mitc4_stiffness_contributions,
+)
+from blade_structure_utilities.material_utilities.laminate import (
+    LaminateDefinition,
+    laminate_definition_from_legacy,
+)
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (
     _NDOF_NODE,
     _PanelGlobalMap,
@@ -16,7 +22,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
     _dof,
     panel_abd_tuple_from_lam,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     panel_maps_from_section_strip_mesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import assemble_section_system
@@ -33,7 +39,15 @@ def _legacy_assemble(panel_maps, zones, nx, nxy, *, L_x=1.0, n_gdof: int):
             continue
         p = zones[pi]
         nodes_yz = np.asarray(getattr(p, "nodes"), dtype=float)
-        ABD, thickness, _, _, G_eff = panel_abd_tuple_from_lam(p.lam)
+        ABD, thickness, _, _, _G_eff = panel_abd_tuple_from_lam(p.lam)
+        laminate = (
+            p.lam
+            if isinstance(p.lam, LaminateDefinition)
+            else laminate_definition_from_legacy(p.lam)
+        )
+        assert laminate is not None
+        fsdt = laminate.stiffness_bundle().fsdt
+        assert fsdt is not None
         s_nodes = pm.s_nodes
         Nx_nodes = np.interp(s_nodes, np.asarray(p.s, dtype=float), np.asarray(nx[pi], dtype=float))
         Nxy_nodes = np.interp(s_nodes, np.asarray(p.s, dtype=float), np.asarray(nxy[pi], dtype=float))
@@ -42,7 +56,9 @@ def _legacy_assemble(panel_maps, zones, nx, nxy, *, L_x=1.0, n_gdof: int):
             L_s = float(abs(s_nodes[i1] - s_nodes[i0]))
             if L_s < 1e-30:
                 continue
-            Ke = mitc4_stiffness(L_s, L_x, ABD, thickness, G_eff=G_eff)
+            Ke = mitc4_stiffness_contributions(
+                L_s, L_x, ABD, thickness, A_s=fsdt.A_s
+            ).K_e
             gids = [pm.global_nodes[ln] for ln in (i0, i1, i2, i3)]
             r, c, v = _coo_triplets_from_ke(Ke, gids)
             row_chunks.append(r)

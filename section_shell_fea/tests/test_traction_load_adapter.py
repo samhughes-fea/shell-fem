@@ -19,6 +19,9 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.interface.tractio
     section_resultants_from_load_field,
     traction_points_from_load_field,
 )
+from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
+    equipollent_section_force_vector,
+)
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
     LinearStaticCascadeResult,
 )
@@ -193,7 +196,7 @@ def _load_field_aligned_to_skin_mesh(*, m_x: float = 12.0) -> tuple[Any, Section
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.traction_face_load import (
         _skin_node_pairs,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (
@@ -270,7 +273,7 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
     assert Vy == 0.0 and Vz == 0.0 and T == 12.0
 
     traction_points = traction_points_from_load_field(lf)
-    traction_field = lf.traction_field if traction_points is not None else None
+    assert traction_points is not None
     resultants = BeamResultantVector.from_named(
         N=N, Vy=Vy, Vz=Vz, My=My, Mz=Mz, T=T,
         frame=FRAME_SECTION_YZ,
@@ -280,8 +283,7 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
             resultants=resultants,
-            traction_field=traction_field,
-            traction_points_yz=traction_points,
+            section_force_vector=equipollent_section_force_vector(panel_topology, resultants),
             section_strip_mesh=build_section_strip_mesh(
                 panel_topology.shell_inputs,
                 n_elements_per_panel=6,
@@ -290,7 +292,6 @@ def test_run_section_linear_static_from_load_field_exclusive_and_fi() -> None:
             load_channel="equipollent",
         ).execute()
     )
-    assert cascade.used_traction is True
     assert cascade.quaternary is not None
     fi = float((cascade.quaternary.governing or {}).get("fi", 0.0) or 0.0)
     assert np.isfinite(fi)

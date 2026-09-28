@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     PanelGlobalMap,
     clusters_from_section_strip_mesh,
     panel_maps_from_section_strip_mesh,
@@ -101,6 +101,7 @@ def build_ccx_section_mesh(
     interface_constraint_mode: str = "shared",
     l_x: float = 1.0,
     cap_tie_mode: str | None = None,
+    shell_midlines: Any | None = None,
 ) -> CcxSectionMesh:
     """Build global node/element maps for ccx export from a caller-owned strip mesh.
 
@@ -108,8 +109,11 @@ def build_ccx_section_mesh(
 
     ``cap_tie_mode``:
       - ``None`` — auto: ``skin_offset`` when any panel label is ``cap:*``, else ``none``
-      - ``"skin_offset"`` — build cap–skin ``*TIE`` surfaces (offset midlines)
+      - ``"skin_offset"`` — build cap–skin ``*TIE`` surfaces from SG-017 bonds
       - ``"none"`` — leave caps disconnected (BL-003 control)
+
+    ``shell_midlines`` is required when ``cap_tie_mode`` resolves to ``skin_offset``
+    (FEA-CT-001).
     """
     if section_strip_mesh is None:
         raise ValueError(
@@ -198,7 +202,9 @@ def build_ccx_section_mesh(
     )
     mesh.cap_tie_mode = mode
     if mode == "skin_offset":
-        mesh.cap_skin_ties = build_cap_skin_tie_surfaces(mesh, zones)
+        mesh.cap_skin_ties = build_cap_skin_tie_surfaces(
+            mesh, zones, shell_midlines=shell_midlines
+        )
         for tie in mesh.cap_skin_ties:
             nset = f"CapSkinSlave_{tie.name}"
             mesh.nsets[nset] = list(tie.slave_ccx_nodes)

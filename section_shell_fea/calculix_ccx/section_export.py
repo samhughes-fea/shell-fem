@@ -7,11 +7,11 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.global_numbering import (
     DEFAULT_BC_MODE,
     is_contour_support,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import interp_yz_nodes
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import interp_yz_nodes
 from .mesh import CcxSectionMesh, _sanitize_elset_name
 
 _U_X, _U_Y, _U_Z = 0, 1, 2
@@ -120,13 +120,13 @@ def _emit_cap_skin_ties(
     *,
     cap_tie_export: str = "tie",
 ) -> None:
-    """Emit bonded cap–skin joints (``*TIE`` or closest-node ``*EQUATION`` fallback).
+    """Emit bonded cap–skin joints (``*TIE`` or bond-weighted ``*EQUATION``).
 
     CalculiX documentation states ``*TIE`` is for 3-D continuum elements; shells are
     expanded to bricks internally and edge/face ties often work in practice. When a
     CCX build rejects shell ``*TIE``, callers may pass ``cap_tie_export="equation"``
-    for translation+rotation locks between each slave node and its nearest master
-    node (offset lever-arm kinematics are then approximate).
+    for translation+rotation locks using the same bond-foot masters/weights as
+    MITC4 ``CapTieLink`` (FEA-CCX-002) — never nearest-master rediscovery.
     """
     ties = list(getattr(mesh, "cap_skin_ties", None) or [])
     if not ties or str(getattr(mesh, "cap_tie_mode", "none")) != "skin_offset":
@@ -161,29 +161,28 @@ def _emit_cap_skin_ties(
             lines.append(f"{slave_surf}, {master_surf}")
             continue
 
-        # Fallback: equate all 6 DOFs of each slave node to the nearest master node.
-        master_nodes: list[int] = []
-        for eid in tie.master_ccx_elements:
-            for e in mesh.elements:
-                if e.eid == eid:
-                    master_nodes.extend(int(n) for n in e.node_ids)
-                    break
-        master_nodes = sorted(set(master_nodes))
-        if not master_nodes:
-            continue
-        for sn in tie.slave_ccx_nodes:
-            sx, sy, sz = mesh.nodes[int(sn)]
-            best_m, best_d = master_nodes[0], float("inf")
-            for mn in master_nodes:
-                mx, my, mz = mesh.nodes[int(mn)]
-                d = (sy - my) ** 2 + (sz - mz) ** 2 + (sx - mx) ** 2
-                if d < best_d:
-                    best_d, best_m = d, int(mn)
+        links = tuple(getattr(tie, "equation_links", ()) or ())
+        if not links:
+            raise ValueError(
+                f"cap_tie_export='equation' for {tie.cap_label!r} requires "
+                "equation_links from StripBond masters (FEA-CCX-002); refusing "
+                "nearest-master rediscovery"
+            )
+        for link in links:
+            m0, m1 = link.master_ccx_nodes
+            w0, w1 = link.weights
             for dof in (1, 2, 3, 4, 5, 6):
-                _emit_equation(
-                    lines,
-                    [(int(sn), dof, 1.0), (best_m, dof, -1.0)],
-                )
+                terms = [(int(link.slave_ccx_node), dof, 1.0)]
+                if abs(float(w0)) > 1e-15:
+                    terms.append((int(m0), dof, -float(w0)))
+                if abs(float(w1)) > 1e-15:
+                    terms.append((int(m1), dof, -float(w1)))
+                if len(terms) < 2:
+                    raise ValueError(
+                        f"cap {tie.cap_label!r} slave {link.slave_ccx_node}: "
+                        "equation link has no master weight (FEA-CCX-002)"
+                    )
+                _emit_equation(lines, terms)
 
 
 def write_section_inp(
@@ -204,7 +203,8 @@ def write_section_inp(
     - ``skin_offset`` (default when ``mesh.cap_skin_ties`` is populated): emit ``*TIE``
     - ``none``: omit bonded interface cards
 
-    ``cap_tie_export`` selects ``*TIE`` (default) or closest-node ``*EQUATION`` fallback.
+    ``cap_tie_export`` selects ``*TIE`` (default) or bond-weighted ``*EQUATION``
+    (explicit; masters from StripBond feet — FEA-CCX-002).
     Skin–web / cap–web junctions remain shared nodes in the mesh topology.
     """
     out = Path(path)

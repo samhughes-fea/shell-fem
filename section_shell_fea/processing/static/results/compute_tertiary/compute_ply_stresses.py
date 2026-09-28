@@ -60,10 +60,50 @@ def ply_strains_stresses_material_frame(
     return eps_mat, sig_mat
 
 
+def ply_strains_stresses_material_frame_batch(
+    lam: Any,
+    eps0: NDArray[np.float64],
+    kappa: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Batched per-plate outer/mid/inner strain/stress in **M**.
+
+    Parameters
+    ----------
+    eps0, kappa
+        ``(n_rows, 3)`` mid-surface strain / curvature per element.
+
+    Returns
+    -------
+    eps_mat, sig_mat
+        ``(n_rows, n_ply, 3, 3)`` each.
+    """
+    from blade_structure_utilities.material_utilities.laminate.clpt_recovery import (
+        ply_face_stations,
+    )
+
+    eps0_a = np.asarray(eps0, dtype=np.float64).reshape(-1, 3)
+    kappa_a = np.asarray(kappa, dtype=np.float64).reshape(-1, 3)
+    n_rows = int(eps0_a.shape[0])
+    x3 = ply_face_stations(lam)  # (n_ply, 3)
+    # (n_rows, n_ply, 3_faces, 3)
+    eps_lam = eps0_a[:, None, None, :] + x3[None, :, :, None] * kappa_a[:, None, None, :]
+    bundle = lam.stiffness_bundle()
+    Q_bar = np.asarray(bundle.Q_bar, dtype=np.float64)  # (n_ply, 3, 3)
+    sig_lam = np.einsum("pij,rpfj->rpfi", Q_bar, eps_lam)
+    T_sig = np.asarray(bundle.T_ply, dtype=np.float64)[None, ...]  # (1, n_ply, 3, 3)
+    T_eps = np.asarray(bundle.T_ply_eps, dtype=np.float64)[None, ...]
+    # rotate_plies_to_material expects (..., n_comp, n_ply, n_face, 3)
+    eps_mat = rotate_plies_to_material(eps_lam[:, None, ...], T_eps)[:, 0]
+    sig_mat = rotate_plies_to_material(sig_lam[:, None, ...], T_sig)[:, 0]
+    assert eps_mat.shape[0] == n_rows
+    return eps_mat, sig_mat
+
+
 __all__ = [
     "FACE_INNER",
     "FACE_MID",
     "FACE_OUTER",
     "mid_face",
     "ply_strains_stresses_material_frame",
+    "ply_strains_stresses_material_frame_batch",
 ]

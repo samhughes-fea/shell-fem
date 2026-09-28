@@ -38,11 +38,13 @@ def solve_global_coupled_ccx(
     cap_tie_mode: str | None = None,
     cap_tie_export: str = "tie",
     job_name: str = "section",
+    shell_midlines: Any | None = None,
 ) -> tuple[list[list], list[dict], Path]:
     """Export section mesh, run ccx, parse section forces.
 
     ``cap_tie_mode`` defaults to ``skin_offset`` when the strip contains ``cap:*``
-    panels (MITC4 production analogue). Pass ``"none"`` for the untied control.
+    panels (MITC4-FSDT production analogue). Pass ``"none"`` for the untied
+    control. ``shell_midlines`` is required when ties resolve to ``skin_offset``.
     """
     work = Path(work_dir)
     work.mkdir(parents=True, exist_ok=True)
@@ -54,6 +56,7 @@ def solve_global_coupled_ccx(
         interface_constraint_mode=interface_constraint_mode,
         l_x=l_x,
         cap_tie_mode=cap_tie_mode,
+        shell_midlines=shell_midlines,
     )
 
     inp_path = work / f"{job_name}.inp"

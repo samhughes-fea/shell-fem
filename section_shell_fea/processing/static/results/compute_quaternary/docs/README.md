@@ -120,7 +120,7 @@ Hashin ply strengths remain `Xt`/`Xc`/`Yt`/`Yc`/`S12` (separate).
 | Field | Shape / type | Meaning |
 |-------|----------------|---------|
 | `hashin_fi.in_plane` | `(n_elem, n_ply)` | Envelope max of FT/FC/MT/MC per ply |
-| `hashin_fi.interlaminar` | `(n_elem,)` | Delamination / transverse-shear mode |
+| `hashin_fi.interlaminar` | `(n_elem,)` | Deprecated alias of FSDT interface-shear diagnostic |
 | `hashin_fi.fi_ft` … `fi_mc` | `(n_elem, n_ply)` each | Individual Hashin modes |
 | `von_mises_fi` | `(n_elem,)` | Isotropic track; `nan` where unused |
 | `sig_extreme_fibre` | `(n_elem, 2, 3)` | Outer / inner free-surface stress vectors |
@@ -157,7 +157,7 @@ Matching `ShellQuaternaryResultsOrchestrator.compute()`:
    - **Otherwise (composite):** load Hashin strengths from `panel_laminates[pi]`; evaluate modes on mid-face stresses.
 4. **Every panel — extreme-fibre:** resolve panel ultimates once; extract free-surface stresses; component-wise FI on every element.
 5. **Composite only — interlaminar:** allowable from first ply \(S_{il}\). Prefer `tau_iface` FI; else / fallback `1.5 |Q| / t`.
-6. Build `governing` = argmax over Hashin in-plane, interlaminar, Von Mises, and extreme-fibre.
+6. Build `governing` = max utilization among required available criteria (plane-stress Hashin or Von Mises). Interface shear is diagnostic-only.
 7. Pack `ShellQuaternaryResultSet`.
 
 ---
@@ -302,15 +302,15 @@ Fallback (from tertiary \(Q_x,Q_y\), thickness \(t\)):
 
 ## Governing selection
 
-`governing` is a single dict from argmax over Hashin in-plane, interlaminar, Von Mises, and extreme-fibre.
+`governing` is a single dict from max **utilization** among required available criteria.
 
-| Winner | `criterion` | `ply_index` | Meaning |
-|--------|-------------|-------------|---------|
-| In-plane Hashin max over `(elem, ply)` | `"hashin"` | winning ply index (≥ 0) | Ply envelope at that element |
-| Interlaminar max over elems | `"hashin"` | **-1** | Delamination / transverse-shear channel |
-| Von Mises max over elems | `"von_mises"` | `0` | Isotropic mid-face stress |
-| Extreme-fibre max over elems | `"extreme_fibre"` | **-1** | Free-surface ultimate FI (not a ply) |
-| Nothing finite | `""` | `-1` | Empty / no candidates |
+| Winner | `criterion` / `criterion_id` | `ply_index` | Meaning |
+|--------|------------------------------|-------------|---------|
+| Plane-stress Hashin max over `(elem, ply)` outer/inner faces | `"hashin"` / `hashin_1980_plane_stress` | winning ply index (≥ 0) | Authoritative composite envelope |
+| Von Mises max over elems | `"von_mises"` | `0` | Required isotropic criterion |
+| Extreme-fibre max over elems | `"extreme_fibre"` | **-1** | Opt-in; recorded, not required |
+| FSDT interface shear | never | — | Diagnostic only; excluded from governing |
+| Nothing finite | `""` | `-1` | `status=unavailable`; no manufactured zero |
 
 Also stores `fi`, `panel_index`, `element_index`.
 

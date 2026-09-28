@@ -24,8 +24,8 @@ DOFs per node (curvilinear C):
   u_x    : spanwise displacement (C x / E x1)
   u_s    : contour-tangential displacement (C s / E x2)
   w      : shell-normal displacement (C n / E x3)
-  beta_s : Mindlin rotation about contour tangent  (~= -dw/dx in thin limit)
-  beta_x : Mindlin rotation about span axis        (~=  dw/ds in thin limit)
+  beta_s : compatibility rotation; theta1=beta_s  (~=  dw/dx in thin limit)
+  beta_x : compatibility rotation; theta2=-beta_x (~= -dw/ds in thin limit)
   beta_z : drilling rotation about shell normal (MITC4+ only, Hughes-Brezzi stabilisation)
 
 DOF ordering inside the n-vector (n = 4*ndof):
@@ -34,6 +34,9 @@ DOF ordering inside the n-vector (n = 4*ndof):
 """
 
 from __future__ import annotations
+
+import struct
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -63,26 +66,6 @@ def _gauss(n: int) -> tuple[NDArray, NDArray]:
 
 
 # ---------------------------------------------------------------------------
-# Bilinear shape functions
-# ---------------------------------------------------------------------------
-
-_XI_NODES = np.array([-1.0, 1.0, 1.0, -1.0])
-_ET_NODES = np.array([-1.0, -1.0, 1.0, 1.0])
-
-
-def _shape(xi: float, eta: float) -> NDArray:
-    """N[I] = 1/4*(1 + xi_I*xi)*(1 + eta_I*eta)  for I=0..3."""
-    return 0.25 * (1.0 + _XI_NODES * xi) * (1.0 + _ET_NODES * eta)
-
-
-def _dshape(xi: float, eta: float) -> NDArray:
-    """dN/dxi (row 0) and dN/deta (row 1), shape (2, 4)."""
-    dNdxi = 0.25 * _XI_NODES * (1.0 + _ET_NODES * eta)
-    dNdet = 0.25 * _ET_NODES * (1.0 + _XI_NODES * xi)
-    return np.stack([dNdxi, dNdet], axis=0)
-
-
-# ---------------------------------------------------------------------------
 # B-matrix construction
 # ---------------------------------------------------------------------------
 
@@ -95,41 +78,34 @@ def _b_membrane(xi: float, eta: float, L_s: float, L_x: float, ndof: int = 6) ->
     Jacobian: d/dx = (2/L_x)*d/deta,  d/ds = (2/L_s)*d/dxi.
     beta_z (DOF 5, ndof=6) does not contribute to membrane strain.
     """
-    dN = _dshape(xi, eta)
-    dNds = dN[0] * (2.0 / L_s)
-    dNdx = dN[1] * (2.0 / L_x)
+    from .utilities.B_matrix import StrainDisplacementOperator
+    from .utilities.shape_functions import ShapeFunctionOperator
 
-    B = np.zeros((3, 4 * ndof))
-    for I in range(4):
-        base = I * ndof
-        B[0, base + 0] = dNdx[I]   # ε11 = du_x/dx
-        B[1, base + 1] = dNds[I]   # ε22 = du_s/ds
-        B[2, base + 0] = dNds[I]   # γ12 = du_x/ds + du_s/dx
-        B[2, base + 1] = dNdx[I]
-    return B
+    operator = StrainDisplacementOperator(
+        ShapeFunctionOperator(L_s, L_x), ndof=ndof
+    )
+    return operator.natural_coordinate_form(
+        np.array([xi]), np.array([eta])
+    )[0][0]
 
 
 def _b_bending(xi: float, eta: float, L_s: float, L_x: float, ndof: int = 6) -> NDArray:
     """
     Bending B matrix (3 x 4*ndof).
 
-    Curvatures: [kappa_xx, kappa_ss, kappa_xs]  from beta_s, beta_x DOFs.
-      kappa_xx = d_beta_s/dx,  kappa_ss = -d_beta_x/ds,
-      kappa_xs = d_beta_s/ds - d_beta_x/dx
+    Curvatures: ``kappa=-L_m theta`` with
+    ``theta1=beta_s`` and ``theta2=-beta_x``.
     beta_z (DOF 5, ndof=6) does not contribute to bending curvatures.
     """
-    dN = _dshape(xi, eta)
-    dNds = dN[0] * (2.0 / L_s)
-    dNdx = dN[1] * (2.0 / L_x)
+    from .utilities.B_matrix import StrainDisplacementOperator
+    from .utilities.shape_functions import ShapeFunctionOperator
 
-    B = np.zeros((3, 4 * ndof))
-    for I in range(4):
-        base = I * ndof
-        B[0, base + 3] = dNdx[I]   # kappa_xx = d_beta_s/dx
-        B[2, base + 3] = dNds[I]   # kappa_xs += d_beta_s/ds
-        B[1, base + 4] = -dNds[I]  # kappa_ss = -d_beta_x/ds
-        B[2, base + 4] = -dNdx[I]  # kappa_xs += -d_beta_x/dx
-    return B
+    operator = StrainDisplacementOperator(
+        ShapeFunctionOperator(L_s, L_x), ndof=ndof
+    )
+    return operator.natural_coordinate_form(
+        np.array([xi]), np.array([eta])
+    )[1][0]
 
 
 def _b_shear_mitc(xi: float, eta: float, L_s: float, L_x: float, ndof: int = 6) -> NDArray:
@@ -139,29 +115,13 @@ def _b_shear_mitc(xi: float, eta: float, L_s: float, L_x: float, ndof: int = 6) 
     Shear strains: [gamma_xn, gamma_sn]  (MITC tying, Bathe & Dvorkin 1985).
     beta_z (DOF 5, ndof=6) does not contribute to transverse shear.
     """
-    B = np.zeros((2, 4 * ndof))
+    from .utilities.B_matrix import StrainDisplacementOperator
+    from .utilities.shape_functions import ShapeFunctionOperator
 
-    # gamma_xn tying: tying points at eta=+1 (A) and eta=-1 (B)
-    for sign_eta, coeff in ((+1.0, 0.5 * (1.0 + eta)), (-1.0, 0.5 * (1.0 - eta))):
-        dN_tp = _dshape(xi, sign_eta)
-        dNdx_tp = dN_tp[1] * (2.0 / L_x)
-        N_tp = _shape(xi, sign_eta)
-        for I in range(4):
-            base = I * ndof
-            B[0, base + 2] += coeff * dNdx_tp[I]   # dw/dx at tying point
-            B[0, base + 3] -= coeff * N_tp[I]       # -beta_s at tying point
-
-    # gamma_sn tying: tying points at xi=+1 (C) and xi=-1 (D)
-    for sign_xi, coeff in ((+1.0, 0.5 * (1.0 + xi)), (-1.0, 0.5 * (1.0 - xi))):
-        dN_tp = _dshape(sign_xi, eta)
-        dNds_tp = dN_tp[0] * (2.0 / L_s)
-        N_tp = _shape(sign_xi, eta)
-        for I in range(4):
-            base = I * ndof
-            B[1, base + 2] += coeff * dNds_tp[I]   # dw/ds at tying point
-            B[1, base + 4] += coeff * N_tp[I]       # +beta_x at tying point
-
-    return B
+    operator = StrainDisplacementOperator(
+        ShapeFunctionOperator(L_s, L_x), ndof=ndof
+    )
+    return operator.mitc_shear(np.array([xi]), np.array([eta]))[0]
 
 
 def _b_drilling(xi: float, eta: float, L_s: float, L_x: float) -> NDArray:
@@ -176,29 +136,170 @@ def _b_drilling(xi: float, eta: float, L_s: float, L_x: float) -> NDArray:
       u_s  col (base+1): +dN_I/dx
       beta_z col (base+5): -N_I
     """
-    dN = _dshape(xi, eta)
-    dNds = dN[0] * (2.0 / L_s)
-    dNdx = dN[1] * (2.0 / L_x)
-    N = _shape(xi, eta)
+    from .utilities.B_matrix import StrainDisplacementOperator
+    from .utilities.shape_functions import ShapeFunctionOperator
 
-    B = np.zeros((1, 24))
-    for I in range(4):
-        base = I * 6
-        B[0, base + 0] = -dNds[I]   # from -du_x/ds
-        B[0, base + 1] = +dNdx[I]   # from +du_s/dx
-        B[0, base + 5] = -N[I]      # from -beta_z
-    return B
+    operator = StrainDisplacementOperator(ShapeFunctionOperator(L_s, L_x), ndof=6)
+    drilling = operator.natural_coordinate_form(
+        np.array([xi]), np.array([eta])
+    )[3]
+    assert drilling is not None
+    return drilling[0]
 
 
 # ---------------------------------------------------------------------------
 # Element stiffness
 # ---------------------------------------------------------------------------
 
+# Module-level (process-lifetime) template cache — COMPATIBILITY ONLY.
+#
+# Production ``Mitc4Quad4Element`` uses the per-build
+# ``ShellFormulationTemplateCache`` (see ``template_cache.py`` / ``factory.py``)
+# and does NOT touch this dict. It is retained solely for the legacy
+# ``mitc4_stiffness(...)`` scalar entrypoint (reached via
+# ``kernel.Mitc4StripKernel.stiffness`` and ad-hoc callers). Keys are EXACT
+# (float64 bits, never ``round()``) so any reuse is bitwise-identical (WP0).
 _KE_TEMPLATE_CACHE: dict[tuple, NDArray] = {}
+_KE_TEMPLATE_CACHE_STATS: dict[str, int] = {"hits": 0, "misses": 0}
 
 
-def _abd_fingerprint(abd: NDArray) -> tuple:
-    return tuple(float(x) for x in np.asarray(abd, dtype=np.float64).ravel().round(12))
+def clear_ke_template_cache() -> None:
+    """Drop the compatibility module template cache and reset its stats (tests)."""
+    _KE_TEMPLATE_CACHE.clear()
+    _KE_TEMPLATE_CACHE_STATS["hits"] = 0
+    _KE_TEMPLATE_CACHE_STATS["misses"] = 0
+
+
+def ke_template_cache_stats() -> dict[str, int]:
+    """Return a snapshot of compatibility-cache hit/miss/unique counts (tests)."""
+    return {
+        "hits": _KE_TEMPLATE_CACHE_STATS["hits"],
+        "misses": _KE_TEMPLATE_CACHE_STATS["misses"],
+        "unique": len(_KE_TEMPLATE_CACHE),
+    }
+
+
+def _f64_bits(value: float) -> bytes:
+    """Exact little-endian float64 bytes (no rounding) for cache identity."""
+    return struct.pack("<d", float(value))
+
+
+def _abd_fingerprint(abd: NDArray) -> bytes:
+    """Exact float64 bytes of the ABD matrix (bitwise identity, no rounding)."""
+    return np.ascontiguousarray(np.asarray(abd, dtype=np.float64)).tobytes()
+
+
+@dataclass(frozen=True, slots=True)
+class Mitc4StiffnessContributions:
+    """Auditable material and stabilization contributions to ``K_e``."""
+
+    K_membrane: NDArray[np.float64]
+    K_membrane_bending: NDArray[np.float64]
+    K_bending: NDArray[np.float64]
+    K_shear: NDArray[np.float64]
+    K_drilling: NDArray[np.float64]
+
+    @property
+    def K_e(self) -> NDArray[np.float64]:
+        return (
+            self.K_membrane
+            + self.K_membrane_bending
+            + self.K_bending
+            + self.K_shear
+            + self.K_drilling
+        )
+
+
+def assemble_mitc4_stiffness(
+    shape: object,
+    material: object,
+    *,
+    ndof: int = 6,
+) -> Mitc4StiffnessContributions:
+    """Assemble named contributions from one geometry and one ABDAs object."""
+    from .utilities.B_matrix import StrainDisplacementOperator
+    from .utilities.D_matrix import MaterialStiffnessOperator
+    from .utilities.shape_functions import ShapeFunctionOperator
+
+    if not isinstance(shape, ShapeFunctionOperator):
+        raise TypeError("shape must be a ShapeFunctionOperator")
+    if not isinstance(material, MaterialStiffnessOperator):
+        raise TypeError("material must be a MaterialStiffnessOperator")
+    strain = StrainDisplacementOperator(shape, ndof=int(ndof))
+    n_elem = 4 * int(ndof)
+    contributions = [
+        np.zeros((n_elem, n_elem), dtype=np.float64) for _ in range(5)
+    ]
+    k_membrane, k_coupling, k_bending, k_shear, k_drilling = contributions
+
+    gp3, gw3 = _gauss(3)
+    xi3, eta3 = np.meshgrid(gp3, gp3, indexing="ij")
+    xi3f, eta3f = xi3.ravel(), eta3.ravel()
+    _, _, determinant3, _ = shape.physical_coordinate_form(xi3f, eta3f)
+    weights3 = (gw3[:, None] * gw3[None, :]).ravel() * determinant3
+    bm, bb, _, _ = strain.natural_coordinate_form(xi3f, eta3f)
+    k_membrane += np.einsum(
+        "g,gai,ab,gbj->ij", weights3, bm, material.A_mat, bm, optimize=True
+    )
+    k_coupling += np.einsum(
+        "g,gai,ab,gbj->ij", weights3, bm, material.B_mat, bb, optimize=True
+    )
+    k_coupling += np.einsum(
+        "g,gai,ab,gbj->ij",
+        weights3,
+        bb,
+        material.B_mat.T,
+        bm,
+        optimize=True,
+    )
+    k_bending += np.einsum(
+        "g,gai,ab,gbj->ij", weights3, bb, material.D_mat, bb, optimize=True
+    )
+
+    gp2, gw2 = _gauss(2)
+    xi2, eta2 = np.meshgrid(gp2, gp2, indexing="ij")
+    xi2f, eta2f = xi2.ravel(), eta2.ravel()
+    _, _, determinant2, _ = shape.physical_coordinate_form(xi2f, eta2f)
+    weights2 = (gw2[:, None] * gw2[None, :]).ravel() * determinant2
+    _, _, bs, bd = strain.natural_coordinate_form(xi2f, eta2f)
+    k_shear += np.einsum(
+        "g,gai,ab,gbj->ij", weights2, bs, material.A_s_mat, bs, optimize=True
+    )
+    if int(ndof) == 6 and bd is not None:
+        k_drilling += material.drilling_stiffness * np.einsum(
+            "g,gai,gbj->ij", weights2, bd, bd, optimize=True
+        )
+    return Mitc4StiffnessContributions(*contributions)
+
+
+def mitc4_stiffness_contributions(
+    L_s: float,
+    L_x: float,
+    ABD: NDArray,
+    thickness: float,
+    ks: float = 5.0 / 6.0,
+    G_eff: float | None = None,
+    include_drilling: bool = True,
+    alpha_drill: float = 0.25,
+    *,
+    A_s: NDArray[np.float64] | None = None,
+) -> Mitc4StiffnessContributions:
+    """Compatibility constructor exposing the named ``K`` decomposition."""
+    from .utilities.D_matrix import MaterialStiffnessOperator
+    from .utilities.shape_functions import ShapeFunctionOperator
+
+    shape = ShapeFunctionOperator(float(L_s), float(L_x))
+    material = MaterialStiffnessOperator(
+        ABD,
+        float(thickness),
+        ks=float(ks),
+        G_eff=G_eff if A_s is None else None,
+        alpha_drill=float(alpha_drill),
+        A_s=A_s,
+    )
+    return assemble_mitc4_stiffness(
+        shape, material, ndof=6 if include_drilling else 5
+    )
 
 
 def mitc4_stiffness(
@@ -230,60 +331,31 @@ def mitc4_stiffness(
     K : (24, 24) default MITC4+; (20, 20) if include_drilling=False (MITC4)
     """
     cache_key = (
-        round(float(L_s), 12),
-        round(float(L_x), 12),
+        _f64_bits(L_s),
+        _f64_bits(L_x),
         _abd_fingerprint(ABD),
-        round(float(thickness), 12),
-        round(float(ks), 12),
-        None if G_eff is None else round(float(G_eff), 6),
+        _f64_bits(thickness),
+        _f64_bits(ks),
+        None if G_eff is None else _f64_bits(G_eff),
         bool(include_drilling),
-        round(float(alpha_drill), 12),
+        _f64_bits(alpha_drill),
     )
     cached = _KE_TEMPLATE_CACHE.get(cache_key)
     if cached is not None:
+        _KE_TEMPLATE_CACHE_STATS["hits"] += 1
         return np.asarray(cached)
 
-    from .utilities.B_matrix import StrainDisplacementOperator
-    from .utilities.D_matrix import MaterialStiffnessOperator
-    from .utilities.shape_functions import ShapeFunctionOperator
-
-    ndof = 6 if include_drilling else 5
-    shape = ShapeFunctionOperator(float(L_s), float(L_x))
-    strain = StrainDisplacementOperator(shape, ndof=ndof)
-    material = MaterialStiffnessOperator(
+    _KE_TEMPLATE_CACHE_STATS["misses"] += 1
+    k = mitc4_stiffness_contributions(
+        L_s,
+        L_x,
         ABD,
-        float(thickness),
-        ks=float(ks),
+        thickness,
+        ks=ks,
         G_eff=G_eff,
-        alpha_drill=float(alpha_drill),
-    )
-    a_mat, b_mat, d_mat, h_s, c_drill = material.assembly_form()
-    d_mb = np.block([[a_mat, b_mat], [b_mat.T, d_mat]])
-
-    jdet = (float(L_s) / 2.0) * (float(L_x) / 2.0)
-    n_elem = 4 * ndof
-    k = np.zeros((n_elem, n_elem), dtype=np.float64)
-
-    gp3, gw3 = _gauss(3)
-    xi3, eta3 = np.meshgrid(gp3, gp3, indexing="ij")
-    xi3f = xi3.ravel()
-    eta3f = eta3.ravel()
-    w3 = (gw3[:, None] * gw3[None, :]).ravel() * jdet
-    bm, bb, _, _ = strain.natural_coordinate_form(xi3f, eta3f)
-    b_mb = np.concatenate([bm, bb], axis=1)
-    k += np.einsum("g,gai,ab,gbj->ij", w3, b_mb, d_mb, b_mb, optimize=True)
-
-    gp2, gw2 = _gauss(2)
-    xi2, eta2 = np.meshgrid(gp2, gp2, indexing="ij")
-    xi2f = xi2.ravel()
-    eta2f = eta2.ravel()
-    w2 = (gw2[:, None] * gw2[None, :]).ravel() * jdet
-    _, _, bs, bd = strain.natural_coordinate_form(xi2f, eta2f)
-    h2 = np.array([[h_s, 0.0], [0.0, h_s]], dtype=np.float64)
-    k += np.einsum("g,gai,ab,gbj->ij", w2, bs, h2, bs, optimize=True)
-    if include_drilling and bd is not None:
-        k += c_drill * np.einsum("g,gai,gbj->ij", w2, bd, bd, optimize=True)
-
+        include_drilling=include_drilling,
+        alpha_drill=alpha_drill,
+    ).K_e
     _KE_TEMPLATE_CACHE[cache_key] = k.copy()
     return k
 
@@ -385,14 +457,18 @@ def mitc4_geometric_stiffness(
     n_elem = 4 * ndof
     Kg = np.zeros((n_elem, n_elem))
     w_idx = [I * ndof + 2 for I in range(4)]
-    Jdet = (L_x / 2.0) * (L_s / 2.0)
+    from .utilities.shape_functions import ShapeFunctionOperator
+
+    shape = ShapeFunctionOperator(L_s, L_x)
     gp, gw = _gauss(n_gauss)
     for xi, wi in zip(gp, gw):
         for eta, wj in zip(gp, gw):
-            dN = _dshape(xi, eta)
-            dNdx = dN[1] * (2.0 / L_x)
-            dNds = dN[0] * (2.0 / L_s)
-            w = wi * wj * Jdet
+            _, gradients, determinant, _ = shape.physical_coordinate_form(
+                np.array([xi]), np.array([eta])
+            )
+            dNdx = gradients[0, :, 0]
+            dNds = gradients[0, :, 1]
+            w = wi * wj * determinant[0]
             for i in range(4):
                 for j in range(4):
                     Kg[w_idx[i], w_idx[j]] += w * (
@@ -422,6 +498,34 @@ def mitc4_shear_resultants(
     gamma = Bs @ d_elem
     H_s = ks * G_eff * thickness
     return float(H_s * gamma[0]), float(H_s * gamma[1])
+
+
+def mitc4_generalized_resultants_at(
+    d_elem: NDArray,
+    L_s: float,
+    L_x: float,
+    constitutive: object,
+    *,
+    xi: float = 0.0,
+    eta: float = 0.0,
+    ndof: int = 6,
+) -> dict[str, float]:
+    """Recover canonical ``N/M/Q`` from the assembly ABDAs object."""
+    from blade_structure_utilities.material_utilities.laminate import (
+        FSDTLaminateStiffness,
+    )
+    from .utilities.B_matrix import StrainDisplacementOperator
+    from .utilities.shape_functions import ShapeFunctionOperator
+
+    if not isinstance(constitutive, FSDTLaminateStiffness):
+        raise TypeError("constitutive must be FSDTLaminateStiffness")
+    b_generalized = StrainDisplacementOperator(
+        ShapeFunctionOperator(L_s, L_x), ndof=ndof
+    ).generalized(np.array([xi]), np.array([eta]))[0]
+    strain = b_generalized @ np.asarray(d_elem, dtype=np.float64)
+    resultants = constitutive.C_ABDAs @ strain
+    names = ("N11", "N22", "N12", "M11", "M22", "M12", "Q1", "Q2")
+    return {name: float(value) for name, value in zip(names, resultants)}
 
 
 def mitc4_edge_resultants(

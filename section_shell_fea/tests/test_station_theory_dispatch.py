@@ -30,7 +30,11 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.di
 )
 
 
-def _request(theory: ShellTheory) -> StationTheorySolveRequest:
+def _request(
+    theory: ShellTheory,
+    *,
+    with_prebuilt: bool = False,
+) -> StationTheorySolveRequest:
     return StationTheorySolveRequest(
         theory=theory,
         section_view=None,
@@ -48,6 +52,9 @@ def _request(theory: ShellTheory) -> StationTheorySolveRequest:
         n_elements_per_panel=None,
         target_element_length_m=1.0,
         min_elements_per_panel=2,
+        section_strip_mesh=object() if with_prebuilt else None,
+        panel_topology=object() if with_prebuilt else None,
+        section_force_vector=object() if with_prebuilt else None,
     )
 
 
@@ -86,18 +93,44 @@ def test_require_shell_theory_supports_returns_capability() -> None:
 
 
 def test_dispatch_routes_fsdt_to_periodic_hashin(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh.build_section_strip_mesh",
-        lambda *a, **k: object(),
-    )
     monkeypatch.setattr(std, "fsdt_periodic_station_hashin", lambda *a, **k: {"solver": "fsdt"})
-    res = dispatch_station_theory(_request(ShellTheory.FSDT))
+    res = dispatch_station_theory(_request(ShellTheory.FSDT, with_prebuilt=True))
     assert res.fsdt_periodic_extra == {"solver": "fsdt"}
     assert res.backend_extra is None
 
 
-def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None:
-    """Usable load-field traction must use linear-static station runner execute()."""
+def test_dispatch_fsdt_requires_prebuilt_products() -> None:
+    with pytest.raises(ValueError, match="prebuilt"):
+        dispatch_station_theory(_request(ShellTheory.FSDT, with_prebuilt=False))
+
+
+def test_dispatch_fsdt_demo_convenience_warns_and_builds(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh.build_section_strip_mesh",
+        lambda *a, **k: object(),
+    )
+    monkeypatch.setattr(
+        "blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api."
+        "shell_panel_topology.shell_panel_topology_from_shell_inputs",
+        lambda *a, **k: object(),
+    )
+    monkeypatch.setattr(
+        "blade_structure_utilities.load_utilities.section_loads.shape_section_force_vector",
+        lambda *a, **k: object(),
+    )
+    monkeypatch.setattr(std, "fsdt_periodic_station_hashin", lambda *a, **k: {"solver": "fsdt"})
+    req = _request(ShellTheory.FSDT, with_prebuilt=False)
+    # Convenience path needs shell_inputs for SFV shaping when load_field is None.
+    from dataclasses import replace
+
+    req = replace(req, shell_inputs=object())
+    with pytest.warns(UserWarning, match="dispatch_fsdt_demo_convenience"):
+        res = std.dispatch_fsdt_demo_convenience(req)
+    assert res.fsdt_periodic_extra == {"solver": "fsdt"}
+
+
+def test_fsdt_traction_requires_sfv_no_overlay(monkeypatch) -> None:
+    """Usable load-field traction selects Channel B; SFV required; no overlay kwargs."""
     from blade_structure_utilities.load_utilities.section_loads.surface_traction.station_load import (
         DistributedStationLoadSpec,
         IncidentAeroSpec,
@@ -126,7 +159,7 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
     class _FakeRunner:
         def __init__(self, **kwargs):
             captured.update(kwargs)
-            self.used_traction = True
+            self.load_channel_used = str(kwargs.get("load_channel", "thinwall"))
             self.assembly = _FakeAssembly()
 
         def execute(self):
@@ -136,7 +169,7 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
             return _FakeResults()
 
     import blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner as slsr
-    import blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology as spt
+    import blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology as spt
 
     monkeypatch.setattr(slsr, "SectionLinearStaticRunner", _FakeRunner)
     monkeypatch.setattr(spt, "shell_panel_topology_from_shell_inputs", lambda *_a, **_k: object())
@@ -177,6 +210,21 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
         ),
     )
 
+    with pytest.raises(ValueError, match="section_force_vector is required"):
+        std.fsdt_periodic_station_hashin(
+            None,
+            None,
+            N=0.0,
+            Vy=0.0,
+            Vz=0.0,
+            My=0.0,
+            Mz=0.0,
+            T=1.0,
+            section_strip_mesh=object(),
+            panel_topology=object(),
+            load_field=lf,
+        )
+
     out = std.fsdt_periodic_station_hashin(
         None,
         None,
@@ -187,26 +235,28 @@ def test_fsdt_traction_routes_to_linear_static_not_periodic(monkeypatch) -> None
         Mz=0.0,
         T=1.0,
         section_strip_mesh=object(),
+        panel_topology=object(),
         load_field=lf,
+        section_force_vector=object(),
     )
     assert out["solver"] == "fsdt_linear_static_cascade"
-    assert out["used_traction"] is True
-    assert captured.get("traction_field") is not None
-    assert captured.get("traction_points_yz") is not None
+    assert out["load_channel"] == "surface_traction"
+    assert out["used_traction"] is False
+    assert "traction_field" not in captured
+    assert "traction_points_yz" not in captured
+    assert captured.get("load_channel") == "surface_traction"
+    assert captured.get("section_force_vector") is not None
 
 
 def test_dispatch_routes_ccx_to_thin_wall(monkeypatch) -> None:
-    """CCX is quarantined (Phase 6): dispatch only works after opt-in registration."""
+    """CCX station dispatch is not registered; only the global validation backend is."""
     from blade_structure_utilities.fem_utilities.section_shell_fea.calculix_ccx.register import (
         register_calculix_ccx_backend,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.calculix_ccx import station_dispatch_adapter
 
     register_calculix_ccx_backend()
-    monkeypatch.setattr(station_dispatch_adapter, "ccx_station_solve_from_thin_wall", lambda req: {"solver": "ccx"})
-    res = dispatch_station_theory(_request(ShellTheory.CALCULIX_CCX))
-    assert res.backend_extra == {"solver": "ccx"}
-    assert res.fsdt_periodic_extra is None
+    with pytest.raises(ValueError, match="No station-dispatch handler"):
+        dispatch_station_theory(_request(ShellTheory.CALCULIX_CCX))
 
 
 def test_dispatch_rejects_theory_without_station_dispatch_support(monkeypatch) -> None:

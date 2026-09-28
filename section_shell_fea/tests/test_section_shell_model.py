@@ -18,7 +18,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 
 
 def _panel_topology_vlasov_fixture(naca_code: str, web_x_positions: list[float]):
-    """Package shell panel topology panels + multicell airfoil for Vlasov oracle tests."""
+    """Package shell panel topology + producer midlines/loops for Vlasov tests."""
     from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
     from blade_structure_utilities.fem_utilities.section_shell_fea.io.job_outputs import (
         airfoil_polygon_to_multicell_airfoil,
@@ -27,7 +27,14 @@ def _panel_topology_vlasov_fixture(naca_code: str, web_x_positions: list[float])
     panel_topology = build_shell_panel_topology(naca_code, web_x_positions, chord_m=1.0)
     raw = np.asarray(panel_topology.section.airfoil.vertices, dtype=np.float64)[:, :2]
     air = airfoil_polygon_to_multicell_airfoil(raw, n_each=48)
-    return air, panel_topology.zones, panel_topology.webs_geom
+    si = panel_topology.shell_inputs
+    return (
+        air,
+        panel_topology.zones,
+        panel_topology.webs_geom,
+        si.midlines,
+        si.cell_wall_loops,
+    )
 
 
 def test_hashin_fi_matches_direct_clpt_pipeline():
@@ -42,7 +49,15 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
     from blade_structure_utilities.material_utilities.laminate import clpt_recovery_from_laminate
     from blade_structure_utilities.material_utilities.failure import hashin_fi
     from blade_structure_utilities.material_utilities.laminate import laminate_definition_from_legacy
-    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
+        build_shell_panel_topology,
+        equipollent_section_force_vector,
+    )
+    from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+        BEAM_LOAD_AXIS_YZ,
+        FRAME_SECTION_YZ,
+        BeamResultantVector,
+    )
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
         LinearStaticCascadeResult,
     )
@@ -58,15 +73,15 @@ def test_hashin_fi_matches_direct_clpt_pipeline():
     )
 
     panel_topology = build_shell_panel_topology("0012", [0.35], chord_m=1.0)
+    resultants = BeamResultantVector.from_named(
+        N=1.0, Vy=1.0, Vz=1.0, My=1.0, Mz=1.0, T=0.0,
+        frame=FRAME_SECTION_YZ, about_xy=BEAM_LOAD_AXIS_YZ,
+    )
     cascade = LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
-            N=1.0,
-            Vy=1.0,
-            Vz=1.0,
-            My=1.0,
-            Mz=1.0,
-            T=0.0,
+            resultants=resultants,
+            section_force_vector=equipollent_section_force_vector(panel_topology, resultants),
             section_strip_mesh=build_section_strip_mesh(
                 panel_topology.shell_inputs, n_elements_per_panel=4
             ),
@@ -136,7 +151,7 @@ def test_hashin_fi_golden_pure_shear_envelope():
 def test_six_series_airfoil_converted_for_multicell_geometry() -> None:
     """Spanwise six-series polygon must be resampled to [upper; lower] LEâ†’TE."""
     from blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca import airfoil_vertices_from_spanwise
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.sectorial_warping import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.sectorial_warping import (
         open_outline_from_airfoil,
         polygon_area_signed,
     )
@@ -243,11 +258,12 @@ def test_mitc4_edge_shear_traction_integrated_uniform_field():
 
 def test_vlasov_shear_centre_finite():
     """compute_section_vlasov returns finite shear centre and positive I_omega_E."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
 
-    air, panels, webs_geom = _panel_topology_vlasov_fixture("0012", [0.35])
+    air, panels, webs_geom, midlines, loops = _panel_topology_vlasov_fixture("0012", [0.35])
     vlasov = compute_section_vlasov(
-        air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom)
+        air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom),
+        shell_midlines=midlines, cell_wall_loops=loops,
     )
     assert np.isfinite(vlasov.y_sc)
     assert np.isfinite(vlasov.z_sc)
@@ -257,11 +273,12 @@ def test_vlasov_shear_centre_finite():
 
 def test_vlasov_zero_bimoment_gives_zero_stress():
     """With B=0, warping normal stress must be identically zero."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
 
-    air, panels, webs_geom = _panel_topology_vlasov_fixture("0012", [0.35])
+    air, panels, webs_geom, midlines, loops = _panel_topology_vlasov_fixture("0012", [0.35])
     vlasov = compute_section_vlasov(
-        air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom)
+        air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom),
+        shell_midlines=midlines, cell_wall_loops=loops,
     )
     for sig in vlasov.sigma_omega:
         assert np.allclose(sig, 0.0, atol=1e-30)
@@ -273,7 +290,15 @@ def test_vlasov_zero_bimoment_gives_zero_stress():
 
 def test_mitc4_integration_no_placeholders():
     """Linear-static MITC4 solve: all resultant provenance must be MITC4 or DERIVED."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology  # noqa: E402
+    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
+        build_shell_panel_topology,
+        equipollent_section_force_vector,
+    )
+    from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+        BEAM_LOAD_AXIS_YZ,
+        FRAME_SECTION_YZ,
+        BeamResultantVector,
+    )
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (  # noqa: E402
         LinearStaticCascadeResult,
     )
@@ -290,15 +315,15 @@ def test_mitc4_integration_no_placeholders():
     )
 
     panel_topology = build_shell_panel_topology("2412", [0.35], chord_m=1.0)
+    resultants = BeamResultantVector.from_named(
+        N=1.0, Vy=1.0, Vz=1.0, My=1.0, Mz=1.0, T=1.0,
+        frame=FRAME_SECTION_YZ, about_xy=BEAM_LOAD_AXIS_YZ,
+    )
     cascade = LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
-            N=1.0,
-            Vy=1.0,
-            Vz=1.0,
-            My=1.0,
-            Mz=1.0,
-            T=1.0,
+            resultants=resultants,
+            section_force_vector=equipollent_section_force_vector(panel_topology, resultants),
             section_strip_mesh=build_section_strip_mesh(
                 panel_topology.shell_inputs, n_elements_per_panel=6
             ),
@@ -327,25 +352,28 @@ def test_vlasov_nonzero_bimoment_activates_stress():
     B=0   â†’ sigma_omega zero everywhere.
     Scaling: sigma_omega scales linearly with B.
     """
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
 
-    air, panels, webs_geom = _panel_topology_vlasov_fixture("2412", [0.35])
+    air, panels, webs_geom, midlines, loops = _panel_topology_vlasov_fixture("2412", [0.35])
 
     vlasov_0 = compute_section_vlasov(
-        air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom)
+        air, panels, B=0.0, dB_dx=0.0, webs_geom=list(webs_geom),
+        shell_midlines=midlines, cell_wall_loops=loops,
     )
     for sig in vlasov_0.sigma_omega:
         assert np.allclose(sig, 0.0, atol=1e-30), "B=0 must give zero sigma_omega"
 
     vlasov_1 = compute_section_vlasov(
-        air, panels, B=1e3, dB_dx=0.0, webs_geom=list(webs_geom)
+        air, panels, B=1e3, dB_dx=0.0, webs_geom=list(webs_geom),
+        shell_midlines=midlines, cell_wall_loops=loops,
     )
     max_sig_1 = max(float(np.max(np.abs(sig))) for sig in vlasov_1.sigma_omega if len(sig))
     assert max_sig_1 > 0.0, "B=1e3 must give non-zero sigma_omega on at least one panel"
 
     # Linear scaling: B=2e3 â†’ sigma_omega twice as large
     vlasov_2 = compute_section_vlasov(
-        air, panels, B=2e3, dB_dx=0.0, webs_geom=list(webs_geom)
+        air, panels, B=2e3, dB_dx=0.0, webs_geom=list(webs_geom),
+        shell_midlines=midlines, cell_wall_loops=loops,
     )
     max_sig_2 = max(float(np.max(np.abs(sig))) for sig in vlasov_2.sigma_omega if len(sig))
     assert np.isclose(max_sig_2, 2.0 * max_sig_1, rtol=1e-10), (
@@ -355,12 +383,13 @@ def test_vlasov_nonzero_bimoment_activates_stress():
 
 def test_vlasov_nonzero_dBdx_activates_warping_shear():
     """dB_dx=1e3 with B=0 â†’ q_omega non-zero on at least one skin panel."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
 
-    air, panels, webs_geom = _panel_topology_vlasov_fixture("2412", [0.35])
+    air, panels, webs_geom, midlines, loops = _panel_topology_vlasov_fixture("2412", [0.35])
 
     vlasov = compute_section_vlasov(
-        air, panels, B=0.0, dB_dx=1e3, webs_geom=list(webs_geom)
+        air, panels, B=0.0, dB_dx=1e3, webs_geom=list(webs_geom),
+        shell_midlines=midlines, cell_wall_loops=loops,
     )
     max_q = max(float(np.max(np.abs(q))) for q in vlasov.q_omega if len(q))
     assert max_q > 0.0, "dB_dx=1e3 must give non-zero q_omega on at least one panel"
@@ -396,55 +425,182 @@ def _box_airfoil(n: int = 6, width: float = 1.0, height: float = 0.5) -> np.ndar
 
 def test_vlasov_batho_single_cell_box():
     """Rectangular single-cell box: n_cells==1, I_omega_E>0, omega_hat_v non-trivial."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.geometry_utilities.section_contract.cell_wall_loop import CellWallLoop
+    from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import (
+        ShellMidlineStrip,
+    )
 
     airfoil_box = _box_airfoil(n=10, width=1.0, height=0.5)
     E, t = 70e9, 2e-3
 
-    # Two skin panels: upper and lower surfaces
-    upper_nodes = np.column_stack([np.linspace(0, 1, 10), np.full(10, 0.25)])
-    lower_nodes = np.column_stack([np.linspace(1, 0, 10), np.full(10, -0.25)])
-    panels = [
-        _FakePanel(upper_nodes, E, t, label="USkin"),
-        _FakePanel(lower_nodes, E, t, label="LSkin"),
+    # Closed rectangular mid-surface (LE cut applied inside Vlasov).
+    rect = np.array(
+        [
+            [0.0, 0.25],
+            [1.0, 0.25],
+            [1.0, -0.25],
+            [0.0, -0.25],
+            [0.0, 0.25],
+        ],
+        dtype=float,
+    )
+    # Open chain matching open_outline_from_airfoil topology for panel nodes.
+    open_pts = np.array(
+        [
+            [0.0, 0.25],
+            [1.0, 0.25],
+            [1.0, -0.25],
+            [0.0, -0.25],
+        ],
+        dtype=float,
+    )
+    panels = [_FakePanel(open_pts, E, t, label="skin:BoxSkin")]
+    midlines = [
+        ShellMidlineStrip(
+            label="BoxSkin",
+            kind="skin",
+            midline_twisted_pitch_axis_blade_frame=rect.copy(),
+            thickness_m=t,
+            closed=True,
+        ),
     ]
+    loop = CellWallLoop(
+        id=0,
+        polyline_twisted_pitch_axis_blade_frame=rect.copy(),
+        area_m2=0.5,
+        wall_labels=("BoxSkin",),
+    )
 
-    vlasov = compute_section_vlasov(airfoil_box, panels, B=0.0, dB_dx=0.0,
-                                    webs_geom=[], t_web=t)
+    vlasov = compute_section_vlasov(
+        airfoil_box, panels, B=0.0, dB_dx=0.0, webs_geom=[], t_web=t,
+        shell_midlines=midlines, cell_wall_loops=[loop],
+    )
     assert vlasov.n_cells == 1, f"Expected 1 cell, got {vlasov.n_cells}"
     assert vlasov.I_omega_E > 0.0, "I_omega_E must be positive"
     assert float(np.max(np.abs(vlasov.omega_hat_v))) > 0.0, "omega_hat must be non-trivial"
 
 
 def test_vlasov_batho_two_cell():
-    """Two-cell box (mid web at x=0.5): n_cells==2 and I_omega_E differs from single-cell."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import compute_section_vlasov
+    """Two-cell section (mid web): n_cells==2 and I_omega_E differs from single-cell."""
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import compute_section_vlasov
+    from blade_structure_utilities.geometry_utilities.section_contract.cell_wall_loop import CellWallLoop
+    from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import (
+        ShellMidlineStrip,
+    )
 
     airfoil_box = _box_airfoil(n=10, width=1.0, height=0.5)
     E, t = 70e9, 2e-3
 
-    upper_nodes = np.column_stack([np.linspace(0, 1, 10), np.full(10, 0.25)])
-    lower_nodes = np.column_stack([np.linspace(1, 0, 10), np.full(10, -0.25)])
+    # Airfoil-like diamond: upper/lower meet at LE/TE so web feet are strip ends
+    # (thin_wall_section junction identity + FEA-L-004 coincidence).
+    s_le = np.array([[0.0, 0.0], [0.5, 0.25]], dtype=float)
+    s_te = np.array([[0.5, 0.25], [1.0, 0.0]], dtype=float)
+    p_le = np.array([[0.0, 0.0], [0.5, -0.25]], dtype=float)
+    p_te = np.array([[0.5, -0.25], [1.0, 0.0]], dtype=float)
+    web_nodes = np.array([[0.5, 0.25], [0.5, -0.25]], dtype=float)
+    # One panel per skin strip (matches producer zones).
     panels = [
-        _FakePanel(upper_nodes, E, t, label="USkin"),
-        _FakePanel(lower_nodes, E, t, label="LSkin"),
+        _FakePanel(s_le, E, t, label="skin:suction_le"),
+        _FakePanel(s_te, E, t, label="skin:suction_te"),
+        _FakePanel(p_le, E, t, label="skin:pressure_le"),
+        _FakePanel(p_te, E, t, label="skin:pressure_te"),
+        _FakePanel(web_nodes, E, t, label="web:Web0"),
+    ]
+    midlines = [
+        ShellMidlineStrip(
+            label="suction_le", kind="skin",
+            midline_twisted_pitch_axis_blade_frame=s_le.copy(), thickness_m=t,
+            skin_side="suction_surface", skin_arc="leading_edge",
+        ),
+        ShellMidlineStrip(
+            label="suction_te", kind="skin",
+            midline_twisted_pitch_axis_blade_frame=s_te.copy(), thickness_m=t,
+            skin_side="suction_surface", skin_arc="trailing_edge",
+        ),
+        ShellMidlineStrip(
+            label="pressure_le", kind="skin",
+            midline_twisted_pitch_axis_blade_frame=p_le.copy(), thickness_m=t,
+            skin_side="pressure_surface", skin_arc="leading_edge",
+        ),
+        ShellMidlineStrip(
+            label="pressure_te", kind="skin",
+            midline_twisted_pitch_axis_blade_frame=p_te.copy(), thickness_m=t,
+            skin_side="pressure_surface", skin_arc="trailing_edge",
+        ),
+        ShellMidlineStrip(
+            label="Web0", kind="web",
+            midline_twisted_pitch_axis_blade_frame=web_nodes.copy(), thickness_m=t,
+        ),
+    ]
+    loops = [
+        CellWallLoop(
+            id=0,
+            polyline_twisted_pitch_axis_blade_frame=np.vstack(
+                [s_le, web_nodes[1:], p_le[::-1][1:], s_le[:1]]
+            ),
+            area_m2=0.125,
+            web_labels=("Web0",),
+            wall_labels=("suction_le", "Web0", "pressure_le"),
+        ),
+        CellWallLoop(
+            id=1,
+            polyline_twisted_pitch_axis_blade_frame=np.vstack(
+                [s_te, p_te[::-1][1:], web_nodes[:1], s_te[:1]]
+            ),
+            area_m2=0.125,
+            web_labels=("Web0",),
+            wall_labels=("suction_te", "pressure_te", "Web0"),
+        ),
+    ]
+    single_loop = [
+        CellWallLoop(
+            id=0,
+            polyline_twisted_pitch_axis_blade_frame=np.vstack(
+                [s_le, s_te[1:], p_te[::-1][1:], p_le[::-1][1:], s_le[:1]]
+            ),
+            area_m2=0.25,
+            wall_labels=("suction_le", "suction_te", "pressure_te", "pressure_le"),
+        ),
     ]
 
-    # Single-cell baseline
-    vlasov_1 = compute_section_vlasov(airfoil_box, panels, B=0.0, dB_dx=0.0,
-                                      webs_geom=[], t_web=t)
+    vlasov_1 = compute_section_vlasov(
+        airfoil_box, panels[:4], B=0.0, dB_dx=0.0, webs_geom=[], t_web=t,
+        shell_midlines=midlines[:4], cell_wall_loops=single_loop,
+    )
 
-    # Add mid-web at x=0.5
-    web = ((np.array([0.5, 0.25]), np.array([0.5, -0.25])),)
-    vlasov_2 = compute_section_vlasov(airfoil_box, panels, B=0.0, dB_dx=0.0,
-                                      webs_geom=list(web), t_web=t)
+    vlasov_2 = compute_section_vlasov(
+        airfoil_box, panels, B=0.0, dB_dx=0.0,
+        webs_geom=[(web_nodes[0], web_nodes[1])], t_web=t,
+        shell_midlines=midlines, cell_wall_loops=loops,
+    )
 
     assert vlasov_2.n_cells == 2, f"Expected 2 cells, got {vlasov_2.n_cells}"
-    # Batho correction for two cells differs from single cell by a meaningful margin.
     rel_diff = abs(vlasov_2.I_omega_E - vlasov_1.I_omega_E) / max(abs(vlasov_1.I_omega_E), 1e-30)
     assert rel_diff > 0.10, (
         "Two-cell Batho correction should change I_omega_E by >10%"
     )
+
+
+def test_vlasov_refuses_webs_without_midlines():
+    """Multi-cell Batho without producer midlines/loops raises FEA-L-004."""
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import (
+        compute_section_vlasov,
+    )
+
+    airfoil_box = _box_airfoil(n=10, width=1.0, height=0.5)
+    E, t = 70e9, 2e-3
+    upper_nodes = np.column_stack([np.linspace(0, 1, 10), np.full(10, 0.25)])
+    lower_nodes = np.column_stack([np.linspace(1, 0, 10), np.full(10, -0.25)])
+    panels = [
+        _FakePanel(upper_nodes, E, t, label="skin:USkin"),
+        _FakePanel(lower_nodes, E, t, label="skin:LSkin"),
+    ]
+    web = ((np.array([0.5, 0.25]), np.array([0.5, -0.25])),)
+    with pytest.raises(ValueError, match="FEA-L-004"):
+        compute_section_vlasov(
+            airfoil_box, panels, B=0.0, dB_dx=0.0, webs_geom=list(web), t_web=t
+        )
 
 
 def _mk_resultant(nx: float, nxy: float) -> ShellPanelResultants:
@@ -469,8 +625,8 @@ def _mk_panel(nodes: np.ndarray, label: str = "skin"):
 
 
 def test_equilibrium_sign_normalization_for_opposite_tangent():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="skin:LSkin")
     panels = [p0, p1]
     all_res = [
         [_mk_resultant(10.0, 5.0)],
@@ -482,13 +638,16 @@ def test_equilibrium_sign_normalization_for_opposite_tangent():
     chk = checks[0]
     assert chk["orientation"] == "opposite"
     assert chk["resultant_dNxy_rel"] < 1e-12
-    assert chk["resultant_pass"]
+    # Centroid-fallback is informational only (FEA-EQ-001); not authoritative pass.
+    assert chk["nxy_compare_mode"] == "centroid-fallback"
+    assert chk["resultant_metric_ok"]
+    assert not chk["resultant_pass"]
 
 
 def test_equilibrium_uses_geometric_adjacency_not_index_order():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[10.0, 0.0], [11.0, 0.0]]), label="USkin")
-    p2 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[10.0, 0.0], [11.0, 0.0]]), label="skin:USkin")
+    p2 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="skin:LSkin")
     panels = [p0, p1, p2]
     all_res = [
         [_mk_resultant(10.0, 2.0)],
@@ -503,9 +662,9 @@ def test_equilibrium_uses_geometric_adjacency_not_index_order():
 
 
 def test_equilibrium_includes_wraparound_for_closed_loop():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [0.5, 1.0]]), label="LSkin")
-    p2 = _mk_panel(np.array([[0.5, 1.0], [0.0, 0.0]]), label="Web Core")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [0.5, 1.0]]), label="skin:LSkin")
+    p2 = _mk_panel(np.array([[0.5, 1.0], [0.0, 0.0]]), label="web:core")
     panels = [p0, p1, p2]
     all_res = [
         [_mk_resultant(10.0, 1.0)],
@@ -518,9 +677,9 @@ def test_equilibrium_includes_wraparound_for_closed_loop():
 
 
 def test_equilibrium_tiered_thresholds_skin_skin_vs_skin_web():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="LSkin")
-    p2 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="Web @ 0.35c")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="skin:LSkin")
+    p2 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="web:spar_0.35c")
 
     checks_skin_skin = check_panel_equilibrium(
         [[_mk_resultant(10.0, 1.0)], [_mk_resultant(9.4, -1.0)]],
@@ -551,7 +710,15 @@ def test_equilibrium_tiered_thresholds_skin_skin_vs_skin_web():
     assert checks_skin_web[0]["reaction_pass_nx"]
 
 def test_linear_static_returns_active_transverse_shear_fields():
-    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
+        build_shell_panel_topology,
+        equipollent_section_force_vector,
+    )
+    from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
+        BEAM_LOAD_AXIS_YZ,
+        FRAME_SECTION_YZ,
+        BeamResultantVector,
+    )
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
         LinearStaticCascadeResult,
     )
@@ -567,15 +734,15 @@ def test_linear_static_returns_active_transverse_shear_fields():
     )
 
     panel_topology = build_shell_panel_topology("2412", [0.25, 0.60], chord_m=1.0)
+    resultants = BeamResultantVector.from_named(
+        N=1.3e4, Vy=5e4, Vz=8.3e5, My=5.5e6, Mz=3.3e5, T=2.5e4,
+        frame=FRAME_SECTION_YZ, about_xy=BEAM_LOAD_AXIS_YZ,
+    )
     cascade = LinearStaticCascadeResult.from_executed_runner(
         SectionLinearStaticRunner(
             panel_topology=panel_topology,
-            N=1.3e4,
-            Vy=5e4,
-            Vz=8.3e5,
-            My=5.5e6,
-            Mz=3.3e5,
-            T=2.5e4,
+            resultants=resultants,
+            section_force_vector=equipollent_section_force_vector(panel_topology, resultants),
             section_strip_mesh=build_section_strip_mesh(
                 panel_topology.shell_inputs, n_elements_per_panel=2
             ),
@@ -595,8 +762,8 @@ def test_linear_static_returns_active_transverse_shear_fields():
 
 
 def test_equilibrium_reaction_metric_uses_panel_diagnostics():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="skin:LSkin")
     checks = check_panel_equilibrium(
         [[_mk_resultant(10.0, 0.0)], [_mk_resultant(10.0, 0.0)]],
         [p0, p1],
@@ -614,8 +781,8 @@ def test_equilibrium_reaction_metric_uses_panel_diagnostics():
 
 
 def test_equilibrium_secondary_prefers_interface_field_set():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="skin:LSkin")
     checks = check_panel_equilibrium(
         [[_mk_resultant(10.0, 0.0)], [_mk_resultant(100.0, 0.0)]],
         [p0, p1],
@@ -646,8 +813,8 @@ def test_equilibrium_strict_skin_web_maps_components():
     # p1 "start" (normal_sign=-1): Tx=-2, Ts=-5, t_j=[1,0] (collinear)
     # dTx = 2 + (-2) = 0  â†’  dTx_rel = 0
     # dT_yz = 5*[1,0] + (-5)*[1,0] = [0,0]  â†’  dT_yz_rel = 0
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="Web @ 0.35c")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="web:spar_0.35c")
     checks = check_panel_equilibrium(
         [[_mk_resultant(10.0, 2.0)], [_mk_resultant(10.0, 99.0)]],
         [p0, p1],
@@ -678,8 +845,8 @@ def test_equilibrium_strict_skin_skin_uses_tx_component():
     # p1 "end" (normal_sign=+1): Tx=-3, Ts=8, t_j=[-1,0]  (panels converge)
     # dTx = 3 + (-3) = 0  â†’  dTx_rel = 0
     # dT_yz = 8*[1,0] + 8*[-1,0] = [0,0]  â†’  dT_yz_rel = 0
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[2.0, 0.0], [1.0, 0.0]]), label="skin:LSkin")
     checks = check_panel_equilibrium(
         [[_mk_resultant(5.0, 1.0)], [_mk_resultant(5.0, -1.0)]],
         [p0, p1],
@@ -704,9 +871,9 @@ def test_equilibrium_strict_skin_skin_uses_tx_component():
     assert chk["dT_yz_rel"] < 1e-12
 
 def test_equilibrium_topology_graph_handles_three_way_junction():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="USkin2")
-    p2 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="Web A")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="skin:USkin2")
+    p2 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="web:A")
     panels = [p0, p1, p2]
     all_res = [[_mk_resultant(1.0, 0.0)], [_mk_resultant(1.0, 0.0)], [_mk_resultant(1.0, 0.0)]]
     checks = check_panel_equilibrium(all_res, panels, endpoint_tol=1e-8)
@@ -750,9 +917,9 @@ def test_build_load_reaction_audit_computes_summary():
 
 
 def test_cluster_traction_three_way_analytical():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="Web")
-    p2 = _mk_panel(np.array([[1.0, 0.0], [0.0, -1.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="web:spar")
+    p2 = _mk_panel(np.array([[1.0, 0.0], [0.0, -1.0]]), label="skin:LSkin")
     di = [
         {"interface_edge_set": {"end": {"Tx_int": 1.0, "Ts_int": 2.0}}},
         {"interface_edge_set": {"start": {"Tx_int": -2.0, "Ts_int": -1.0}}},
@@ -767,8 +934,8 @@ def test_cluster_traction_three_way_analytical():
 
 
 def test_cluster_traction_matches_pair_for_two_way():
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="skin:LSkin")
     di = [
         {"interface_edge_set": {"end": {"Tx_int": 3.0, "Ts_int": 5.0}}},
         {"interface_edge_set": {"start": {"Tx_int": -3.0, "Ts_int": -5.0}}},
@@ -785,8 +952,8 @@ def test_cluster_traction_matches_pair_for_two_way():
 
 def test_skin_web_label_invariance():
     # Geometry-based traction check must be label-invariant.
-    p_skin = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p_web = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="Web @ 0.35c")
+    p_skin = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p_web = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="web:spar_0.35c")
     diag_base = [
         {
             "boundary_reaction": {"end": {"Fx": 10.0, "Fs": 2.0}},
@@ -810,8 +977,8 @@ def test_skin_web_label_invariance():
 
 def test_traction_compare_invariant_under_panel_swap():
     """Swapping (i,j) must leave dTx_rel and dT_yz_rel magnitudes unchanged."""
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="Web @ 0.35c")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="web:spar_0.35c")
     diag = [
         {
             "boundary_reaction": {"end": {"Fx": 3.0, "Fs": 1.0}},
@@ -844,8 +1011,8 @@ def test_traction_compare_pure_Nx_invariant():
     # normal_sign = +1 at "end", -1 at "start".
     # N12=0: Tx_int = N12*normal_sign = 0.
     # N22=0:  Ts_int = N22*normal_sign = 0.
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="skin:LSkin")
     diag = [
         {
             "boundary_reaction": {"end": {"Fx": 5.0, "Fs": 0.0}},
@@ -873,8 +1040,8 @@ def test_traction_compare_90deg_junction():
     # p0: [0,0]->[1,0] ("end"), t_i=[1,0], Tx=5, Ts=0  â†’ vector traction in X: 5, in YZ: [0,0]
     # p1: [1,0]->[1,1] ("start"), t_j=[0,1], Tx=-5, Ts=0 â†’ X: -5, YZ: [0,0]
     # dTx = 5+(-5) = 0, dT_yz = 0*[1,0]+0*[0,1] = [0,0]  â†’ both zero.
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="Web")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="web:spar")
     diag = [
         {
             "boundary_reaction": {"end": {"Fx": 5.0, "Fs": 0.0}},
@@ -1058,8 +1225,8 @@ def test_tiered_acceptance_keys_present():
     acceptance keys (dTx_rel, dT_yz_rel, resultant_tol_dTx, resultant_tol_dT_yz,
     resultant_pass_dT_yz) for the Phase-E reporting to work.
     """
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="Web @ 0.35c")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="web:spar_0.35c")
     checks = check_panel_equilibrium(
         [[_mk_resultant(5.0, 1.0)], [_mk_resultant(5.0, 1.0)]],
         [p0, p1],
@@ -1096,10 +1263,10 @@ def test_cluster_and_pair_share_topology():
         _build_geometric_interfaces,
         _build_endpoint_clusters_raw,
     )
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="Web")
-    p2 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="LSkin")
-    p3 = _mk_panel(np.array([[0.0, 0.0], [0.0, -1.0]]), label="Web2")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="web:spar")
+    p2 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="skin:LSkin")
+    p3 = _mk_panel(np.array([[0.0, 0.0], [0.0, -1.0]]), label="web:spar2")
     panels = [p0, p1, p2, p3]
 
     clusters = _build_endpoint_clusters_raw(panels, tol=1e-8)
@@ -1134,11 +1301,11 @@ def test_tiered_acceptance_applies_pair_only_to_two_way():
         _build_geometric_interfaces,
     )
     # Build a T-junction: p0:end, p1:start, p2:start all meet at (1,0).
-    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="USkin")
-    p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="Web")
-    p2 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="LSkin")
+    p0 = _mk_panel(np.array([[0.0, 0.0], [1.0, 0.0]]), label="skin:USkin")
+    p1 = _mk_panel(np.array([[1.0, 0.0], [1.0, 1.0]]), label="web:spar")
+    p2 = _mk_panel(np.array([[1.0, 0.0], [2.0, 0.0]]), label="skin:LSkin")
     # Extra isolated 2-way junction: p3:start, p0:start at (0,0).
-    p3 = _mk_panel(np.array([[0.0, 0.0], [0.0, -1.0]]), label="Web2")
+    p3 = _mk_panel(np.array([[0.0, 0.0], [0.0, -1.0]]), label="web:spar2")
 
     panels = [p0, p1, p2, p3]
     interfaces = _build_geometric_interfaces(panels, tol=1e-8)

@@ -50,11 +50,12 @@ registration) was deleted 2026-07-14.
 
 - `mesh.py` — `build_ccx_section_mesh` (panel-strip → ccx shell mesh; optional
   `cap_tie_mode` builds cap–skin tie surfaces).
-- `cap_skin_ties.py` — project cap nodes onto skin midlines; emit surface sets +
-  measured `POSITION TOLERANCE` for bonded joints.
+- `cap_skin_ties.py` — StripBond membership (FEA-CT-001); emit surface sets +
+  measured `POSITION TOLERANCE` for bonded joints; per-slave weighted masters
+  for ``*EQUATION`` (FEA-CCX-002).
 - `section_export.py` — `.inp` deck writers (clamped and periodic BC); clamped
-  decks can emit `*TIE` (default) or closest-node `*EQUATION` fallback for
-  `cap_tie_mode="skin_offset"`.
+  decks can emit `*TIE` (default) or bond-weighted `*EQUATION` (explicit
+  `cap_tie_export="equation"`) for `cap_tie_mode="skin_offset"`.
 - `joint_validation.py` — MITC4↔CCX joint oracle (offline deck checks + optional
   live `ccx`); CLI via `benchmarks/run_ccx_joint_validation.py`.
 - `strip_export.py`, `orientation.py` — element/orientation card helpers.
@@ -103,7 +104,7 @@ registration) was deleted 2026-07-14.
 **Caveat:** the CalculiX manual restricts `*TIE` to continuum 3-D elements; shells
 are expanded to bricks internally and edge/face ties often work in practice.
 If a CCX build rejects shell `*TIE`, pass `cap_tie_export="equation"` for
-closest-node DOF locks (approximate offset kinematics).
+bond-weighted DOF locks (same StripBond masters as MITC4; FEA-CCX-002).
 
 Compare **section integrals, interior peaks, and cap N12 load share** — not
 elemental Hashin maxima on tie-slave bands or Defect-K corners. Defect K under

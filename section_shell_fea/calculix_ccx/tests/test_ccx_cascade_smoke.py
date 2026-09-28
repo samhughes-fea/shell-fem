@@ -36,7 +36,7 @@ def test_ccx_cascade_at_frac_2a_f():
 
 
 def test_ccx_layout_ladder_fast_keys_short():
-    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.grid_independence_study import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.grid_independence_study import (
         run_layout_ladder,
         summarize_layout_ladder,
         evaluate_layout_gates,

@@ -200,6 +200,7 @@ def write_joint_deck(
     cap_tie_export: str = "tie",
     l_x: float = 1.0,
     bc_mode: str = "contour_support",
+    shell_midlines: Any | None = None,
 ) -> tuple[Path, Any, JointDeckCheck]:
     """Build mesh, write ``.inp``, return path/mesh/offline check."""
     mesh = build_ccx_section_mesh(
@@ -208,6 +209,7 @@ def write_joint_deck(
         interface_constraint_mode=interface_constraint_mode,
         l_x=l_x,
         cap_tie_mode=cap_tie_mode,
+        shell_midlines=shell_midlines,
     )
     out = write_section_inp(
         mesh,
@@ -293,7 +295,7 @@ def build_capped_catalogue_fixture(
     from blade_structure_utilities.mesh_utilities.section_mesh import (
         build_section_strip_mesh,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
 
@@ -337,7 +339,7 @@ def run_mitc4_kind_peaks_from_shell(
     from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
         BeamResultantVector,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.api.shell_panel_topology import (
         shell_panel_topology_from_shell_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
@@ -354,7 +356,7 @@ def run_mitc4_kind_peaks_from_shell(
         panel_topology=topo,
         section_strip_mesh=section_strip_mesh,
         resultants=resultants,
-        section_force_vector=shape_section_force_vector(resultants, shell.midlines),
+        section_force_vector=shape_section_force_vector(resultants, shell.midlines, cell_wall_loops=shell.cell_wall_loops),
         load_channel="thinwall",
         cap_tie_mode=cap_tie_mode,
         interface_constraint_mode=interface_constraint_mode,
@@ -434,6 +436,7 @@ def run_joint_validation(
                 section_strip_mesh=strip,
                 path=work / f"{layout}_{mode}.inp",
                 cap_tie_mode=mode,
+                shell_midlines=shell.midlines,
             )
             mesh_last = mesh
             report.deck_checks.append(check)
@@ -465,6 +468,7 @@ def run_joint_validation(
                         ccx_exe=ccx_exe,
                         cap_tie_mode="skin_offset",
                         job_name=f"{layout}_tie",
+                        shell_midlines=shell.midlines,
                     )
                     crow.ccx = summarize_kind_peaks(zones, results)
                     crow.cap_nxy_share_ccx = cap_nxy_share(crow.ccx)

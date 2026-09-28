@@ -1,11 +1,14 @@
-"""Strict-shape validation for ShellFormulationCache (re-export).
+"""Compatibility shim — prefer ``blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.parity.formulation_validation``.
 
-Canonical implementation: ``pre_processing.element_library.formulation_validation``.
-Kept here so historical ``processing.diagnostics`` imports continue to work.
+See ``docs/DEPRECATED_ALIASES.md``.
+
+This module is an alias of the canonical implementation so private and
+public symbols (including test-only ``_*`` helpers) remain importable.
 """
-
 from __future__ import annotations
 
-from ....pre_processing.element_library.formulation_validation import validate_formulation_cache_shapes
+from importlib import import_module
+import sys as _sys
 
-__all__ = ["validate_formulation_cache_shapes"]
+_canonical = import_module("blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.parity.formulation_validation")
+_sys.modules[__name__] = _canonical

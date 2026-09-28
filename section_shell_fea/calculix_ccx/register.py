@@ -62,6 +62,8 @@ def _solve_ccx(
         bc_mode=kwargs.get("bc_mode", "contour_support"),
         interface_constraint_mode=kwargs.get("interface_constraint_mode", "shared"),
         l_x=kwargs.get("l_x", 1.0),
+        cap_tie_mode=kwargs.get("cap_tie_mode", "none"),
+        shell_midlines=kwargs.get("shell_midlines"),
     )
     return res, diag
 
@@ -76,15 +78,9 @@ def register_calculix_ccx_backend() -> None:
         return
 
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
-
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.dispatch.station_theory_dispatch import (
-        register_station_solver,
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.dispatch.shell_solve_registry import (
+        register_backend,
     )
-    from .station_dispatch_adapter import dispatch_ccx_station_solve
-
-    register_station_solver(ShellTheory.CALCULIX_CCX, dispatch_ccx_station_solve)
-
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.dispatch.shell_solve_registry import register_backend
 
     register_backend(ShellTheory.CALCULIX_CCX, _solve_ccx, label="external_calculix_ccx")
 

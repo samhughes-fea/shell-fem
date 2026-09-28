@@ -27,7 +27,7 @@ from numpy.typing import NDArray
 from blade_structure_utilities.fem_utilities.section_shell_fea.validation.section_centroid import (
     compute_elastic_centroid_from_panels,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     panel_maps_from_section_strip_mesh,
 )
 
@@ -184,6 +184,14 @@ def multistation_equilibrium_interlaminar(
     ``solver`` is a callable ``(panel_topology, *, My, section_strip_mesh) → cascade``.
     Returns ``tau_eq_max`` / ``tau_eq_mean`` [Pa] and ``dsigma_dx_max`` [Pa/m].
     """
+    t_raw = getattr(getattr(pb.zones[0], "lam", None), "t", None)
+    t_wall = float(t_raw) if t_raw is not None else float("nan")
+    if not np.isfinite(t_wall) or t_wall <= 0.0:
+        raise ValueError(
+            f"interlaminar equilibrium reference needs positive wall thickness "
+            f"from zones[0].lam.t (got {t_raw!r}; refusing silent 1e-3 — FEA-V-001)"
+        )
+
     from lib.interlaminar_shear import interlaminar_shear_max  # type: ignore[import-untyped]
     from blade_structure_utilities.mesh_utilities.section_mesh.strip.strip_mesh import (
         build_section_strip_mesh,
@@ -195,7 +203,6 @@ def multistation_equilibrium_interlaminar(
     geom = section_element_geometry(
         pb.zones, section_strip_mesh=strip_mesh
     )
-    t_wall = float(getattr(getattr(pb.zones[0], "lam", None), "t", 1e-3) or 1e-3)
     sig_prev = section_sigma_field(
         solver(pb, My=My0 - Vz * dz, section_strip_mesh=strip_mesh), geom
     )["sigma_11"]

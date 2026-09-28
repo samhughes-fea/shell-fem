@@ -1,155 +1,19 @@
-"""Build connected panel strip meshes and assign global node numbers.
-
-Mesh-prep for the thin formulation-cache assembly path (periodic K6) and
-assembly helpers. Global node assignment helpers live in
-:mod:`~blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core`.
-"""
+"""Compat shim — import from ``pre_processing.topology.connected_panel_topology``."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+import warnings
 
-import numpy as np
-
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    NElements,
-    PanelGlobalMap,
-    cluster_is_collinear,
-    cluster_points,
-    panel_maps_from_section_strip_mesh,
-)
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.connected_assembly_core import (
-    assign_global_nodes_cluster_basis,
-    assign_global_nodes_hybrid_collinear,
-    assign_global_nodes_hybrid_kind_crossing,
-    assign_global_nodes_independent,
-    assign_global_nodes_shared,
-    build_shared_cluster_frame_rotations,
+warnings.warn(
+    "Import connected_panel_topology from "
+    "blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.connected_panel_topology.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-
-@dataclass
-class ConnectedPanelTopology:
-    """Mesh maps + junction topology after global node assignment."""
-
-    panel_maps: list[PanelGlobalMap]
-    next_global_node: int
-    clusters: list[list[tuple[int, str, np.ndarray]]]
-    endpoint_cluster_index: dict[tuple[int, str], int]
-    cluster_is_collinear_flags: dict[int, bool]
-    effective_mode: str
-    interface_constraint_mode: str
-    cluster_layer_node: dict[tuple[int, str], int]
-    cluster_layer_rot_node: dict[tuple[int, str], int]
-    endpoint_cluster_node: dict[tuple[int, str, str], int]
-    endpoint_cluster_rot_node: dict[tuple[int, str, str], int]
-    # Study-only shared_cluster_frame: (pi, which) -> (ts, tn, ns, nn)
-    endpoint_frame_R: dict[tuple[int, str], tuple[float, float, float, float]] | None = None
-    shared_cluster_frame_cids: tuple[int, ...] = ()
-
-
-def build_connected_panel_maps(
-    zones: list[Any],
-    *,
-    n_elements_per_panel: NElements | None = None,
-    target_element_length_m: float | None = None,
-    endpoint_tol: float = 1e-6,
-    min_elements_per_panel: int = 2,
-    interface_constraint_mode: str = "shared",
-    section_strip_mesh: Any | None = None,
-) -> ConnectedPanelTopology:
-    """Consume a prebuilt strip mesh, cluster endpoints, assign global IDs.
-
-    ``section_strip_mesh`` is required (BL-005). Density kwargs are rejected —
-    build the mesh with ``mesh_utilities.section_mesh.build_section_strip_mesh``.
-    """
-    del min_elements_per_panel
-    if section_strip_mesh is None:
-        raise ValueError(
-            "section_strip_mesh is required; build it with "
-            "mesh_utilities.section_mesh.build_section_strip_mesh "
-            "(FE remesh via discretise_strip is removed — BL-005)."
-        )
-    if n_elements_per_panel is not None or target_element_length_m is not None:
-        raise ValueError(
-            "Density kwargs are not accepted on build_connected_panel_maps; "
-            "pass a prebuilt section_strip_mesh= instead."
-        )
-
-    panel_maps, endpoints = panel_maps_from_section_strip_mesh(section_strip_mesh, zones)
-    clusters = cluster_points(endpoints, endpoint_tol)
-    endpoint_cluster_index: dict[tuple[int, str], int] = {}
-    for cluster_id, c in enumerate(clusters):
-        for pi, which, _ in c:
-            endpoint_cluster_index[(pi, which)] = cluster_id
-
-    cluster_is_collinear_flags: dict[int, bool] = {
-        cid: cluster_is_collinear(c, zones, tol_deg=5.0) for cid, c in enumerate(clusters)
-    }
-
-    effective_mode = interface_constraint_mode
-    cluster_layer_node: dict[tuple[int, str], int] = {}
-    cluster_layer_rot_node: dict[tuple[int, str], int] = {}
-    endpoint_cluster_node: dict[tuple[int, str, str], int] = {}
-    endpoint_cluster_rot_node: dict[tuple[int, str, str], int] = {}
-    endpoint_frame_R: dict[tuple[int, str], tuple[float, float, float, float]] | None = None
-    shared_cluster_frame_cids: tuple[int, ...] = ()
-
-    if interface_constraint_mode == "shared":
-        next_global_node = assign_global_nodes_shared(panel_maps, clusters)
-    elif interface_constraint_mode == "shared_cluster_frame":
-        # Shared node IDs (production topology) + panel→cluster frame rotations
-        # for kind-crossing ∩ non-collinear cusps only (applied at Ke scatter).
-        next_global_node = assign_global_nodes_shared(panel_maps, clusters)
-        frame = build_shared_cluster_frame_rotations(
-            panel_maps, zones, clusters, cluster_is_collinear_flags
-        )
-        endpoint_frame_R = frame["endpoint_frame_R"]  # type: ignore[assignment]
-        shared_cluster_frame_cids = tuple(frame["cids"])  # type: ignore[assignment]
-    elif interface_constraint_mode == "hybrid_collinear":
-        basis = assign_global_nodes_hybrid_collinear(
-            panel_maps, clusters, cluster_is_collinear_flags
-        )
-        next_global_node = int(basis["next_node"])
-        cluster_layer_node = basis["cluster_layer_node"]  # type: ignore[assignment]
-        cluster_layer_rot_node = basis["cluster_layer_rot_node"]  # type: ignore[assignment]
-        endpoint_cluster_node = basis["endpoint_cluster_node"]  # type: ignore[assignment]
-        endpoint_cluster_rot_node = basis["endpoint_cluster_rot_node"]  # type: ignore[assignment]
-    elif interface_constraint_mode == "hybrid_kind_crossing":
-        basis = assign_global_nodes_hybrid_kind_crossing(
-            panel_maps, clusters, cluster_is_collinear_flags
-        )
-        next_global_node = int(basis["next_node"])
-        cluster_layer_node = basis["cluster_layer_node"]  # type: ignore[assignment]
-        cluster_layer_rot_node = basis["cluster_layer_rot_node"]  # type: ignore[assignment]
-        endpoint_cluster_node = basis["endpoint_cluster_node"]  # type: ignore[assignment]
-        endpoint_cluster_rot_node = basis["endpoint_cluster_rot_node"]  # type: ignore[assignment]
-    elif interface_constraint_mode in ("transformed_basis", "shared_rotated") or effective_mode == "shared_rotated":
-        basis = assign_global_nodes_cluster_basis(panel_maps, clusters)
-        next_global_node = int(basis["next_node"])
-        cluster_layer_node = basis["cluster_layer_node"]  # type: ignore[assignment]
-        cluster_layer_rot_node = basis["cluster_layer_rot_node"]  # type: ignore[assignment]
-        endpoint_cluster_node = basis["endpoint_cluster_node"]  # type: ignore[assignment]
-        endpoint_cluster_rot_node = basis["endpoint_cluster_rot_node"]  # type: ignore[assignment]
-    else:
-        next_global_node = assign_global_nodes_independent(panel_maps)
-
-    return ConnectedPanelTopology(
-        panel_maps=panel_maps,
-        next_global_node=next_global_node,
-        clusters=clusters,
-        endpoint_cluster_index=endpoint_cluster_index,
-        cluster_is_collinear_flags=cluster_is_collinear_flags,
-        effective_mode=effective_mode,
-        interface_constraint_mode=interface_constraint_mode,
-        cluster_layer_node=cluster_layer_node,
-        cluster_layer_rot_node=cluster_layer_rot_node,
-        endpoint_cluster_node=endpoint_cluster_node,
-        endpoint_cluster_rot_node=endpoint_cluster_rot_node,
-        endpoint_frame_R=endpoint_frame_R,
-        shared_cluster_frame_cids=shared_cluster_frame_cids,
-    )
-
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.connected_panel_topology import (  # noqa: E402,F401
+    ConnectedPanelTopology,
+    build_connected_panel_maps,
+)
 
 __all__ = ["ConnectedPanelTopology", "build_connected_panel_maps"]

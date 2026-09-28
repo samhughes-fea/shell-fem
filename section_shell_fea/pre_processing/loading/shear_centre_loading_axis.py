@@ -14,6 +14,13 @@ Opt-in Saint-Venant torsion about the sectorial shear centre uses
 :func:`shear_centre_about_yz_from_panel_topology` (or the lower-level outer-skin
 helper) so pure ``T`` maps as twist about SC rather than the pitching origin.
 This is **not** a Channel-A periodic ``K6`` revive.
+
+When ``ShellMeshInputs.cell_wall_loops`` are present, SC comes from
+``shear_centre_from_midlines`` (thin_wall_section / FEA-SC-002). Otherwise the
+outer-skin sectorial estimate is retained (FEA-SC-001 thickness refuse).
+Sectorial ω̂ / Batho / ``I_ω`` live on ``thin_wall_section.sectorial_warping``
+(TW-002); FEA ``compute_section_vlasov`` consumes that kernel when midlines and
+loops are present.
 """
 
 from __future__ import annotations
@@ -22,8 +29,11 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.sectorial_warping import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.sectorial_warping import (
     shear_center_outer_skin_loop,
+)
+from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
+    kind_of,
 )
 
 
@@ -42,14 +52,29 @@ def shear_centre_about_yz_from_panel_topology(
     *,
     E_mean: float = 70e9,
 ) -> tuple[float, float]:
-    """Sectorial shear centre from the the panel topology outer-skin midline.
+    """Sectorial shear centre from panel topology midlines.
 
-    Uses the first ``kind=="skin"`` midline polyline and its thickness. Suitable
-    for opt-in ``torsion_about_shear_centre`` on the linear-static resultant path.
+    Prefer ``cell_wall_loops`` → ``shear_centre_from_midlines`` (FEA-SC-002).
+    Fallback: first skin midline + outer-skin sectorial estimate (FEA-SC-001
+    thickness refuse still applies).
     """
     shell_inputs = getattr(panel_topology, "shell_inputs", None)
     midlines = getattr(shell_inputs, "midlines", None) or ()
-    skins = [m for m in midlines if str(getattr(m, "kind", "")).lower() == "skin"]
+    loops = getattr(shell_inputs, "cell_wall_loops", None) or ()
+    if midlines and loops:
+        from blade_structure_utilities.geometry_utilities.section_properties.reference_axes.shear_centre import (
+            shear_centre_from_midlines,
+        )
+
+        sc = shear_centre_from_midlines(midlines, cell_wall_loops=loops)
+        return float(sc.xs), float(sc.ys)
+
+    skins = [
+        m
+        for m in midlines
+        if str(getattr(m, "kind", "")).lower() == "skin"
+        or kind_of(str(getattr(m, "label", ""))) == "skin"
+    ]
     if not skins:
         raise ValueError(
             "shear_centre_about_yz_from_panel_topology: no skin midline on ShellPanelTopology"
@@ -65,7 +90,13 @@ def shear_centre_about_yz_from_panel_topology(
         raise ValueError(
             f"skin midline must be (N,2) with N>=3; got shape {getattr(verts, 'shape', None)!r}"
         )
-    t = float(getattr(m0, "thickness_m", 0.01) or 0.01)
+    t = float(getattr(m0, "thickness_m", 0.0) or 0.0)
+    if not np.isfinite(t) or t <= 0.0:
+        raise ValueError(
+            "shear_centre_about_yz_from_panel_topology: skin midline "
+            f"{getattr(m0, 'label', '<unknown>')!r} has no positive thickness_m "
+            f"(got {t!r}; refusing silent 0.01 m default — FEA-SC-001)"
+        )
     return shear_centre_about_yz_from_outer_skin(verts[:, :2], t, float(E_mean))
 
 

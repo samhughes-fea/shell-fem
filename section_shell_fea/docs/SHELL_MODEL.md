@@ -1,5 +1,13 @@
 # Shell model design (MVP)
 
+**Current production path:** frozen mesh + bound zones + frozen SFV → assemble
+`K` and element RHS once → compose one immutable constraint set →
+`f_total = f_element + f_station` → constrain → reduce → solve → P→S→T→Q
+via `SectionLinearStaticRunner.execute().get_results()`. Cap ties are
+rigid-offset MPCs (not elements). Failure evaluation is capability-driven
+(MITC4: plane-stress Hashin authoritative; 3D Hashin unavailable; FSDT
+interface shear diagnostic only).
+
 This package implements the **handoff layer** between global/section thin-wall recovery and **local CLPT shell** subcomponent analysis.
 
 **Geometry / constitutive glossary:** [TAXONOMY.md](TAXONOMY.md) — station, section, subcomponent, strip, MaterialZone (constitutive region), element; material frame and isotropic vs orthotropic FI routing.
@@ -132,7 +140,7 @@ Per panel contour station, mid-surface resultants use laminate axes consistent w
 | Path | Entry | N/M status | Provenance |
 |------|-------|------------|------------|
 | Linear-static cascade (authoritative production FI) | `SectionLinearStaticRunner(...).execute().get_results()` | Full N, M from tier cascade | FSDT MITC4 |
-| Classic FE staged solve (same as above) | `from_cache(...).solve()` | Full N, M via result tiers | runner-owned tiers |
+| Classic FE staged solve (compatibility) | `from_cache(...).solve()` / `solve_constrained_system` | Full N, M via result tiers | explicit constraints; no station policy |
 | MVP thin-wall mapping (removed) | ~~`panel_station_shell_resultants`~~ | N11, N12 only; **M = 0 placeholders** | deleted |
 | Channel-A periodic / Saint-Venant `K6` (removed) | ~~`api/k6`~~ / ~~`run_section_periodic_bc`~~ | — | **removed** (Phase 0) |
 
@@ -142,7 +150,8 @@ Every field carries a `FieldProvenance` entry. Use `FieldProvenance.is_trusted` 
 
 **Linear-static cascade** (`SectionLinearStaticRunner(...).execute().get_results()`)
 is the **authoritative production FI path**
-(beam-resultant → equivalent nodal \(f\) → primary→…→quaternary). Channel-A
+(frozen `SectionForceVector` → nodal \(f_{\mathrm{station}}\) →
+\(f_{\mathrm{total}}=f_{\mathrm{element}}+f_{\mathrm{station}}\) → cascade). Channel-A
 periodic product surfaces are **removed** (Phase 0). See
 [LINEAR_STATIC_MAIN_TRACK_PHASE0.md](LINEAR_STATIC_MAIN_TRACK_PHASE0.md).
 
