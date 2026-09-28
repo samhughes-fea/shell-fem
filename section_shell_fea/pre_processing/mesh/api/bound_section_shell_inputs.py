@@ -61,6 +61,7 @@ def bind_section_shell_inputs(
     web_lam: LaminateLike | None = None,
     cap_lam: LaminateLike | None = None,
     allow_demo_bind: bool = False,
+    section: Any | None = None,
 ) -> BoundSectionShellInputs:
     """Build :class:`BoundSectionShellInputs` from mesh inputs and frozen zones.
 
@@ -76,7 +77,19 @@ def bind_section_shell_inputs(
     ``bind_shell_material_zones(..., allow_demo_laminates=True)`` for tests /
     examples / CCX convenience — not a second L4 sequencer. Omitting zones
     without the flag raises.
+
+    ``section`` is accepted only as a deprecated no-op (visualization context
+    must be supplied separately; it is not part of FE solve identity). Removed
+    after **2027-03-31**.
     """
+    if section is not None:
+        warnings.warn(
+            "bind_section_shell_inputs(section=...) is ignored; BoundSectionShellInputs "
+            "does not carry live geometry. Pass SectionGeometryResult to visualisation "
+            "separately (alias expires 2027-03-31).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     if zones is not None:
         zone_tuple = tuple(zones)
         if webs_geom is None:
