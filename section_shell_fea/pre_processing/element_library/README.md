@@ -108,8 +108,8 @@ touching any generic module:
   [`docs/FORMULATION_VALIDATION_LIFECYCLE.md`](docs/FORMULATION_VALIDATION_LIFECYCLE.md)).
 6. **Build** — callers select it with
   `build_formulation_cache(..., formulation_id="MY-FORMULATION")` (primary) or via
-  `shell_theory=` (resolves the theory default). `register_element_factory` remains
-  a thin compatibility façade over the same graph.
+  `shell_theory=` (resolves the theory default via `default_formulation_id`).
+  See [`docs/FORMULATION_AND_SOLVE_DISPATCH.md`](docs/FORMULATION_AND_SOLVE_DISPATCH.md).
 
 Generic modules (`formulation_factory.py`, `registry.py`, `contracts.py`,
 `shell_element_base.py`, `formulation_validation.py`) must not import a formulation's

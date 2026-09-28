@@ -11,7 +11,7 @@ tolerance was widened.
 
 | Topic | WP0 (before) | After WP1–WP4 |
 |-------|--------------|---------------|
-| Formulation selection | `resolve_element_factory(shell_theory)` via `_ELEMENT_FACTORY_REGISTRY` | `formulation_id` primary: `build_formulation_cache(..., formulation_id=...)` / `resolve_element_factory(shell_theory, formulation_id=...)` resolving from the unified `registry._FORMULATIONS` graph; the theory→factory map is a thin compat façade |
+| Formulation selection | theory→factory `_ELEMENT_FACTORY_REGISTRY` façade | `formulation_id` primary via `registry._FORMULATIONS`; theory maps only through `default_formulation_id`; CalculiX on `shell_solve_registry` |
 | Registration hooks | descriptor / factory / kernel / projector / constitutive_adapter | + optional `template_key_strategy`, `validate_element`, `validate_cache` (MITC4 registers concrete validators) |
 | Element geometry record | `L_s` recomputed independently by assembly (blended), recovery (plain), buckling (plain) | `L_s` / `L_s_donnell` / `L_x` / `formulation_id` **persisted** on `ShellStiffnessObject` / `ShellForceObject`; recovery and buckling prefer `stiff.L_s` |
 | Secondary kernel default | `resolve_kernel(theory or "mitc4")` (unsafe when `theory is None`) | `_resolve_secondary_kernel` prefers `cache.formulation_id` via `resolve_kernel_by_id`; `None` → `ShellTheory.FSDT`; strings mapped safely |
@@ -73,12 +73,12 @@ vectorisation was added (einsum path already vectorised over Gauss points).
 
 ## Remaining deprecations / gaps
 
-- **Compat façade — dual factory registry.** `register_element_factory` /
-  `_ELEMENT_FACTORY_REGISTRY` remain as a thin façade over the unified graph
-  (registered as `compat-fe-element-factory-registry-facade` in
-  `.github/governance/deprecation_register.json`). Removal condition: every backend
-  (incl. the opt-in CalculiX CCX backend) registers a `ShellFormulationRegistration`
-  and no caller resolves factories by `ShellTheory` alone.
+- **Retired façade — theory-keyed element factory.** `register_element_factory` /
+  `_ELEMENT_FACTORY_REGISTRY` removed (WP8). Native resolution is
+  `formulation_id` / `default_formulation_id` only; CalculiX stays on
+  `shell_solve_registry` (`compat-fe-element-factory-registry-facade` status
+  `removed`). See
+  `element_library/docs/FORMULATION_AND_SOLVE_DISPATCH.md`.
 - **Removed re-export.** `mitc4.utilities.collect_panel_abd_stack` re-export removed
   (`removed-fe-mitc4-utilities-collect-panel-abd-reexport`); consumers use
   `pre_processing.constitutive.panel_abd`.
@@ -150,7 +150,7 @@ until **2026-11-30**.
 | Relocate `traction_face_load` helpers with warning shims | Deferred | Keep current homes; move only with a registered expiry shim |
 | Relocate `shear_centre_loading_axis` with warning shims | Deferred | Same shim policy as mesh/loading compatibility layer |
 | MITC4 `validate_element` / `validate_cache` hooks | **Done (WP7)** | Lifecycle specified; generic wiring; MITC4 concrete validators registered |
-| Retire `_ELEMENT_FACTORY_REGISTRY` façade | Deferred | Requires governance text that distinguishes native formulation registration from external CalculiX solve dispatch |
+| Retire `_ELEMENT_FACTORY_REGISTRY` façade | **Done (WP8)** | Native graph only; CalculiX stays on solve dispatch |
 | Delete `pre_processing/mesh` and `pre_processing/loading` shims | **Not in scope** | Shims stay; registered expiry **2026-11-30** |
 
 Preserved shim presence (must remain until expiry):
