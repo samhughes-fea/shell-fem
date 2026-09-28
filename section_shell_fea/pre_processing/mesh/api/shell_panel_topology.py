@@ -105,8 +105,8 @@ def build_shell_panel_topology(
     from blade_structure_utilities.geometry_utilities.section_geometry.cell_wall_loops import (
         build_cell_wall_loops,
     )
-    from blade_structure_utilities.geometry_utilities.section_geometry.topology.shell_strip_topology import (
-        build_shell_strip_topology,
+    from blade_structure_utilities.geometry_utilities.section_geometry.junction_preparation.shell_midline_junction_preparation import (
+        prepare_shell_midline_junctions,
     )
     from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import (
         shell_mesh_inputs_from_strips,
@@ -134,7 +134,7 @@ def build_shell_panel_topology(
         n_web_samples=int(n_web_samples),
         n_cap_samples=int(n_cap_samples),
     )
-    strips = build_shell_strip_topology(raw)
+    strips = prepare_shell_midline_junctions(raw)
     from blade_structure_utilities.geometry_utilities.coordinate_frames import (
         naca_to_twisted_pitch_axis_blade_frame,
     )
