@@ -526,7 +526,11 @@ def test_solver_and_strip_mesh_agree_on_panel_element_counts(airfoil) -> None:
     solver_counts = [len(pm.elements) for pm in panel_maps]
     assert strip_counts == solver_counts
 
-    ccx = build_ccx_section_mesh(zones, section_strip_mesh=mesh)
+    ccx = build_ccx_section_mesh(
+        zones,
+        section_strip_mesh=mesh,
+        shell_midlines=shell_inputs.midlines,
+    )
     ccx_counts = [len(pm.elements) for pm in ccx.panel_maps]
     assert ccx_counts == strip_counts
     for pm_strip, pm_ccx in zip(mesh.panel_meshes, ccx.panel_maps):
