@@ -477,6 +477,12 @@ def build_formulation_cache(
             **iter_kwargs,
         )
     )
+    from .registry import resolve_formulation
+
+    registration = resolve_formulation(_formulation_id_from_factory(factory))
+    if registration.validate_element is not None:
+        for elem in elements:
+            registration.validate_element(elem)
     collector = phase_collector if phase_collector is not None else _NULL_PHASE_COLLECTOR
     with collector.phase(PHASE_ELEMENT_STIFFNESS_MATRICES):
         stiff = [elem.element_stiffness_matrix() for elem in elements]
@@ -503,6 +509,8 @@ def build_formulation_cache(
     from .formulation_validation import validate_formulation_cache_shapes
 
     validate_formulation_cache_shapes(cache)
+    if registration.validate_cache is not None:
+        registration.validate_cache(cache)
     return cache
 
 
