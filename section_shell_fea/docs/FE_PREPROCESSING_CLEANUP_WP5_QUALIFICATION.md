@@ -136,3 +136,22 @@ Full `section_shell_fea` package: 573 passed, 1 pre-existing failure
 (`test_shell_midline_strip_contract.py::test_solver_and_strip_mesh_agree_on_panel_element_counts`
 — a CalculiX CCX cap-tie data-setup issue present in the prior `lastfailed` cache,
 unrelated to WP1–WP5).
+
+## Deferred FE follow-ons (out of dirty-tree triage)
+
+These items stay **explicitly deferred** — they do not enter the BSU /
+stiffness-selection / CDFAM commit stack. Compatibility shims remain registered
+until **2026-11-30**.
+
+| Follow-on | Status | Boundary |
+|---|---|---|
+| Relocate `traction_face_load` helpers with warning shims | Deferred | Keep current homes; move only with a registered expiry shim |
+| Relocate `shear_centre_loading_axis` with warning shims | Deferred | Same shim policy as mesh/loading compatibility layer |
+| MITC4 `validate_element` / `validate_cache` hooks | Deferred | Leave `None` until live-element/cache hook semantics and exact validators are specified |
+| Retire `_ELEMENT_FACTORY_REGISTRY` façade | Deferred | Requires governance text that distinguishes native formulation registration from external CalculiX solve dispatch |
+| Delete `pre_processing/mesh` and `pre_processing/loading` shims | **Not in scope** | Shims stay; registered expiry **2026-11-30** |
+
+Preserved shim presence (must remain until expiry):
+
+- `pre_processing/mesh/` (e.g. `shell_mesh_map.py` re-export)
+- `pre_processing/loading/` (package + thin-wall / outline_frames / io re-exports)
