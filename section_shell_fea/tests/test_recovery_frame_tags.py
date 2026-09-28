@@ -183,14 +183,14 @@ def test_recovery_bundle_pierce_frame_is_b():
 
 
 def test_global_node_meta_and_load_request_pierce_frame():
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-        GlobalNodeMeta,
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+        SectionNodeAssemblyMetadata,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.load_channel_types import (
         SectionExternalLoadRequest,
     )
 
-    meta = GlobalNodeMeta(
+    meta = SectionNodeAssemblyMetadata(
         n_nodes=1,
         yz=np.zeros((1, 2)),
         is_top=np.zeros(1, dtype=bool),
@@ -200,7 +200,7 @@ def test_global_node_meta_and_load_request_pierce_frame():
     )
     assert meta.frame == FRAME_B
     with pytest.raises(ValueError, match="FEA-R-002"):
-        GlobalNodeMeta(
+        SectionNodeAssemblyMetadata(
             n_nodes=1,
             yz=np.zeros((1, 2)),
             is_top=np.zeros(1, dtype=bool),

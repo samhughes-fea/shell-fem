@@ -23,7 +23,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     panel_abd_tuple_from_lam,
     panel_constitutive_spec_from_lam,
 )
-from ..mesh.shell_mesh_map import PanelGlobalMap
+from ..mesh.panel_node_assembly import PanelNodeAssemblyMap
 from .shell_element_base import ShellElementBase
 from .phase_timing import (
     PHASE_ELEMENT_FORCE_VECTORS,
@@ -89,7 +89,7 @@ class ShellElementFactory(ABC):
     @abstractmethod
     def iter_elements(
         self,
-        panel_maps: list[PanelGlobalMap],
+        panel_maps: list[PanelNodeAssemblyMap],
         zones: list[Any],
         Nx_panels: list[NDArray[np.float64]],
         Nxy_panels: list[NDArray[np.float64]],
@@ -150,7 +150,7 @@ def __getattr__(name: str) -> Any:
 
 
 def _panel_load_totals_from_forces(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     force_objects: list,
     *,
     n_dof_node: int,
@@ -174,7 +174,7 @@ def _panel_load_totals_from_forces(
     return totals
 
 
-def _panel_abd_stacks(panel_maps: list[PanelGlobalMap], zones: list[Any]) -> list[tuple]:
+def _panel_abd_stacks(panel_maps: list[PanelNodeAssemblyMap], zones: list[Any]) -> list[tuple]:
     from blade_structure_utilities.material_utilities.isotropic import IsotropicMaterial
 
     stacks: list[tuple] = []
@@ -196,7 +196,7 @@ def _panel_abd_stacks(panel_maps: list[PanelGlobalMap], zones: list[Any]) -> lis
     return stacks
 
 
-def _panel_laminates(panel_maps: list[PanelGlobalMap], zones: list[Any]) -> list[Any]:
+def _panel_laminates(panel_maps: list[PanelNodeAssemblyMap], zones: list[Any]) -> list[Any]:
     """Resolve each panel's laminate to a full ``LaminateDefinition`` for post-solve reuse.
 
     Mirrors the object resolution already done inside ``panel_abd_tuple_from_lam``
@@ -309,7 +309,7 @@ def _panel_strength_fields(lam: Any) -> tuple[float, float, float, float]:
 
 
 def _panel_constitutive_metadata(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     zones: list[Any],
 ) -> tuple[list[PanelConstitutiveKind], list[float], list[float], list[float], list[float]]:
     """Per-panel kind + σ_y / σ_uts / σ_ucs / τ_us [Pa].
@@ -347,7 +347,7 @@ def _panel_constitutive_metadata(
 
 
 def _typed_panel_constitutive_specs(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     panel_laminates: list[Any],
     kinds: list[PanelConstitutiveKind],
     sigma_y_pa: list[float],
@@ -377,7 +377,7 @@ def _typed_panel_constitutive_specs(
 
 def fill_global_dof_indices(
     cache: ShellFormulationCache,
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
 ) -> None:
     n = cache.n_dof_node
     for stiff, force in zip(cache.stiffness_objects, cache.force_objects):
@@ -393,7 +393,7 @@ def fill_global_dof_indices(
 
 
 def build_formulation_cache(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     zones: list[Any],
     Nx_panels: list[NDArray[np.float64]],
     Nxy_panels: list[NDArray[np.float64]],

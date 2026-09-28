@@ -13,7 +13,7 @@ __all__ = [
     'DiagnosticsBin',
     'LinearBucklingCascadeResult',
     'run_section_linear_buckling_from_static',
-    'ShellPanelTopology',
+    'BoundSectionShellInputs',
     'extract_shell_full_element_results',
 ]
 
@@ -45,10 +45,10 @@ def __getattr__(name: str) -> Any:
             'LinearBucklingCascadeResult': LinearBucklingCascadeResult,
             'run_section_linear_buckling_from_static': run_section_linear_buckling_from_static,
         }[name]
-    if name == 'ShellPanelTopology':
-        from .pre_processing.mesh.api.shell_panel_topology import ShellPanelTopology
+    if name == 'BoundSectionShellInputs':
+        from .pre_processing.mesh.api.bound_section_shell_inputs import BoundSectionShellInputs
 
-        return ShellPanelTopology
+        return BoundSectionShellInputs
     if name == 'extract_shell_full_element_results':
         from .interface.full_element_results import extract_shell_full_element_results
 

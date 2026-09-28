@@ -13,8 +13,8 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     W,
     gdof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    PanelNodeAssemblyMap,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.types import (
     Constraints,
@@ -22,7 +22,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
 
 
 def build_cluster_basis_constraints(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     zones: list,
     clusters: list[list[tuple[int, str, np.ndarray]]],
     endpoint_cluster_node: dict[tuple[int, str, str], int],
@@ -40,7 +40,7 @@ def build_cluster_basis_constraints(
     node; the in-plane (u_s, w) and tangential rotation beta_s are mapped by the
     2-D rotation between each panel tangent and the cluster reference tangent.
     """
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
         normal_2d,
         panel_end_tangent,
     )

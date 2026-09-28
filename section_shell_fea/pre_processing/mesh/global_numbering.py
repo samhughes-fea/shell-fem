@@ -1,7 +1,7 @@
 """Global node assignment and cluster topology helpers.
 
 These helpers are parameterised by ``ndof`` and operate purely on
-:class:`PanelGlobalMap` / cluster topology. They do not construct MPCs or
+:class:`PanelNodeAssemblyMap` / cluster topology. They do not construct MPCs or
 supports; constraint ownership lives in ``processing.static.constraints``.
 """
 
@@ -17,8 +17,8 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     W,
     gdof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    PanelNodeAssemblyMap,
 )
 
 DEFAULT_BC_MODE = "contour_support"
@@ -40,7 +40,7 @@ def is_contour_support(bc_mode: str) -> bool:
 
 
 def assign_global_nodes_shared(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     clusters: list[list[tuple[int, str, np.ndarray]]],
 ) -> int:
     """Shared-node numbering: coincident panel endpoints share global nodes.
@@ -77,7 +77,7 @@ def assign_global_nodes_shared(
     return next_node
 
 
-def assign_global_nodes_independent(panel_maps: list[PanelGlobalMap]) -> int:
+def assign_global_nodes_independent(panel_maps: list[PanelNodeAssemblyMap]) -> int:
     """Unshared numbering: every panel node is unique (no junction coupling)."""
     next_node = 0
     for pm in panel_maps:
@@ -90,7 +90,7 @@ def assign_global_nodes_independent(panel_maps: list[PanelGlobalMap]) -> int:
 
 
 def assign_global_nodes_cluster_basis(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     clusters: list[list[tuple[int, str, np.ndarray]]],
 ) -> dict[str, object]:
     """Cluster-basis (transformed_basis) numbering for non-collinear junctions.
@@ -142,7 +142,7 @@ def _kind_from_panel_label(label: object) -> str:
 
 def cluster_is_kind_crossing(
     cluster: list[tuple[int, str, np.ndarray]],
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
 ) -> bool:
     """True when a junction cluster joins ≥2 distinct component kinds."""
     kinds: set[str] = set()
@@ -155,7 +155,7 @@ def cluster_is_kind_crossing(
 
 
 def assign_global_nodes_hybrid_tb_clusters(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     clusters: list[list[tuple[int, str, np.ndarray]]],
     use_tb_flags: dict[int, bool],
 ) -> dict[str, object]:
@@ -226,7 +226,7 @@ def assign_global_nodes_hybrid_tb_clusters(
 
 
 def assign_global_nodes_hybrid_collinear(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     clusters: list[list[tuple[int, str, np.ndarray]]],
     cluster_is_collinear_flags: dict[int, bool],
 ) -> dict[str, object]:
@@ -244,7 +244,7 @@ def assign_global_nodes_hybrid_collinear(
 
 
 def assign_global_nodes_hybrid_kind_crossing(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     clusters: list[list[tuple[int, str, np.ndarray]]],
     cluster_is_collinear_flags: dict[int, bool],
 ) -> dict[str, object]:
@@ -265,7 +265,7 @@ def assign_global_nodes_hybrid_kind_crossing(
 
 
 def build_shared_cluster_frame_rotations(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     zones: list,
     clusters: list[list[tuple[int, str, np.ndarray]]],
     cluster_is_collinear_flags: dict[int, bool],
@@ -276,7 +276,7 @@ def build_shared_cluster_frame_rotations(
     these rotations are applied as Ke congruence transforms so endpoint DOFs are
     interpreted in the cluster ``t_ref`` frame without allocating TB virtual refs.
     """
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
         normal_2d,
         panel_end_tangent,
     )
@@ -318,7 +318,7 @@ def build_shared_cluster_frame_rotations(
 
 def apply_shared_cluster_frame_to_cache(
     cache: Any,
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     endpoint_frame_R: dict[tuple[int, str], tuple[float, float, float, float]],
 ) -> int:
     """Congruence-transform Ke/Fe at flagged endpoints (panel → cluster frame).
@@ -387,7 +387,7 @@ def attach_cluster_node_meta(
     ``node_meta.constraints`` as a deprecated compatibility view.
     Mutates ``node_meta`` in place.
     """
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
         panel_end_tangent,
     )
 

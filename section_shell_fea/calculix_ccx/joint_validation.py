@@ -295,8 +295,8 @@ def build_capped_catalogue_fixture(
     from blade_structure_utilities.mesh_utilities.section_mesh import (
         build_section_strip_mesh,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-        shell_panel_topology_from_shell_inputs,
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+        bind_section_shell_inputs,
     )
 
     sys_type = resolve_system_type(layout)
@@ -322,7 +322,7 @@ def build_capped_catalogue_fixture(
     strip = build_section_strip_mesh(
         shell, target_element_length_frac=target_element_length_frac, endpoint_tol=1e-6
     )
-    zones = list(shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True).zones)
+    zones = list(bind_section_shell_inputs(shell, allow_demo_bind=True).zones)
     nx, nxy = _synthetic_loads(zones)
     return zones, nx, nxy, strip, shell
 
@@ -339,8 +339,8 @@ def run_mitc4_kind_peaks_from_shell(
     from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
         BeamResultantVector,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-        shell_panel_topology_from_shell_inputs,
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+        bind_section_shell_inputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
         SectionLinearStaticRunner,
@@ -350,7 +350,7 @@ def run_mitc4_kind_peaks_from_shell(
     )
 
     load = dict(load or {"T": 5.0e3, "Vy": 2.0e4, "Mz": 1.0e4})
-    topo = shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True)
+    topo = bind_section_shell_inputs(shell, allow_demo_bind=True)
     resultants = BeamResultantVector.from_named(**load)
     runner = SectionLinearStaticRunner(
         panel_topology=topo,

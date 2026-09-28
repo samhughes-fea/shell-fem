@@ -15,9 +15,9 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    GlobalNodeMeta,
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    SectionNodeAssemblyMetadata,
+    PanelNodeAssemblyMap,
 )
 from blade_structure_utilities.geometry_utilities.section_thin_wall_model import (
     COINCIDENCE_TOL_M,
@@ -185,10 +185,10 @@ def _locate_on_bonds(
 
 def _resolve_skin_panel(
     host_label: str,
-    skin_by_label: Mapping[str, PanelGlobalMap],
+    skin_by_label: Mapping[str, PanelNodeAssemblyMap],
     *,
     cap_label: str,
-) -> PanelGlobalMap:
+) -> PanelNodeAssemblyMap:
     key = panel_label_for_strip(kind="skin", label=str(host_label))
     if key in skin_by_label:
         return skin_by_label[key]
@@ -201,8 +201,8 @@ def _resolve_skin_panel(
 
 
 def _cap_tie_geometry_identity(
-    panel_maps: list[PanelGlobalMap],
-    node_meta: GlobalNodeMeta,
+    panel_maps: list[PanelNodeAssemblyMap],
+    node_meta: SectionNodeAssemblyMetadata,
     *,
     shell_midlines: Sequence[Any] | None,
     cap_kind: str,
@@ -271,8 +271,8 @@ def clear_cap_tie_geometry_cache() -> None:
 
 
 def build_cap_skin_ties(
-    panel_maps: list[PanelGlobalMap],
-    node_meta: GlobalNodeMeta,
+    panel_maps: list[PanelNodeAssemblyMap],
+    node_meta: SectionNodeAssemblyMetadata,
     *,
     shell_midlines: Sequence[Any] | None = None,
     cap_kind: str = "cap",

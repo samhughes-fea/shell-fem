@@ -1,4 +1,4 @@
-"""Compat shim — import from ``pre_processing.mesh.shell_mesh_map``."""
+"""Compat shim — import from ``pre_processing.mesh.panel_node_assembly``."""
 
 from __future__ import annotations
 
@@ -6,15 +6,15 @@ import warnings
 
 warnings.warn(
     "Import shell_mesh_map from "
-    "blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map.",
+    "blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly.",
     DeprecationWarning,
     stacklevel=2,
 )
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (  # noqa: E402,F401
-    GlobalNodeMeta,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (  # noqa: E402,F401
     PanelElementCountSpec,
-    PanelGlobalMap,
+    PanelNodeAssemblyMap,
+    SectionNodeAssemblyMetadata,
     build_panel_mesh_maps,
     cluster_is_collinear,
     cluster_points,
@@ -32,10 +32,15 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
     strip_membership_from_node_meta,
 )
 
+PanelGlobalMap = PanelNodeAssemblyMap
+GlobalNodeMeta = SectionNodeAssemblyMetadata
+
 __all__ = [
     "GlobalNodeMeta",
     "PanelElementCountSpec",
     "PanelGlobalMap",
+    "PanelNodeAssemblyMap",
+    "SectionNodeAssemblyMetadata",
     "build_panel_mesh_maps",
     "cluster_is_collinear",
     "cluster_points",

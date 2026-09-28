@@ -40,8 +40,8 @@ from blade_structure_utilities.geometry_utilities.section_geometry.api.factory i
 from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import (
     AirfoilSDF,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-    shell_panel_topology_from_shell_inputs,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+    bind_section_shell_inputs,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
     SectionLinearStaticRunner,
@@ -510,7 +510,7 @@ def run_cascade_at_frac(
 
     resultants = BeamResultantVector.from_named(**load)
     runner = SectionLinearStaticRunner(
-        panel_topology=shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True),
+        panel_topology=bind_section_shell_inputs(shell, allow_demo_bind=True),
         section_strip_mesh=mesh,
         resultants=resultants,
         section_force_vector=shape_section_force_vector(resultants, shell.midlines, cell_wall_loops=shell.cell_wall_loops),

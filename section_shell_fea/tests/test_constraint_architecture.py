@@ -31,8 +31,8 @@ from blade_structure_utilities.mesh_utilities.section_mesh import (
 from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
     shell_mesh_inputs_from_section,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-    shell_panel_topology_from_shell_inputs,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+    bind_section_shell_inputs,
 )
 
 
@@ -64,7 +64,7 @@ def _5df_topology_and_mesh():
         section, twist_rad=twist, layout_key="5D-F", n_web_samples=20, n_cap_samples=80
     )
     mesh = build_section_strip_mesh(shell, target_element_length_frac=0.024, endpoint_tol=1e-6)
-    topology = shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True)
+    topology = bind_section_shell_inputs(shell, allow_demo_bind=True)
     return topology, mesh, shell
 
 

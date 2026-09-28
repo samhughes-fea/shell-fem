@@ -14,13 +14,13 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
     DEFAULT_BC_MODE,
     normalize_bc_mode,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    PanelNodeAssemblyMap,
 )
 
 
 def build_cluster_basis_supports(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     endpoint_cluster_index: dict[tuple[int, str], int],
     cluster_layer_node: dict[tuple[int, str], int],
     cluster_layer_rot_node: dict[tuple[int, str], int],
@@ -57,7 +57,7 @@ def build_cluster_basis_supports(
 
 
 def build_hybrid_collinear_supports(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     endpoint_cluster_index: dict[tuple[int, str], int],
     cluster_layer_node: dict[tuple[int, str], int],
     cluster_layer_rot_node: dict[tuple[int, str], int],
@@ -100,7 +100,7 @@ def build_hybrid_collinear_supports(
 
 
 def build_clamp_supports(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     *,
     ndof: int,
     bc_mode: str = DEFAULT_BC_MODE,

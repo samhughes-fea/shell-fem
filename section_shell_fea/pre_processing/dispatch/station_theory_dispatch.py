@@ -231,8 +231,8 @@ def dispatch_fsdt_demo_convenience(
         UserWarning,
         stacklevel=2,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-        shell_panel_topology_from_shell_inputs,
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+        bind_section_shell_inputs,
     )
     from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
         BEAM_LOAD_AXIS_YZ,
@@ -257,7 +257,7 @@ def dispatch_fsdt_demo_convenience(
 
     panel_topology = request.panel_topology
     if panel_topology is None:
-        panel_topology = shell_panel_topology_from_shell_inputs(
+        panel_topology = bind_section_shell_inputs(
             request.shell_inputs,
             section=request.section_view,
             allow_demo_bind=True,

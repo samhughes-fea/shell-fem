@@ -9,6 +9,7 @@ from blade_structure_utilities.geometry_utilities.section_contract.beam_resultan
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
+    demo_multicell_section,
     equipollent_section_force_vector,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.api.linear_static import (
@@ -78,7 +79,7 @@ def test_station_analysis_sees_cascade_shell_resultants() -> None:
     )
     sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
     analysis = build_fsdt_station_analysis(
-        panel_topology.section,
+        demo_multicell_section("2412", [0.35], chord_m=1.0),
         panel_topology.shell_inputs,
         z_station=0.35,
         My=1.0e3,

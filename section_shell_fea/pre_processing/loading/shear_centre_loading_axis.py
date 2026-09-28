@@ -83,7 +83,7 @@ def shear_centre_about_yz_from_panel_topology(
     ]
     if not skins:
         raise ValueError(
-            "shear_centre_about_yz_from_panel_topology: no skin midline on ShellPanelTopology"
+            "shear_centre_about_yz_from_panel_topology: no skin midline on BoundSectionShellInputs"
         )
     m0 = skins[0]
     verts = np.asarray(

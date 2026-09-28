@@ -27,7 +27,7 @@ from numpy.typing import NDArray
 from blade_structure_utilities.fem_utilities.section_shell_fea.validation.section_centroid import (
     compute_elastic_centroid_from_panels,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
     panel_maps_from_section_strip_mesh,
 )
 

@@ -32,12 +32,12 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
     panel_maps_from_section_strip_mesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (
     _NDOF_NODE,
-    _PanelGlobalMap,
+    _PanelNodeAssemblyMap,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh
 
@@ -64,7 +64,7 @@ def _panel_maps_and_loads(*, n_elements_per_panel: int = 3):
             gn[i] = next_g
             next_g += 1
         panel_maps.append(
-            _PanelGlobalMap(pm.s_nodes, pm.elements, gn, pm.panel_label, pm.panel_index)
+            _PanelNodeAssemblyMap(pm.s_nodes, pm.elements, gn, pm.panel_label, pm.panel_index)
         )
     return panel_maps, zones, nx, nxy
 

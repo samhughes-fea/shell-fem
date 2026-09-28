@@ -17,12 +17,12 @@ from blade_structure_utilities.material_utilities.laminate import (
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (
     _NDOF_NODE,
-    _PanelGlobalMap,
+    _PanelNodeAssemblyMap,
     _coo_triplets_from_ke,
     _dof,
     panel_abd_tuple_from_lam,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
     panel_maps_from_section_strip_mesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.section_assembly import assemble_section_system
@@ -130,7 +130,7 @@ def test_formulation_cache_matches_legacy_inline_assembly():
             gn[i] = next_g
             next_g += 1
         panel_maps.append(
-            _PanelGlobalMap(pm.s_nodes, pm.elements, gn, pm.panel_label, pm.panel_index)
+            _PanelNodeAssemblyMap(pm.s_nodes, pm.elements, gn, pm.panel_label, pm.panel_index)
         )
     n_gdof = next_g * _NDOF_NODE
 

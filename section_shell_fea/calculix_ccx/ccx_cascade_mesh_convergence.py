@@ -16,8 +16,8 @@ import numpy as np
 from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
     BeamResultantVector,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-    shell_panel_topology_from_shell_inputs,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+    bind_section_shell_inputs,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.cascade_mesh_convergence import (
     DEFAULT_CHORD,
@@ -119,7 +119,7 @@ def run_ccx_cascade_at_frac(
     n_elem_mesh = {k: report.per_kind[k].n_elements for k in report.per_kind}
     h_m = float(frac) * float(chord)
 
-    topo = shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True)
+    topo = bind_section_shell_inputs(shell, allow_demo_bind=True)
     zones = list(topo.zones)
     resultants = BeamResultantVector.from_named(**load)
     sfv = shape_section_force_vector(resultants, shell.midlines, cell_wall_loops=shell.cell_wall_loops, L_x=float(l_x))

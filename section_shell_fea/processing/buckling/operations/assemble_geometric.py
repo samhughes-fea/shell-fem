@@ -15,8 +15,8 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.kernel import (
     resolve_kernel,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    PanelNodeAssemblyMap,
 )
 
 
@@ -42,7 +42,7 @@ def assemble_panel_geometric_stiffness(
     )
 
 
-def _element_L_s(pm: PanelGlobalMap, local_element_index: int) -> float:
+def _element_L_s(pm: PanelNodeAssemblyMap, local_element_index: int) -> float:
     elems = pm.elements or []
     if not (0 <= local_element_index < len(elems)):
         return 0.0
@@ -53,7 +53,7 @@ def _element_L_s(pm: PanelGlobalMap, local_element_index: int) -> float:
 
 def assemble_section_geometric_stiffness(
     cache: ShellFormulationCache,
-    panel_maps: Sequence[PanelGlobalMap],
+    panel_maps: Sequence[PanelNodeAssemblyMap],
     prestress_by_element: Mapping[tuple[int, int], tuple[float, float, float]],
     n_gdof: int,
     *,

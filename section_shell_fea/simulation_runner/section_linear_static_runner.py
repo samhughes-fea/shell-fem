@@ -21,8 +21,8 @@ from blade_structure_utilities.geometry_utilities.section_contract.shell_midline
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.formulation_objects import ShellFormulationCache
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-    ShellPanelTopology,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+    BoundSectionShellInputs,
 )
 from blade_structure_utilities.load_utilities.section_loads import (
     MaterialMap,
@@ -184,7 +184,7 @@ class SectionLinearStaticRunner:
     def __init__(
         self,
         *,
-        panel_topology: ShellPanelTopology | None = None,
+        panel_topology: BoundSectionShellInputs | None = None,
         resultants: BeamResultantVector | None = None,
         N: float = 0.0,
         Vy: float = 0.0,

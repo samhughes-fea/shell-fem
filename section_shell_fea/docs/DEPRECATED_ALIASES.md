@@ -32,8 +32,11 @@ inbound usage is zero.
 | `SectionLinearStaticRunner(about_yz=...)` | `about_xy=...` | `simulation_runner/section_linear_static_runner.py` | **warns** |
 | `BeamResultantVector.about_yz` / `.with_about_yz` | `.about_xy` / `.with_about_xy` | `section_contract/beam_resultant_vector.py` | **warns** |
 | `SectionDeformationAverage1a.about_yz` | `.about_xy` | `processing/static/results/compute_primary/section_deformation_average.py` | **warns** |
-| `build_shell_panel_topology` | build `ShellMeshInputs` via mesh handoff, then `shell_panel_topology_from_shell_inputs` | `pre_processing/mesh/api/shell_panel_topology.py` | **warns** (tests still use factory wrapper) |
-| `ShellPanelTopology.panels` | `.zones` | same | **warns** |
+| `build_shell_panel_topology` | `build_demo_bound_section_shell_inputs` (demo/test) | `pre_processing/mesh/api/shell_panel_topology.py` shim | **warns** |
+| `ShellPanelTopology` / `shell_panel_topology_from_shell_inputs` | `BoundSectionShellInputs` / `bind_section_shell_inputs` | `api/bound_section_shell_inputs.py` | **warns** (2027-03-31) |
+| `PanelGlobalMap` / `GlobalNodeMeta` | `PanelNodeAssemblyMap` / `SectionNodeAssemblyMetadata` | `panel_node_assembly.py` | **warns** (2027-03-31) |
+| `ConnectedPanelTopology` / `build_connected_panel_maps` | `SectionShellAssemblyMap` / `build_section_shell_assembly_map` | `section_shell_assembly_map.py` | **warns** (2027-03-31) |
+| `BoundSectionShellInputs.panels` / legacy `ShellPanelTopology.panels` | `.zones` | `bound_section_shell_inputs.py` | **warns** |
 | `ThinWallResult.panels` / related `.panels` | `.zones` | FE result types | **warns** / migrate |
 | Scalar `N,Vy,Vz,M22,Mz,T` kwargs alone | `resultants=BeamResultantVector` | `SectionLinearStaticRunner` | **silent** (centroid-referenced) |
 | `SectionShellRecoveryBundle.y_sc` / `.z_sc` | `.y_e` / `.z_e` (elastic centroid, **not** shear centre) | `station_analysis_types.py` | **silent** dual-write |

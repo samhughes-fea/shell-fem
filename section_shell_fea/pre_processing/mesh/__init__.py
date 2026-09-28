@@ -1,7 +1,7 @@
 """FE mesh adaptation over BSU ``mesh_utilities.section_mesh``.
 
 Internal home for FE maps, global numbering, junction clustering, and
-``ShellPanelTopology``. Strip-mesh generation and typed handoff remain owned by
+``BoundSectionShellInputs``. Strip-mesh generation and typed handoff remain owned by
 the public ``mesh_utilities.section_mesh`` barrel. Callers supply
 ``SectionStripMesh`` / ``ShellStripMeshingInputs``; this package must not execute
 ``SectionMeshRunner``.
@@ -9,14 +9,12 @@ the public ``mesh_utilities.section_mesh`` barrel. Callers supply
 
 from __future__ import annotations
 
-from .api.shell_panel_topology import (
-    ShellPanelTopology,
-    TaperedShellPanelTopology,
-    build_shell_panel_topology,
-    build_tapered_shell_panel_topology,
-    shell_panel_topology_from_shell_inputs,
+from .api.bound_section_shell_inputs import (
+    BoundSectionShellInputs,
+    TaperedBoundSectionShellInputs,
+    bind_section_shell_inputs,
 )
-from .connected_panel_topology import ConnectedPanelTopology, build_connected_panel_maps
+from .section_shell_assembly_map import SectionShellAssemblyMap, build_section_shell_assembly_map
 from .global_numbering import (
     DEFAULT_BC_MODE,
     apply_shared_cluster_frame_to_cache,
@@ -33,10 +31,10 @@ from .global_numbering import (
     is_contour_support,
     normalize_bc_mode,
 )
-from .shell_mesh_map import (
-    GlobalNodeMeta,
+from .panel_node_assembly import (
     PanelElementCountSpec,
-    PanelGlobalMap,
+    PanelNodeAssemblyMap,
+    SectionNodeAssemblyMetadata,
     build_panel_mesh_maps,
     cluster_is_collinear,
     cluster_points,
@@ -55,13 +53,11 @@ from .shell_mesh_map import (
 )
 
 __all__ = [
-    "ShellPanelTopology",
-    "TaperedShellPanelTopology",
-    "build_shell_panel_topology",
-    "build_tapered_shell_panel_topology",
-    "shell_panel_topology_from_shell_inputs",
-    "ConnectedPanelTopology",
-    "build_connected_panel_maps",
+    "BoundSectionShellInputs",
+    "TaperedBoundSectionShellInputs",
+    "bind_section_shell_inputs",
+    "SectionShellAssemblyMap",
+    "build_section_shell_assembly_map",
     "DEFAULT_BC_MODE",
     "apply_shared_cluster_frame_to_cache",
     "assign_global_nodes_cluster_basis",
@@ -76,9 +72,9 @@ __all__ = [
     "cluster_is_kind_crossing",
     "is_contour_support",
     "normalize_bc_mode",
-    "GlobalNodeMeta",
     "PanelElementCountSpec",
-    "PanelGlobalMap",
+    "PanelNodeAssemblyMap",
+    "SectionNodeAssemblyMetadata",
     "build_panel_mesh_maps",
     "cluster_is_collinear",
     "cluster_points",

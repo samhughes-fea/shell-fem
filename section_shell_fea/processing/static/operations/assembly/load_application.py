@@ -29,7 +29,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from blade_structure_utilities.load_utilities.section_loads import SectionForceVector
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
     normal_2d,
     strip_identity_at_node,
 )
@@ -151,11 +151,11 @@ def section_force_vector_to_nodal_load(
     Parameters
     ----------
     node_meta
-        ``GlobalNodeMeta`` (node tangents define each node's ``(u_s, w)``).
+        ``SectionNodeAssemblyMetadata`` (node tangents define each node's ``(u_s, w)``).
     sfv
         The contour force field; sample labels are strip labels.
     panel_maps, zones
-        The assembly's ``PanelGlobalMap`` list and the zones it was built from
+        The assembly's ``PanelNodeAssemblyMap`` list and the zones it was built from
         (aligned): each panel's ``s_nodes``, bottom/top ``global_nodes`` and polyline.
     L_x
         Station length [m] the densities are integrated over.

@@ -16,11 +16,11 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.convergence.grid_independence_study import (
     load_cotide_station_recipe,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.connected_panel_topology import (
-    build_connected_panel_maps,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.section_shell_assembly_map import (
+    build_section_shell_assembly_map,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-    shell_panel_topology_from_shell_inputs,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+    bind_section_shell_inputs,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh
 
@@ -43,9 +43,9 @@ def main() -> int:
         naca_dat=kw.get("naca_dat"),
     )
     mesh = build_section_strip_mesh(shell, target_element_length_frac=FRAC)
-    topo_shell = shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True)
+    topo_shell = bind_section_shell_inputs(shell, allow_demo_bind=True)
     zones = list(topo_shell.zones)
-    conn = build_connected_panel_maps(
+    conn = build_section_shell_assembly_map(
         zones,
         endpoint_tol=1e-6,
         interface_constraint_mode="shared",

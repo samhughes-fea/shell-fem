@@ -48,7 +48,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topo
     build_shell_panel_topology,
 )
 from blade_structure_utilities.mesh_utilities.section_mesh import build_section_strip_mesh
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
     panel_maps_from_section_strip_mesh,
 )
 

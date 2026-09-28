@@ -7,8 +7,8 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    PanelNodeAssemblyMap,
     clusters_from_section_strip_mesh,
     panel_maps_from_section_strip_mesh,
     interp_yz_nodes,
@@ -16,7 +16,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
 
 
 def _assign_shared_nodes(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     clusters: list[list[tuple[int, str, np.ndarray]]],
 ) -> int:
     """Assign global node ids with shared junction nodes at endpoint clusters.
@@ -50,7 +50,7 @@ def _assign_shared_nodes(
     return next_global_node
 
 
-def _assign_unique_nodes(panel_maps: list[PanelGlobalMap]) -> int:
+def _assign_unique_nodes(panel_maps: list[PanelNodeAssemblyMap]) -> int:
     """Assign every panel node a unique global id (no shared junctions)."""
     next_global_node = 0
     for pm in panel_maps:
@@ -78,7 +78,7 @@ class CcxSectionMesh:
     elements: list[CcxElement]
     elsets: dict[str, list[int]]
     nsets: dict[str, list[int]]
-    panel_maps: list[PanelGlobalMap]
+    panel_maps: list[PanelNodeAssemblyMap]
     clusters: list[list[tuple[int, str, np.ndarray]]]
     n_global_nodes: int
     l_x: float = 1.0

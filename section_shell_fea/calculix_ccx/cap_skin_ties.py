@@ -16,8 +16,8 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    PanelNodeAssemblyMap,
     interp_yz_nodes,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
@@ -69,7 +69,7 @@ def _ccx_id(mesh: CcxSectionMesh, gn: int) -> int | None:
     return mesh.global_to_ccx_node.get(int(gn))
 
 
-def _owner_count(panel_maps: list[PanelGlobalMap]) -> dict[int, int]:
+def _owner_count(panel_maps: list[PanelNodeAssemblyMap]) -> dict[int, int]:
     counts: dict[int, int] = {}
     for pm in panel_maps:
         for gn in set(int(g) for g in pm.global_nodes if int(g) >= 0):
@@ -78,7 +78,7 @@ def _owner_count(panel_maps: list[PanelGlobalMap]) -> dict[int, int]:
 
 
 def _skin_polyline(
-    skin: PanelGlobalMap,
+    skin: PanelNodeAssemblyMap,
     zones: list,
     *,
     layer: str,
@@ -99,7 +99,7 @@ def _skin_polyline(
     return gids, pts
 
 
-def _median_element_length(mesh: CcxSectionMesh, zones: list, skin_maps: list[PanelGlobalMap]) -> float:
+def _median_element_length(mesh: CcxSectionMesh, zones: list, skin_maps: list[PanelNodeAssemblyMap]) -> float:
     lengths: list[float] = []
     for skin in skin_maps:
         s = np.asarray(skin.s_nodes, dtype=float)

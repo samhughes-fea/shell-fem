@@ -1,7 +1,7 @@
 """Compat alias — import FE mesh adaptation from ``pre_processing.mesh``.
 
 Logic-free warning aliases for one migration cycle. Canonical home is
-``pre_processing.mesh`` (FE maps, numbering, ``ShellPanelTopology``).
+``pre_processing.mesh`` (FE maps, numbering, ``BoundSectionShellInputs``).
 """
 
 from __future__ import annotations
@@ -17,17 +17,13 @@ warnings.warn(
 )
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh import (  # noqa: E402,F401
-    ShellPanelTopology,
-    TaperedShellPanelTopology,
-    build_shell_panel_topology,
-    build_tapered_shell_panel_topology,
-    shell_panel_topology_from_shell_inputs,
+    BoundSectionShellInputs,
+    TaperedBoundSectionShellInputs,
+    bind_section_shell_inputs,
 )
 
 __all__ = [
-    "ShellPanelTopology",
-    "TaperedShellPanelTopology",
-    "build_shell_panel_topology",
-    "build_tapered_shell_panel_topology",
-    "shell_panel_topology_from_shell_inputs",
+    "BoundSectionShellInputs",
+    "TaperedBoundSectionShellInputs",
+    "bind_section_shell_inputs",
 ]

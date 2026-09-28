@@ -13,8 +13,8 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    PanelNodeAssemblyMap,
     clusters_from_section_strip_mesh,
     panel_maps_from_section_strip_mesh,
     interp_yz_nodes,
@@ -41,7 +41,7 @@ class CcxRootSegmentMesh:
     elements: list[CcxRootElement]
     elsets: dict[str, list[int]]
     nsets: dict[str, list[int]]
-    panel_maps: list[PanelGlobalMap]
+    panel_maps: list[PanelNodeAssemblyMap]
     clusters: list[list[tuple[int, str, np.ndarray]]]
     span_coords: np.ndarray  # node-layer x positions, shape (n_layers,)
     n_span_rows: int
@@ -69,7 +69,7 @@ def estimate_root_diameter_m(zones: list[Any]) -> float:
 
 
 def _layer_node_assignment(
-    panel_maps: list[PanelGlobalMap],
+    panel_maps: list[PanelNodeAssemblyMap],
     clusters: list[list[tuple[int, str, np.ndarray]]],
     *,
     shared: bool,
@@ -126,7 +126,7 @@ def _interp_yz_normalized(s_nodes_ref: np.ndarray, panel: Any) -> np.ndarray:
 
 def _yz_for_panel_layer(
     zones: list[Any],
-    pm: PanelGlobalMap,
+    pm: PanelNodeAssemblyMap,
     *,
     station_panels: list[list[Any]] | None,
     layer_index: int,

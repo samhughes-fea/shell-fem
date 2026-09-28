@@ -20,8 +20,8 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    PanelNodeAssemblyMap,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.buckling.operations.assemble_geometric import (
     assemble_section_geometric_stiffness,
@@ -183,7 +183,7 @@ class SectionLinearBucklingRunner:
         self.K_global: sp.spmatrix | None = None
         self.T: sp.spmatrix | None = None
         self.cache: ShellFormulationCache | None = None
-        self.panel_maps: list[PanelGlobalMap] = []
+        self.panel_maps: list[PanelNodeAssemblyMap] = []
         self.nested_resultants: list[list[ShellPanelResultants]] = []
         self.L_x: float = 1.0
         self.n_gdof: int = 0
@@ -227,7 +227,7 @@ class SectionLinearBucklingRunner:
         K_global: sp.spmatrix,
         T: sp.spmatrix,
         cache: ShellFormulationCache,
-        panel_maps: Sequence[PanelGlobalMap],
+        panel_maps: Sequence[PanelNodeAssemblyMap],
         nested_resultants: Sequence[Sequence[ShellPanelResultants]],
         panel_inputs: Sequence[ShellPanelBucklingInput],
         n_gdof: int,

@@ -14,6 +14,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
     build_shell_panel_topology,
+    demo_multicell_section,
     equipollent_section_force_vector,
 )
 from blade_structure_utilities.geometry_utilities.section_contract.beam_resultant_vector import (
@@ -255,7 +256,7 @@ def test_enable_buckling_attaches_to_station_analysis() -> None:
     )
     sfv = shape_section_force_vector_from_panel_topology(resultants, panel_topology)
     analysis = build_fsdt_station_analysis(
-        panel_topology.section,
+        demo_multicell_section("2412", [0.35], chord_m=1.0),
         panel_topology.shell_inputs,
         z_station=0.35,
         My=1.0e3,

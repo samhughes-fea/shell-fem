@@ -106,8 +106,8 @@ def test_transformed_basis_composer_adds_junction_equations(assembled_5df):
     from blade_structure_utilities.mesh_utilities.section_mesh.handoff._section_to_shell_inputs import (
         shell_mesh_inputs_from_section,
     )
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-        shell_panel_topology_from_shell_inputs,
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+        bind_section_shell_inputs,
     )
 
     twist = float(np.deg2rad(34.1))
@@ -126,7 +126,7 @@ def test_transformed_basis_composer_adds_junction_equations(assembled_5df):
         section, twist_rad=twist, layout_key="5D-F", n_web_samples=20, n_cap_samples=80
     )
     mesh = build_section_strip_mesh(shell, target_element_length_frac=0.012, endpoint_tol=1e-6)
-    zones = list(shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True).zones)
+    zones = list(bind_section_shell_inputs(shell, allow_demo_bind=True).zones)
     nx = [np.zeros(len(np.asarray(p.s, dtype=float))) for p in zones]
     nxy = [np.zeros_like(v) for v in nx]
     asm = assemble_section_from_zones(
