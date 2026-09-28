@@ -1,24 +1,34 @@
-# `reference_thin_wall/`
+# reference_thin_wall — FE Vlasov adaptation over BSU thin-wall theory
 
-FE **reference / Vlasov adapters** live here. These modules wrap the canonical
-thin-wall theory for the section-shell FE worker's pre-solve stage:
+Internal FE home for adapting BSU thin-wall / sectorial theory into FE
+pre-solve reference products and Vlasov result packaging.
 
-- `sectorial_warping.py` — open/closed sectorial coordinates and shear-centre
-  from thin-wall sectorial static moments.
-- `section_vlasov.py` — E-weighted closed-cell (Batho) sectorial warping,
-  warping constant `I_ω`, and warping normal-stress / shear-flow fields.
+↑ Parent: [`../README.md`](../README.md) · Package: [`../../README.md`](../../README.md)
 
-## Where the theory lives
+## Ownership
 
-The canonical thin-wall **theory** (ω increments, wall-graph sectorial warping,
-coincidence tolerance) remains in
-`geometry_utilities.section_thin_wall_model`. The adapters here delegate to it
-(TW-002) and must not reimplement it.
+| Package | Owns |
+|---------|------|
+| [`geometry_utilities.section_thin_wall_model`](../../../../geometry_utilities/section_thin_wall_model/README.md) | Sectorial / thin-wall theory kernel (`omega_increment`, `sectorial_warping`, Batho, `I_ω`); **no runner lifecycle** — call pure functions directly |
+| [`geometry_utilities.section_properties`](../../../../geometry_utilities/section_properties/README.md) reference-axes | Shear-centre kernels from midlines / loops |
+| **`pre_processing.reference_thin_wall` (this home)** | FE pre-solve adaptation and `SectionVlasovResult` packaging |
+| Public `section_shell_fea` barrel | Canonical worker export surface |
 
-## Migration note
+Do **not** introduce a `SectionThinWallModelRunner`. FE adapters call BSU
+deterministic functions. This package must not import FE `processing` or solve
+modules.
 
-These modules previously lived under
-`pre_processing/loading/thin_wall/`. That location is now a **time-bounded
-compatibility shim** that re-exports from here and emits a `DeprecationWarning`
-(deprecation register id `compat-fe-loading-thin-wall-shim`). Import from
-`reference_thin_wall` directly.
+`pre_processing/loading/thin_wall/` remains a warning-alias shim until
+**2026-11-30** (`compat-fe-loading-thin-wall-shim`).
+
+## Exact I/O
+
+| Path | Role |
+|------|------|
+| [`section_vlasov.py`](section_vlasov.py) | `compute_section_vlasov` → `SectionVlasovResult` (midlines path → BSU `sectorial_warping`) |
+| [`sectorial_warping.py`](sectorial_warping.py) | Open-polyline FE helpers over BSU `omega_increment` (outer-skin SC estimate) |
+
+## See also
+
+- [`../../../../geometry_utilities/section_thin_wall_model/README.md`](../../../../geometry_utilities/section_thin_wall_model/README.md)
+- [`../../docs/DEPRECATED_ALIASES.md`](../../docs/DEPRECATED_ALIASES.md)

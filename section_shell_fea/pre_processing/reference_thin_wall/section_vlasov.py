@@ -49,12 +49,12 @@ from blade_structure_utilities.geometry_utilities.coordinate_frames import (
 from blade_structure_utilities.geometry_utilities.section_thin_wall_model import (
     COINCIDENCE_TOL_M,
     graph_from_midlines,
-    omega_increment,
     sectorial_warping,
     wall_labels_from_loops,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.sectorial_warping import (
     open_outline_from_airfoil,
+    omega_vertices_open_chain,
     shear_center_outer_skin_loop,
 )
 
@@ -202,7 +202,7 @@ def compute_section_vlasov(
         n_cells = int(warp.n_cells)
         I_omega_E = float(warp.I_omega)
     else:
-        omega_open = _omega_vertices_open_chain(verts, y_sc, z_sc)
+        omega_open = omega_vertices_open_chain(verts, y_sc, z_sc)
         omega_hat_v, n_cells = _batho_correction(
             verts, omega_open, t_mean, web_feet, t_web
         )
@@ -276,22 +276,6 @@ def compute_section_vlasov(
 # ---------------------------------------------------------------------------
 # TW-002: wall-graph sectorial warping (kernel) + legacy outline Batho
 # ---------------------------------------------------------------------------
-
-def _omega_vertices_open_chain(verts: NDArray, yp: float, zp: float) -> NDArray:
-    """ω at vertices along path v0→…→v_{n-1} with ω[0]=0 (pole P)."""
-    n = len(verts)
-    omega = np.zeros(n, dtype=float)
-    for i in range(n - 1):
-        omega[i + 1] = omega[i] + omega_increment(
-            float(verts[i, 0]),
-            float(verts[i, 1]),
-            float(verts[i + 1, 0]),
-            float(verts[i + 1, 1]),
-            yp,
-            zp,
-        )
-    return omega
-
 
 def _map_omega_nodes_to_outline(
     verts: NDArray,
