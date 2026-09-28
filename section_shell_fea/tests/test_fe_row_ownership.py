@@ -40,7 +40,7 @@ BARREL_ALLOWLIST = frozenset(
         "DiagnosticsBin",
         "LinearBucklingCascadeResult",
         "run_section_linear_buckling_from_static",
-        "ShellPanelTopology",
+        "BoundSectionShellInputs",
         "extract_shell_full_element_results",
     }
 )
@@ -177,6 +177,6 @@ def test_barrel_allowlist() -> None:
     missing = BARREL_ALLOWLIST - exported
     assert not unexpected, f"barrel exports undeclared symbols: {sorted(unexpected)}"
     assert not missing, f"barrel missing documented symbols: {sorted(missing)}"
-    assert fea.ShellPanelTopology is not None
+    assert fea.BoundSectionShellInputs is not None
     assert fea.extract_shell_full_element_results is not None
     assert fea.SectionLinearStaticRunner is not None

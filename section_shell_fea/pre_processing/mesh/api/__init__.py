@@ -1,17 +1,13 @@
-"""Topology API: shell panel topology builders."""
+"""Public FE mesh adaptation API (bound inputs only in production)."""
 
-from .shell_panel_topology import (
-    ShellPanelTopology,
-    TaperedShellPanelTopology,
-    build_shell_panel_topology,
-    build_tapered_shell_panel_topology,
-    shell_panel_topology_from_shell_inputs,
+from .bound_section_shell_inputs import (
+    BoundSectionShellInputs,
+    TaperedBoundSectionShellInputs,
+    bind_section_shell_inputs,
 )
 
 __all__ = [
-    "ShellPanelTopology",
-    "TaperedShellPanelTopology",
-    "build_shell_panel_topology",
-    "shell_panel_topology_from_shell_inputs",
-    "build_tapered_shell_panel_topology",
+    "BoundSectionShellInputs",
+    "TaperedBoundSectionShellInputs",
+    "bind_section_shell_inputs",
 ]

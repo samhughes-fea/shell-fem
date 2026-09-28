@@ -15,9 +15,9 @@ import scipy.sparse as sp
 from ....pre_processing.containers.fem_config import MITC4_DEFAULTS
 from ....pre_processing.containers.types import ShellTheory
 from ....pre_processing.constitutive.panel_abd import panel_abd_tuple_from_lam  # noqa: F401 — re-exported for tests
-from ....pre_processing.mesh.shell_mesh_map import (
-    GlobalNodeMeta,
-    PanelGlobalMap as _PanelGlobalMap,
+from ....pre_processing.mesh.panel_node_assembly import (
+    SectionNodeAssemblyMetadata,
+    PanelNodeAssemblyMap as _PanelNodeAssemblyMap,
     normal_2d as _normal_2d,
     panel_end_tangent as _panel_end_tangent,
 )
@@ -73,7 +73,7 @@ _Constraints = dict[int, list[tuple[int, float]]]
 
 
 def _build_basis_transform_constraints(
-    panel_maps: list[_PanelGlobalMap],
+    panel_maps: list[_PanelNodeAssemblyMap],
     zones: list[Any],
     endpoint_clusters: list[list[tuple[int, str, np.ndarray]]],
 ) -> _Constraints:
@@ -153,7 +153,7 @@ def _build_basis_transform_constraints(
 
 
 def _build_cluster_basis_constraints(
-    panel_maps: list["_PanelGlobalMap"],
+    panel_maps: list["_PanelNodeAssemblyMap"],
     zones: list[Any],
     endpoint_clusters: list[list[tuple[int, str, np.ndarray]]],
     endpoint_cluster_node: dict[tuple[int, str, str], int],
@@ -235,7 +235,7 @@ def assemble_global_shell(
     endpoint_tol: float = 1e-6,
     bc_mode: str = DEFAULT_BC_MODE,
     interface_constraint_mode: str = "shared",
-) -> tuple[sp.csr_matrix, np.ndarray, GlobalNodeMeta, list[_PanelGlobalMap], np.ndarray, np.ndarray, np.ndarray, list[str]]:
+) -> tuple[sp.csr_matrix, np.ndarray, SectionNodeAssemblyMetadata, list[_PanelNodeAssemblyMap], np.ndarray, np.ndarray, np.ndarray, list[str]]:
     """Assemble global shell stiffness (and load vector) without MPC solve/recovery.
 
     Thin wrapper over :func:`assemble_section_from_zones`. ``bc_mode`` is accepted

@@ -13,9 +13,9 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     W,
     gdof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    GlobalNodeMeta,
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    SectionNodeAssemblyMetadata,
+    PanelNodeAssemblyMap,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.constraints.cap_tie.geometry import (
     CAP_TIE_MODES,
@@ -65,7 +65,7 @@ def _expand_master_terms(
 
 def cap_tie_constraints(
     report: CapTieReport,
-    node_meta: GlobalNodeMeta,
+    node_meta: SectionNodeAssemblyMetadata,
     *,
     ndof: int,
     existing: Constraints | None = None,
@@ -167,8 +167,8 @@ def cap_tie_constraints(
 
 
 def build_cap_tie_constraints(
-    panel_maps: list[PanelGlobalMap],
-    node_meta: GlobalNodeMeta,
+    panel_maps: list[PanelNodeAssemblyMap],
+    node_meta: SectionNodeAssemblyMetadata,
     *,
     ndof: int,
     mode: str = "none",

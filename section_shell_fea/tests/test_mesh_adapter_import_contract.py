@@ -32,8 +32,8 @@ def test_mesh_exports_fe_adapter_products_only() -> None:
     }
     exported = set(mesh_pkg.__all__)
     assert not (exported & banned), f"mesh barrel re-exports BSU mesh worker: {exported & banned}"
-    assert "ShellPanelTopology" in exported
-    assert "PanelGlobalMap" in exported
+    assert "BoundSectionShellInputs" in exported
+    assert "PanelNodeAssemblyMap" in exported
     assert (_MESH / "naca_profile.py").is_file()
 
 

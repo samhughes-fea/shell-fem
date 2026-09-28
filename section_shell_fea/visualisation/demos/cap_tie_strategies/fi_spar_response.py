@@ -200,8 +200,8 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
     bit-identical across steps, and ``fi_spar`` must actually move, or the run
     refuses to report.
     """
-    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-        ShellPanelTopology,
+    from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+        BoundSectionShellInputs,
     )
     from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
         SectionLinearStaticRunner,
@@ -268,7 +268,7 @@ def _frozen_mesh_sweep(cap_tie_mode: str = "skin_offset") -> list[dict]:
             si_t, component_materials=mats,
             skin_thickness=SKIN_THICKNESS, spar_cap_thickness=spar_cap_thickness, shear_web_thickness=SHEAR_WEB_THICKNESS,
         )
-        topo = ShellPanelTopology(
+        topo = BoundSectionShellInputs(
             shell_inputs=si_t, zones=list(zones),
             webs_geom=list(webs_geom), n_cells=int(n_cells), section=section,
         )

@@ -19,13 +19,17 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 
 def _panel_topology_vlasov_fixture(naca_code: str, web_x_positions: list[float]):
     """Package shell panel topology + producer midlines/loops for Vlasov tests."""
-    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import build_shell_panel_topology
+    from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topology_factory import (
+        build_shell_panel_topology,
+        demo_multicell_section,
+    )
     from blade_structure_utilities.fem_utilities.section_shell_fea.io.job_outputs import (
         airfoil_polygon_to_multicell_airfoil,
     )
 
     panel_topology = build_shell_panel_topology(naca_code, web_x_positions, chord_m=1.0)
-    raw = np.asarray(panel_topology.section.airfoil.vertices, dtype=np.float64)[:, :2]
+    section = demo_multicell_section(naca_code, web_x_positions, chord_m=1.0)
+    raw = np.asarray(section.airfoil.vertices, dtype=np.float64)[:, :2]
     air = airfoil_polygon_to_multicell_airfoil(raw, n_each=48)
     si = panel_topology.shell_inputs
     return (
@@ -1095,7 +1099,7 @@ def test_transformed_basis_rotation_identity_for_collinear_panels():
     Verify this directly from _build_basis_transform_constraints.
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
-        _build_basis_transform_constraints, _PanelGlobalMap, _dof,
+        _build_basis_transform_constraints, _PanelNodeAssemblyMap, _dof,
         _U_S, _W, _BETA_S, _U_X, _BETA_X,
     )
 
@@ -1106,13 +1110,13 @@ def test_transformed_basis_rotation_identity_for_collinear_panels():
     # Two collinear panels along y-axis: [0,0]â†’[1,0] and [1,0]â†’[2,0]
     # Both have tangent Å = [1,0], normal nÌ‚ = [0,1].
     n_s = 3  # 3 s-nodes per panel
-    pm0 = _PanelGlobalMap(
+    pm0 = _PanelNodeAssemblyMap(
         s_nodes=np.linspace(0, 1, n_s),
         elements=[[0, 1, 1 + n_s, n_s], [1, 2, 2 + n_s, 1 + n_s]],
         global_nodes=list(range(2 * n_s)),        # nodes 0..5
         panel_label="P0", panel_index=0,
     )
-    pm1 = _PanelGlobalMap(
+    pm1 = _PanelNodeAssemblyMap(
         s_nodes=np.linspace(1, 2, n_s),
         elements=[[0, 1, 1 + n_s, n_s], [1, 2, 2 + n_s, 1 + n_s]],
         global_nodes=list(range(2 * n_s, 4 * n_s)),  # nodes 6..11
@@ -1151,7 +1155,7 @@ def test_cluster_basis_constraints_rigid_translation_mapping():
     cluster reference basis (non-zero coupling coefficients).
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
-        _build_cluster_basis_constraints, _PanelGlobalMap, _dof, _U_S, _W
+        _build_cluster_basis_constraints, _PanelNodeAssemblyMap, _dof, _U_S, _W
     )
 
     class _FakePanel:
@@ -1159,8 +1163,8 @@ def test_cluster_basis_constraints_rigid_translation_mapping():
             self.nodes = nodes
 
     n_s = 3
-    pm0 = _PanelGlobalMap(np.linspace(0, 1, n_s), [], list(range(2 * n_s)), "P0", 0)
-    pm1 = _PanelGlobalMap(np.linspace(0, 1, n_s), [], list(range(2 * n_s, 4 * n_s)), "P1", 1)
+    pm0 = _PanelNodeAssemblyMap(np.linspace(0, 1, n_s), [], list(range(2 * n_s)), "P0", 0)
+    pm1 = _PanelNodeAssemblyMap(np.linspace(0, 1, n_s), [], list(range(2 * n_s, 4 * n_s)), "P1", 1)
     p0 = _FakePanel(np.array([[0.0, 0.0], [1.0, 0.0]]))  # tangent x-like
     p1 = _FakePanel(np.array([[1.0, 0.0], [1.0, 1.0]]))  # tangent y-like
     cluster = [(0, "end", np.array([1.0, 0.0])), (1, "start", np.array([1.0, 0.0]))]
@@ -1190,7 +1194,7 @@ def test_cluster_basis_constraints_rigid_translation_mapping():
 
 def test_transformed_basis_cluster_rotation_basis_is_rank6():
     from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (  # type: ignore[import-untyped]
-        _build_cluster_basis_constraints, _PanelGlobalMap, _dof, _BETA_S
+        _build_cluster_basis_constraints, _PanelNodeAssemblyMap, _dof, _BETA_S
     )
 
     class _FakePanel:
@@ -1198,8 +1202,8 @@ def test_transformed_basis_cluster_rotation_basis_is_rank6():
             self.nodes = nodes
 
     n_s = 3
-    pm0 = _PanelGlobalMap(np.linspace(0, 1, n_s), [], list(range(2 * n_s)), "P0", 0)
-    pm1 = _PanelGlobalMap(np.linspace(0, 1, n_s), [], list(range(2 * n_s, 4 * n_s)), "P1", 1)
+    pm0 = _PanelNodeAssemblyMap(np.linspace(0, 1, n_s), [], list(range(2 * n_s)), "P0", 0)
+    pm1 = _PanelNodeAssemblyMap(np.linspace(0, 1, n_s), [], list(range(2 * n_s, 4 * n_s)), "P1", 1)
     p0 = _FakePanel(np.array([[0.0, 0.0], [1.0, 0.0]]))
     p1 = _FakePanel(np.array([[1.0, 0.0], [1.0, 1.0]]))
     cluster = [(0, "end", np.array([1.0, 0.0])), (1, "start", np.array([1.0, 0.0]))]

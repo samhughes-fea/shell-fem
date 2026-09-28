@@ -12,17 +12,13 @@ warnings.warn(
 )
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api import (  # noqa: E402,F401
-    ShellPanelTopology,
-    TaperedShellPanelTopology,
-    build_shell_panel_topology,
-    build_tapered_shell_panel_topology,
-    shell_panel_topology_from_shell_inputs,
+    BoundSectionShellInputs,
+    TaperedBoundSectionShellInputs,
+    bind_section_shell_inputs,
 )
 
 __all__ = [
-    "ShellPanelTopology",
-    "TaperedShellPanelTopology",
-    "build_shell_panel_topology",
-    "shell_panel_topology_from_shell_inputs",
-    "build_tapered_shell_panel_topology",
+    "BoundSectionShellInputs",
+    "TaperedBoundSectionShellInputs",
+    "bind_section_shell_inputs",
 ]

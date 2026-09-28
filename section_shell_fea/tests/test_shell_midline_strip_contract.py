@@ -1,9 +1,9 @@
 """
-Contract tests for the ShellMidlineStrip → ShellMeshInputs → MITC4 mesh pipeline.
+Contract tests for the ShellMidlineStrip → ShellStripMeshingInputs → MITC4 mesh pipeline.
 
 Verifies the public handoff contract established in PR1:
 
-  shell_mesh_inputs_from_section(section, ...) → ShellMeshInputs
+  shell_mesh_inputs_from_section(section, ...) → ShellStripMeshingInputs
   bind_shell_material_zones(shell_inputs, allow_demo_laminates=True) → zones (skin → caps → webs)
   build_section_strip_mesh(shell_inputs, ...)   → SectionStripMesh
 

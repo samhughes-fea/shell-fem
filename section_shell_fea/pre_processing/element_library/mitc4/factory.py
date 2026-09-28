@@ -16,7 +16,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.constitutive.panel_abd import (
     panel_abd_tuple_from_lam,
 )
-from ...mesh.shell_mesh_map import PanelGlobalMap
+from ...mesh.panel_node_assembly import PanelNodeAssemblyMap
 from ..formulation_factory import ShellElementFactory, _element_L_s, _panel_kappa_nodes
 from .mitc4_quad4_element import (
     Mitc4ElementGeometry,
@@ -33,7 +33,7 @@ class Mitc4ElementFactory(ShellElementFactory):
 
     def iter_elements(
         self,
-        panel_maps: list[PanelGlobalMap],
+        panel_maps: list[PanelNodeAssemblyMap],
         zones: list[Any],
         Nx_panels: list[NDArray[np.float64]],
         Nxy_panels: list[NDArray[np.float64]],

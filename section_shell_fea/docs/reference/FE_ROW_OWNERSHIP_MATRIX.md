@@ -49,15 +49,15 @@ cascade into one mega-home, and do **not** steal bind policy, SFV shaping, or
 strip Q4.
 
 Production L4 seam: `SectionLinearStaticRunner(...).execute().get_results()`
-with pre-bound `ShellPanelTopology` and `section_force_vector=`. Named helpers
-(`shell_panel_topology_from_shell_inputs` without zones, demo SFV shaping in
+with pre-bound `BoundSectionShellInputs` and `section_force_vector=`. Named helpers
+(`bind_section_shell_inputs` without zones, demo SFV shaping in
 diagnostics / CCX / demos) remain **convenience** — not a second L4 sequencer.
 
 ### Consumer contract
 
 | Consumer | May import / call | Must not |
 |----------|-------------------|----------|
-| L4-EVAL | `SectionLinearStaticRunner` → `CascadeBin`; `ShellPanelTopology` (barrel); `extract_shell_full_element_results` (barrel); buckling sibling | Own bind policy or SFV shaping; deep-import `pre_processing.mesh.api` as ownership |
+| L4-EVAL | `SectionLinearStaticRunner` → `CascadeBin`; `BoundSectionShellInputs` (barrel); `extract_shell_full_element_results` (barrel); buckling sibling | Own bind policy or SFV shaping; deep-import `pre_processing.mesh.api` as ownership |
 | Demos / tests / benchmarks / CCX | Named FE-PREP helpers; may call `bind_shell_material_zones` / `shape_section_force_vector*` as **documented convenience** | Become the production L4 seam |
 | `section_bind` / `section_loads` | Nothing as ownership | Import FE |
 | Geometry SDF / mesh Q4 | Nothing as ownership | Steal FE cascade |
@@ -65,14 +65,14 @@ diagnostics / CCX / demos) remain **convenience** — not a second L4 sequencer.
 
 Public barrel: `SectionLinearStaticRunner`, `CascadeBin` /
 `SectionLinearStaticResult`, `DiagnosticsBin`, buckling sibling,
-`ShellPanelTopology`, `extract_shell_full_element_results`. Deep homes are
+`BoundSectionShellInputs`, `extract_shell_full_element_results`. Deep homes are
 maintainer-internal.
 
 ## 2. Target model
 
 A station FE solve is not a catalogue letter. It is:
 
-1. **Frozen zones** — ordered `MaterialZone` list on `ShellPanelTopology` (skin → caps → webs); `n_cells = n_web + 1` including `N = 0`.
+1. **Frozen zones** — ordered `MaterialZone` list on `BoundSectionShellInputs` (skin → caps → webs); `n_cells = n_web + 1` including `N = 0`.
 2. **Frozen SFV** — contour densities from loads (any channel); FE **applies** only.
 3. **Strip mesh** — `SectionStripMesh` from mesh (density outside FE).
 4. **Prep** — formulation cache / ABD / apply SFV → nodal `f`.
@@ -94,10 +94,10 @@ flowchart LR
 ```
 
 Graph notes (Step 0): dual sequencers observed —
-`SectionLinearStaticRunner` (god) vs `shell_panel_topology_from_shell_inputs`
+`SectionLinearStaticRunner` (god) vs `bind_section_shell_inputs`
 (called from `station_recovery`, `station_theory_dispatch`, diagnostics, CCX,
-demos) vs `build_shell_panel_topology`. AST edges into `section_bind` from
-`shell_panel_topology.py`, constitutive barrel, assembly, topology diagnostics.
+demos) vs `build_demo_bound_section_shell_inputs`. AST edges into `section_bind` from
+`bound_section_shell_inputs.py`, constitutive barrel, assembly, topology diagnostics.
 Lazy `shape_section_force_vector*` imports live in recovery / dispatch /
 diagnostics / demos (not always AST-visible).
 

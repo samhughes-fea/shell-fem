@@ -9,10 +9,10 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.tests._panel_topo
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellTheory
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.global_shell_assembly import (
     _NDOF_NODE,
-    _PanelGlobalMap,
+    _PanelNodeAssemblyMap,
     _dof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
     panel_maps_from_section_strip_mesh,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory import (
@@ -43,7 +43,7 @@ def _cache_and_bc(*, return_panel_maps: bool = False):
             gn[i] = next_g
             next_g += 1
         panel_maps.append(
-            _PanelGlobalMap(pm.s_nodes, pm.elements, gn, pm.panel_label, pm.panel_index)
+            _PanelNodeAssemblyMap(pm.s_nodes, pm.elements, gn, pm.panel_label, pm.panel_index)
         )
     n_gdof = next_g * _NDOF_NODE
 

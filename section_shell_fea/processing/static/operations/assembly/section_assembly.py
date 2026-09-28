@@ -23,9 +23,9 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.formulation_factory import (
     build_formulation_cache,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    GlobalNodeMeta,
-    PanelGlobalMap,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import (
+    SectionNodeAssemblyMetadata,
+    PanelNodeAssemblyMap,
     collect_global_node_meta,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.operations.assembly.assemble_global import (
@@ -34,9 +34,9 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static
 )
 from blade_structure_utilities.material_utilities.section_bind import MaterialZone
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.connected_panel_topology import (
-    ConnectedPanelTopology,
-    build_connected_panel_maps,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.section_shell_assembly_map import (
+    SectionShellAssemblyMap,
+    build_section_shell_assembly_map,
 )
 from .....pre_processing.constitutive.panel_abd import compact_panel_abd_from_stacks
 from ...diagnostics.solve.solve_phase_timing import PhaseCollector, _NULL_PHASE_COLLECTOR
@@ -53,14 +53,14 @@ class SectionAssemblyResult:
 
     K_global: sp.csr_matrix
     f_element: np.ndarray
-    node_meta: GlobalNodeMeta
-    panel_maps: list[PanelGlobalMap]
+    node_meta: SectionNodeAssemblyMetadata
+    panel_maps: list[PanelNodeAssemblyMap]
     abd_p: np.ndarray
     t_p: np.ndarray
     g_p: np.ndarray
     lab_p: list[str]
     cache: ShellFormulationCache
-    topology: ConnectedPanelTopology
+    topology: SectionShellAssemblyMap
     n_gdof: int
     zones: list[Any]
     diagnostics: AssemblyDiagnostics | None = None
@@ -75,7 +75,7 @@ class SectionAssemblyResult:
 
     def as_legacy_8tuple(
         self,
-    ) -> tuple[sp.csr_matrix, np.ndarray, GlobalNodeMeta, list[PanelGlobalMap], np.ndarray, np.ndarray, np.ndarray, list[str]]:
+    ) -> tuple[sp.csr_matrix, np.ndarray, SectionNodeAssemblyMetadata, list[PanelNodeAssemblyMap], np.ndarray, np.ndarray, np.ndarray, list[str]]:
         """Historic assemble_global_shell return shape (without formulation cache)."""
         return (
             self.K_global,
@@ -114,7 +114,7 @@ def assemble_section_from_zones(
     """
     zone_list = list(zones)
     zones_out_list = list(zones_outboard) if zones_outboard is not None else None
-    topology = build_connected_panel_maps(
+    topology = build_section_shell_assembly_map(
         zone_list,
         endpoint_tol=endpoint_tol,
         interface_constraint_mode=interface_constraint_mode,

@@ -52,8 +52,8 @@ from blade_structure_utilities.geometry_utilities.section_geometry.layout.system
 from blade_structure_utilities.geometry_utilities.section_geometry.sdf.airfoil import (  # noqa: E402
     AirfoilSDF,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (  # noqa: E402
-    shell_panel_topology_from_shell_inputs,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (  # noqa: E402
+    bind_section_shell_inputs,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (  # noqa: E402
     SectionLinearStaticRunner,
@@ -98,7 +98,7 @@ def _build(layout_key: str, chord: float, twist_deg: float):
     mesh = build_section_strip_mesh(
         shell, target_element_length_frac=0.012, endpoint_tol=1e-6
     )
-    return shell_panel_topology_from_shell_inputs(shell, allow_demo_bind=True), mesh, shell
+    return bind_section_shell_inputs(shell, allow_demo_bind=True), mesh, shell
 
 
 def _fe_nxy_by_label(runner, kind: str) -> dict[str, float]:

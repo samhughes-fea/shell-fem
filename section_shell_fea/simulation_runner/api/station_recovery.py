@@ -24,9 +24,9 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     ShellStationProvenance,
     ShellTheory,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.shell_panel_topology import (
-    ShellPanelTopology,
-    shell_panel_topology_from_shell_inputs,
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.api.bound_section_shell_inputs import (
+    BoundSectionShellInputs,
+    bind_section_shell_inputs,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.simulation_runner.section_linear_static_runner import (
     SectionLinearStaticRunner,
@@ -62,7 +62,7 @@ def _require_section_strip_mesh(
 
 
 def _bundle_from_linear_static(
-    panel_topology: ShellPanelTopology,
+    panel_topology: BoundSectionShellInputs,
     static: SectionLinearStaticRunner,
 ) -> SectionShellRecoveryBundle:
     """Recovery bundle from an executed station runner, with static-secondary panel rows.
@@ -124,7 +124,7 @@ def _bundle_from_linear_static(
 
 
 def _bundle_from_linear_cascade(
-    panel_topology: ShellPanelTopology,
+    panel_topology: BoundSectionShellInputs,
     cascade: Any,
 ) -> SectionShellRecoveryBundle:
     """Backward-compatible alias: accept cascade view or executed runner."""
@@ -149,7 +149,7 @@ def build_fsdt_station_analysis(
     target_element_length_m: float | None = None,
     min_elements_per_panel: int | None = None,
     section_strip_mesh: Any | None = None,
-    panel_topology: ShellPanelTopology | None = None,
+    panel_topology: BoundSectionShellInputs | None = None,
     station_id: str = "station-0",
     provenance: ShellStationProvenance | None = None,
     fi_track: FiTrack = "linear_static",
@@ -163,7 +163,7 @@ def build_fsdt_station_analysis(
     must not call ``shape_section_force_vector*``.
 
     Prefer ``panel_topology=`` with pre-bound zones from orchestration. When
-    omitted, ``shell_panel_topology_from_shell_inputs(..., allow_demo_bind=True)``
+    omitted, ``bind_section_shell_inputs(..., allow_demo_bind=True)``
     may demo-bind (named convenience leak, not the L4 seam).
     """
     from blade_structure_utilities.fem_utilities.section_shell_fea.interface.station_analysis_builder import (
@@ -183,7 +183,7 @@ def build_fsdt_station_analysis(
         )
 
     if panel_topology is None:
-        panel_topology = shell_panel_topology_from_shell_inputs(
+        panel_topology = bind_section_shell_inputs(
             shell_inputs, section=section_view, allow_demo_bind=True
         )
     strip_mesh = _require_section_strip_mesh(

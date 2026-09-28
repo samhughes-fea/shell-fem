@@ -17,7 +17,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     W,
     gdof,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import normal_2d
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.panel_node_assembly import normal_2d
 
 
 def _skin_node_pairs(node_meta: Any) -> tuple[NDArray[np.float64], NDArray[np.float64], list[tuple[int, int]]]:
