@@ -4,6 +4,10 @@
 > Historical Wave 1–6 removals are summarized in the [appendix](#appendix-removed-waves)
 > (not a working checklist). Prefer the two FE runners /
 > `run_section_linear_static_from_resultants`.
+>
+> **WP9 expiry ledger:** [`ALIAS_EXPIRY_LEDGER.md`](ALIAS_EXPIRY_LEDGER.md) —
+> classifies internal adapter homes vs expiring aliases. Hard removal of
+> `topology/` and `loading/thin_wall/` shims is gated on **2026-11-30**.
 
 **Policy:** follow [`docs/architecture/DEPRECATION_REGISTER.md`](../../../docs/architecture/DEPRECATION_REGISTER.md)
 — one-cycle compatibility where inbound usage is non-zero; emit
