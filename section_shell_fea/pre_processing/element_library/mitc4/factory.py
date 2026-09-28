@@ -16,7 +16,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.constitutive.panel_abd import (
     panel_abd_tuple_from_lam,
 )
-from ...mesh.shell_mesh_map import PanelGlobalMap
+from ...topology.shell_mesh_map import PanelGlobalMap
 from ..formulation_factory import ShellElementFactory, _element_L_s, _panel_kappa_nodes
 from .mitc4_quad4_element import (
     Mitc4ElementGeometry,
@@ -42,6 +42,7 @@ class Mitc4ElementFactory(ShellElementFactory):
         zones_outboard: list[Any] | None = None,
         panel_abd_stacks: list[tuple] | None = None,
         panel_constitutive_specs: list[PanelConstitutiveSpec | None] | None = None,
+        template_cache: Any | None = None,
     ) -> Iterator[Mitc4Quad4Element]:
         elem_id = 0
         for pi, pm in enumerate(panel_maps):
@@ -105,6 +106,7 @@ class Mitc4ElementFactory(ShellElementFactory):
                         nx_avg=nx_avg, nxy_avg=nxy_avg, kappa_avg=kappa_avg
                     ),
                     dof_per_node=self.n_dof_node,
+                    template_cache=template_cache,
                 )
                 elem_id += 1
 

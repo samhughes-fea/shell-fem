@@ -15,7 +15,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.kernel import (
     resolve_kernel,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import (
     PanelGlobalMap,
 )
 
@@ -88,7 +88,12 @@ def assemble_section_geometric_stiffness(
             continue
         if not (0 <= pi < len(maps)):
             continue
-        L_s = _element_L_s(maps[pi], lei)
+        # WP2: prefer the persisted assembly length (blended outboard L_s) so the
+        # geometric stiffness uses the same L_s as the material stiffness; fall
+        # back to recomputed plain contour length for pre-WP2 caches.
+        L_s = float(getattr(stiff, "L_s", float("nan")))
+        if not np.isfinite(L_s) or L_s < 1e-30:
+            L_s = _element_L_s(maps[pi], lei)
         if L_s < 1e-30:
             continue
         Kg_e = assemble_panel_geometric_stiffness(

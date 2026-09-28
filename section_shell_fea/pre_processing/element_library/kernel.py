@@ -242,6 +242,19 @@ def resolve_kernel(shell_theory: ShellTheory) -> StripElementKernel:
     return resolve_formulation(default_formulation_id(shell_theory)).kernel
 
 
+def resolve_kernel_by_id(formulation_id: str) -> StripElementKernel:
+    """Return the strip kernel registered under ``formulation_id``.
+
+    Resolves directly from the unified formulation graph (``registry._FORMULATIONS``)
+    so callers holding a cache's authoritative ``formulation_id`` avoid the
+    theory-string round-trip.
+    """
+    from .registry import ensure_default_formulations, resolve_formulation
+
+    ensure_default_formulations()
+    return resolve_formulation(formulation_id).kernel
+
+
 def kernel_provenance_kind(shell_theory: ShellTheory) -> ProvenanceKind:
     """Provenance tag for resultants recovered via ``shell_theory``'s native kernel."""
     return resolve_shell_theory_capability(shell_theory).provenance_kind
@@ -253,4 +266,5 @@ __all__ = [
     "StripElementKernel",
     "kernel_provenance_kind",
     "resolve_kernel",
+    "resolve_kernel_by_id",
 ]

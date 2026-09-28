@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import math
 from abc import ABC, abstractmethod
 from typing import Any, Iterator
@@ -22,9 +23,9 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.co
     panel_abd_tuple_from_lam,
     panel_constitutive_spec_from_lam,
 )
-from ..mesh.shell_mesh_map import PanelGlobalMap
+from ..topology.shell_mesh_map import PanelGlobalMap
 from .shell_element_base import ShellElementBase
-from blade_structure_utilities.fem_utilities.section_shell_fea.processing.static.diagnostics.solve.solve_phase_timing import (
+from .phase_timing import (
     PHASE_ELEMENT_FORCE_VECTORS,
     PHASE_ELEMENT_STIFFNESS_MATRICES,
     PhaseCollector,
@@ -103,16 +104,26 @@ _ELEMENT_FACTORY_REGISTRY: dict[ShellTheory, type[ShellElementFactory]] = {}
 
 
 def register_element_factory(theory: ShellTheory, factory_cls: type[ShellElementFactory]) -> None:
-    """Register ``factory_cls`` as the element factory for ``theory``.
+    """Thin compatibility façade over the single formulation registry graph.
 
-    The direct analogue of 1d-fem's ``ElementFactory.ELEMENT_CLASS_MAP``. FSDT/MITC4
-    registers unconditionally at import time below (the only production default
-    theory); CalculiX registers only via its opt-in
-    ``register_calculix_ccx_backend()`` hook, keeping production dispatch free of
-    eager imports for non-default theories (see
-    ``docs/ELEMENT_AGNOSTIC_ARCHITECTURE.md``).
+    The unified graph is ``registry._FORMULATIONS`` keyed by ``formulation_id``;
+    :func:`resolve_element_factory` prefers it. This theory→factory map remains as
+    the direct analogue of 1d-fem's ``ElementFactory.ELEMENT_CLASS_MAP`` and as a
+    fallback for backends that register only via this façade (e.g. CalculiX's
+    opt-in ``register_calculix_ccx_backend()`` hook — see
+    ``docs/ELEMENT_AGNOSTIC_ARCHITECTURE.md``). FSDT/MITC4 syncs both here and in
+    the registration graph via ``register_mitc4_fsdt``.
     """
     _ELEMENT_FACTORY_REGISTRY[theory] = factory_cls
+
+
+def _factory_accepts_template_cache(factory: ShellElementFactory) -> bool:
+    """Whether ``factory.iter_elements`` opts into the per-build template cache."""
+    try:
+        params = inspect.signature(factory.iter_elements).parameters
+    except (TypeError, ValueError):
+        return False
+    return "template_cache" in params
 
 
 def _formulation_id_from_factory(factory: ShellElementFactory) -> str:
@@ -125,15 +136,36 @@ def _formulation_id_from_factory(factory: ShellElementFactory) -> str:
     return default_formulation_id(factory.theory)
 
 
-def resolve_element_factory(shell_theory: ShellTheory) -> ShellElementFactory:
-    resolve_shell_theory_capability(shell_theory)
+def resolve_element_factory(
+    shell_theory: ShellTheory = ShellTheory.FSDT,
+    *,
+    formulation_id: str | None = None,
+) -> ShellElementFactory:
+    """Resolve the element factory from the unified registration graph.
+
+    ``formulation_id`` is primary: when given it resolves directly from
+    ``_FORMULATIONS``. Otherwise the registry's ``default_formulation_id`` for
+    ``shell_theory`` selects the id. The legacy ``_ELEMENT_FACTORY_REGISTRY``
+    façade is consulted only as a fallback for theories that register solely
+    through it (no formulation graph entry).
+    """
     from .registry import default_formulation_id, ensure_default_formulations, resolve_formulation
 
     ensure_default_formulations()
+    if formulation_id is not None:
+        return resolve_formulation(formulation_id).factory_cls()
+    resolve_shell_theory_capability(shell_theory)
     try:
-        factory_cls = _ELEMENT_FACTORY_REGISTRY[shell_theory]
-    except KeyError:
-        factory_cls = resolve_formulation(default_formulation_id(shell_theory)).factory_cls
+        resolved_id = default_formulation_id(shell_theory)
+    except ValueError:
+        resolved_id = None
+    if resolved_id is not None:
+        try:
+            return resolve_formulation(resolved_id).factory_cls()
+        except ValueError:
+            pass
+    # Compatibility fallback: façade-only registrations (e.g. CalculiX backend).
+    factory_cls = _ELEMENT_FACTORY_REGISTRY[shell_theory]
     return factory_cls()
 
 
@@ -394,12 +426,13 @@ def build_formulation_cache(
     Nx_panels: list[NDArray[np.float64]],
     Nxy_panels: list[NDArray[np.float64]],
     *,
+    formulation_id: str | None = None,
     shell_theory: ShellTheory = ShellTheory.FSDT,
     L_x: float = 1.0,
     zones_outboard: list[Any] | None = None,
     phase_collector: PhaseCollector | None = None,
 ) -> ShellFormulationCache:
-    factory = resolve_element_factory(shell_theory)
+    factory = resolve_element_factory(shell_theory, formulation_id=formulation_id)
     panel_abd_stacks = _panel_abd_stacks(panel_maps, zones)
     panel_laminates = _panel_laminates(panel_maps, zones)
     (
@@ -418,6 +451,20 @@ def build_formulation_cache(
         panel_sigma_ucs_pa,
         panel_tau_us_pa,
     )
+    # Per-build stiffness-template cache (WP3). Passed to the factory only when it
+    # opts in via a ``template_cache=`` keyword, so stub/other formulations that do
+    # not accept it stay unaffected.
+    from .template_cache import ShellFormulationTemplateCache
+
+    template_cache = ShellFormulationTemplateCache()
+    iter_kwargs: dict[str, Any] = dict(
+        L_x=L_x,
+        zones_outboard=zones_outboard,
+        panel_abd_stacks=panel_abd_stacks,
+        panel_constitutive_specs=panel_constitutive_specs,
+    )
+    if _factory_accepts_template_cache(factory):
+        iter_kwargs["template_cache"] = template_cache
     # Materialised (not a single-pass generator) so stiffness and force build
     # each get their own aggregated phase timing, one start/end pair per
     # build_formulation_cache call rather than per element.
@@ -427,10 +474,7 @@ def build_formulation_cache(
             zones,
             Nx_panels,
             Nxy_panels,
-            L_x=L_x,
-            zones_outboard=zones_outboard,
-            panel_abd_stacks=panel_abd_stacks,
-            panel_constitutive_specs=panel_constitutive_specs,
+            **iter_kwargs,
         )
     )
     collector = phase_collector if phase_collector is not None else _NULL_PHASE_COLLECTOR

@@ -8,13 +8,17 @@ from __future__ import annotations
 
 import time
 from contextlib import contextmanager
-from typing import Iterator, Protocol
+from typing import Iterator
 
 from ...results.containers.diagnostics_bin import DiagnosticsBin
 
-# Per-element formulation (build_formulation_cache).
-PHASE_ELEMENT_STIFFNESS_MATRICES = "element_stiffness_matrices"
-PHASE_ELEMENT_FORCE_VECTORS = "element_force_vectors"
+# Per-element formulation phase names + collector Protocol are owned by the neutral
+# pre_processing seam so build_formulation_cache does not depend on this module.
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.element_library.phase_timing import (  # noqa: F401
+    PHASE_ELEMENT_FORCE_VECTORS,
+    PHASE_ELEMENT_STIFFNESS_MATRICES,
+    PhaseCollector,
+)
 
 # Station constraint composition (execute / _prepare_station_system).
 PHASE_COMPOSE_CONSTRAINTS = "compose_constraints"
@@ -32,15 +36,6 @@ PHASE_PRIMARY_RESULTS = "primary_results"
 PHASE_SECONDARY_RESULTS = "secondary_results"
 PHASE_TERTIARY_RESULTS = "tertiary_results"
 PHASE_QUATERNARY_RESULTS = "quaternary_results"
-
-
-class PhaseCollector(Protocol):
-    @contextmanager
-    def phase(self, name: str) -> Iterator[None]: ...
-
-    def reset(self) -> None: ...
-
-    def freeze(self) -> DiagnosticsBin: ...
 
 
 class SolvePhaseCollector:

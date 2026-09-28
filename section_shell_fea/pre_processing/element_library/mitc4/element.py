@@ -35,6 +35,7 @@ DOF ordering inside the n-vector (n = 4*ndof):
 
 from __future__ import annotations
 
+import struct
 from dataclasses import dataclass
 
 import numpy as np
@@ -150,11 +151,42 @@ def _b_drilling(xi: float, eta: float, L_s: float, L_x: float) -> NDArray:
 # Element stiffness
 # ---------------------------------------------------------------------------
 
+# Module-level (process-lifetime) template cache — COMPATIBILITY ONLY.
+#
+# Production ``Mitc4Quad4Element`` uses the per-build
+# ``ShellFormulationTemplateCache`` (see ``template_cache.py`` / ``factory.py``)
+# and does NOT touch this dict. It is retained solely for the legacy
+# ``mitc4_stiffness(...)`` scalar entrypoint (reached via
+# ``kernel.Mitc4StripKernel.stiffness`` and ad-hoc callers). Keys are EXACT
+# (float64 bits, never ``round()``) so any reuse is bitwise-identical (WP0).
 _KE_TEMPLATE_CACHE: dict[tuple, NDArray] = {}
+_KE_TEMPLATE_CACHE_STATS: dict[str, int] = {"hits": 0, "misses": 0}
 
 
-def _abd_fingerprint(abd: NDArray) -> tuple:
-    return tuple(float(x) for x in np.asarray(abd, dtype=np.float64).ravel().round(12))
+def clear_ke_template_cache() -> None:
+    """Drop the compatibility module template cache and reset its stats (tests)."""
+    _KE_TEMPLATE_CACHE.clear()
+    _KE_TEMPLATE_CACHE_STATS["hits"] = 0
+    _KE_TEMPLATE_CACHE_STATS["misses"] = 0
+
+
+def ke_template_cache_stats() -> dict[str, int]:
+    """Return a snapshot of compatibility-cache hit/miss/unique counts (tests)."""
+    return {
+        "hits": _KE_TEMPLATE_CACHE_STATS["hits"],
+        "misses": _KE_TEMPLATE_CACHE_STATS["misses"],
+        "unique": len(_KE_TEMPLATE_CACHE),
+    }
+
+
+def _f64_bits(value: float) -> bytes:
+    """Exact little-endian float64 bytes (no rounding) for cache identity."""
+    return struct.pack("<d", float(value))
+
+
+def _abd_fingerprint(abd: NDArray) -> bytes:
+    """Exact float64 bytes of the ABD matrix (bitwise identity, no rounding)."""
+    return np.ascontiguousarray(np.asarray(abd, dtype=np.float64)).tobytes()
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,19 +331,21 @@ def mitc4_stiffness(
     K : (24, 24) default MITC4+; (20, 20) if include_drilling=False (MITC4)
     """
     cache_key = (
-        round(float(L_s), 12),
-        round(float(L_x), 12),
+        _f64_bits(L_s),
+        _f64_bits(L_x),
         _abd_fingerprint(ABD),
-        round(float(thickness), 12),
-        round(float(ks), 12),
-        None if G_eff is None else round(float(G_eff), 6),
+        _f64_bits(thickness),
+        _f64_bits(ks),
+        None if G_eff is None else _f64_bits(G_eff),
         bool(include_drilling),
-        round(float(alpha_drill), 12),
+        _f64_bits(alpha_drill),
     )
     cached = _KE_TEMPLATE_CACHE.get(cache_key)
     if cached is not None:
+        _KE_TEMPLATE_CACHE_STATS["hits"] += 1
         return np.asarray(cached)
 
+    _KE_TEMPLATE_CACHE_STATS["misses"] += 1
     k = mitc4_stiffness_contributions(
         L_s,
         L_x,

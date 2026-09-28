@@ -38,9 +38,41 @@ class NativeToCanonicalShellProjector(Protocol):
         ...
 
 
+class TemplateKeyStrategy(Protocol):
+    """Derive an exact per-build reuse key for one element's stiffness template.
+
+    Formulation-owned; the generic template cache treats the returned key as an
+    opaque hashable identity. Returning ``None`` refuses reuse (incomplete
+    identity) — see :class:`..template_cache.ShellFormulationTemplateCache`.
+    """
+
+    def __call__(self, element: Any) -> tuple[Any, ...] | None:
+        ...
+
+
+class ElementValidationHook(Protocol):
+    """Validate one live element (or its built products) before/at assignment.
+
+    Optional per formulation; ``None`` means the generic always-on cache-shape
+    validation is the only guard (MITC4 initial state).
+    """
+
+    def __call__(self, element: Any) -> None:
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class ShellFormulationRegistration:
-    """Bundle descriptor, factory, kernel, projector, and constitutive adapter."""
+    """Bundle descriptor, factory, kernel, projector, and constitutive adapter.
+
+    Optional extension hooks (all ``None`` for MITC4 initially):
+
+    - ``template_key_strategy`` — exact per-build stiffness-template reuse key
+      (WP3); consumed by the generic template cache without formulation types.
+    - ``validate_element`` — cheap per-element validation run at assignment.
+    - ``validate_cache`` — whole-cache validation beyond the always-on shape
+      guard in :mod:`..formulation_validation`.
+    """
 
     descriptor: ShellFormulationDescriptor
     factory_cls: type
@@ -48,6 +80,9 @@ class ShellFormulationRegistration:
     projector: NativeToCanonicalShellProjector
     constitutive_adapter: Callable[..., Any] | None = None
     is_external_backend: bool = False
+    template_key_strategy: TemplateKeyStrategy | None = None
+    validate_element: ElementValidationHook | None = None
+    validate_cache: Callable[..., Any] | None = None
 
 
 _FORMULATIONS: dict[str, ShellFormulationRegistration] = {}
@@ -113,8 +148,10 @@ def clear_formulation_registry_for_tests() -> None:
 
 
 __all__ = [
+    "ElementValidationHook",
     "NativeToCanonicalShellProjector",
     "ShellFormulationRegistration",
+    "TemplateKeyStrategy",
     "clear_formulation_registry_for_tests",
     "default_formulation_id",
     "ensure_default_formulations",

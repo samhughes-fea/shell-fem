@@ -76,6 +76,13 @@ class ShellStiffnessObject:
     global_dof_indices: NDArray[np.int64] | None = None
     panel_index: int = -1
     local_element_index: int = -1
+    # Element geometry persisted from the build (WP2): the *authoritative* lengths
+    # used to form ``K_e`` so recovery / buckling read the same blended ``L_s``
+    # instead of recomputing plain inboard contour length. NaN = not populated.
+    L_s: float = float("nan")
+    L_s_donnell: float = float("nan")
+    L_x: float = float("nan")
+    formulation_id: str = ""
 
 
 @dataclass
@@ -87,6 +94,11 @@ class ShellForceObject:
     global_dof_indices: NDArray[np.int64] | None = None
     panel_index: int = -1
     local_element_index: int = -1
+    # See ``ShellStiffnessObject`` — persisted element geometry (WP2). NaN = unset.
+    L_s: float = float("nan")
+    L_s_donnell: float = float("nan")
+    L_x: float = float("nan")
+    formulation_id: str = ""
 
 
 @dataclass

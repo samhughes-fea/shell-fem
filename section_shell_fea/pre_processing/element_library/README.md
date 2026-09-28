@@ -79,6 +79,57 @@ outside this worker.
 
 ---
 
+## Adding a formulation (extension recipe)
+
+The library is a **single registration graph** keyed by `formulation_id`
+(`registry._FORMULATIONS`). A continuum theory (`ShellTheory`) maps to a default
+formulation via the descriptor's `continuum_theory`. To add a formulation without
+touching any generic module:
+
+1. **Descriptor** — build a `ShellFormulationDescriptor` (`contracts.py`): topology,
+   DOF layout, work-conjugate generalized layout, stress names/frame/capabilities,
+   and an `AnalysisDofLayout`. This is the immutable identity + layout contract.
+2. **Factory** — implement `ShellElementFactory.iter_elements(...)` yielding live
+   elements (`ShellElementBase` subclasses with `element_stiffness_matrix()` /
+   `element_force_vector()`). Optionally accept `template_cache=` to opt into the
+   per-build `ShellFormulationTemplateCache` (WP3) for exact within-build `Ke`
+   reuse. Set a `formulation_id` attribute so the cache records provenance.
+3. **Kernel** — implement the `kernel.StripElementKernel` Protocol (stiffness /
+   geometric stiffness / recovery). Assembly, recovery, and buckling consume it via
+   `resolve_kernel` / `resolve_kernel_by_id` only.
+4. **Projector** — implement `registry.NativeToCanonicalShellProjector`
+   (native → canonical resultants / stress).
+5. **Register** — from a `register_<formulation>()` hook, call
+   `register_formulation(ShellFormulationRegistration(descriptor=..., factory_cls=...,
+   kernel=..., projector=..., template_key_strategy=None, validate_element=None,
+   validate_cache=None))`. Optional hooks (`template_key_strategy`,
+   `validate_element`, `validate_cache`) may start as `None`.
+6. **Build** — callers select it with
+   `build_formulation_cache(..., formulation_id="MY-FORMULATION")` (primary) or via
+   `shell_theory=` (resolves the theory default). `register_element_factory` remains
+   a thin compatibility façade over the same graph.
+
+Generic modules (`formulation_factory.py`, `registry.py`, `contracts.py`,
+`shell_element_base.py`, `formulation_validation.py`) must not import a formulation's
+classes at module top level or hard-code its Gauss rules — enforced by the AST gate
+in `tests/test_fe_preprocessing_wp1_extension.py`.
+
+```mermaid
+flowchart TD
+  desc[ShellFormulationDescriptor<br/>contracts.py] --> reg[ShellFormulationRegistration]
+  fac[ShellElementFactory] --> reg
+  ker[StripElementKernel] --> reg
+  proj[NativeToCanonicalShellProjector] --> reg
+  reg -->|register_formulation| graph[(registry._FORMULATIONS<br/>by formulation_id)]
+  graph -->|resolve_element_factory| bfc[build_formulation_cache]
+  graph -->|resolve_kernel_by_id| rec[recovery / buckling]
+  bfc --> cache[ShellFormulationCache]
+  tc[ShellFormulationTemplateCache<br/>template_cache.py] -.per build.-> bfc
+  pt[phase_timing.py<br/>neutral seam] -.timing.-> bfc
+```
+
+---
+
 ## Call graph
 
 ```mermaid
