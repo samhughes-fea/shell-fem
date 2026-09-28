@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.sectorial_warping import (
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.sectorial_warping import (
     open_outline_from_airfoil,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.visualisation.section_axes import (

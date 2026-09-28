@@ -20,7 +20,7 @@ import numpy as np
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellPanelResultants
 from blade_structure_utilities.mesh_utilities.section_mesh.strip.mesh_topology import NElements
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.thin_wall.section_vlasov import SectionVlasovResult
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import SectionVlasovResult
 from .solve import solve_global_coupled_ccx
 
 
@@ -43,6 +43,8 @@ def ccx_global_coupled_solve_from_thin_wall(
     work_dir: str,
     ccx_exe: str = "ccx",
     job_name: str = "section",
+    shell_midlines: Any | None = None,
+    cell_wall_loops: Any | None = None,
 ) -> tuple[list[list[ShellPanelResultants]], list[dict], ShellPanelResultants | None, SectionVlasovResult]:
     """External ccx solve from thin-wall recovery outputs."""
     from blade_structure_utilities.fem_utilities.section_shell_fea.calculix_ccx.thin_wall_loads import (
@@ -53,7 +55,9 @@ def ccx_global_coupled_solve_from_thin_wall(
     )
 
     vlasov, nx_panels, nxy_panels = prepare_thin_wall_panel_loads(
-        airfoil, zones, webs_geom, q_tot, sig_p, B, dB_dx
+        airfoil, zones, webs_geom, q_tot, sig_p, B, dB_dx,
+        shell_midlines=shell_midlines,
+        cell_wall_loops=cell_wall_loops,
     )
 
     if section_strip_mesh is None:

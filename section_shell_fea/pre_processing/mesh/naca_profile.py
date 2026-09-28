@@ -1,9 +1,13 @@
-"""
-Thin-wall NACA 4-digit profile helpers (LE→TE upper/lower stack).
+"""FE-demo / diagnostics NACA 4-digit helpers (LE→TE upper/lower stack).
 
-``blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca`` produces an outer TE→LE / LE→TE polygon and is
-not interchangeable with the equal-row thin-wall contract used by sectorial
-warping and station airfoil builders.
+**Not a production geometry home.** Prefer
+``blade_structure_utilities.geometry_utilities.section_geometry.sdf.naca`` for
+outer airfoil polygons on the sizing spine. That SDF path produces a TE→LE /
+LE→TE polygon and is **not** interchangeable with the equal-row thin-wall
+contract used here by sectorial warping and station airfoil diagnostics.
+
+Retained under ``pre_processing.mesh`` as an FE-demo convenience only; do not
+extend this module for product geometry.
 """
 
 from __future__ import annotations

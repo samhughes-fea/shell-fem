@@ -12,7 +12,7 @@ from blade_structure_utilities.load_utilities.section_loads.surface_traction.sta
     SectionLoadsJobConfig,
     StationAeroContext,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.builders.outline_frames import blade_outline_to_unit_chord
+from blade_structure_utilities.load_utilities.section_loads.surface_traction.outline_frames import blade_outline_to_unit_chord
 from blade_structure_utilities.load_utilities.section_loads.surface_traction.station_load import (
     build_station_load_field,
 )

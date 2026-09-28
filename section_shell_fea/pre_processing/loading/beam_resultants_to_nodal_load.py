@@ -1,4 +1,10 @@
-"""Map station BeamResultantVector to an equivalent MITC4 nodal force vector.
+"""Regression-only oracle: map ``BeamResultantVector`` → MITC4 nodal ``f``.
+
+**Not a production apply path.** Product channels shape a frozen
+``SectionForceVector`` in ``section_loads``, then apply via
+``processing.static.operations.assembly.load_application.section_force_vector_to_nodal_load``.
+Keep this module for numerical regression / reference parity only; see
+``docs/DEPRECATED_ALIASES.md``.
 
 Statically equivalent cut loads: transport R to the skin weighted centre,
 distribute like the CCX outboard-ring algorithm in curvilinear strip frame **C**
@@ -22,7 +28,7 @@ from blade_structure_utilities.geometry_utilities.section_contract.beam_resultan
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.traction_face_load import (
     _skin_node_pairs,
 )
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import normal_2d
+from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.topology.shell_mesh_map import normal_2d
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.analysis_dof_layout import (
     U_S,
     U_X,
@@ -67,7 +73,10 @@ def beam_resultants_to_nodal_load(
     thickness: float = 1.0,
     f: NDArray[np.float64] | None = None,
 ) -> NDArray[np.float64]:
-    """Build / accumulate a statically equivalent nodal load vector from ``R``.
+    """Regression oracle: build / accumulate a statically equivalent nodal ``f`` from ``R``.
+
+    Quarantined — do not call from production runners. Prefer frozen
+    ``SectionForceVector`` + ``section_force_vector_to_nodal_load``.
 
     Product channels map onto the section plane as ``F_X = Vz`` along ``y`` and
     ``F_Y = Vy`` along ``z``, matching ``BeamResultantVector.transported_to``

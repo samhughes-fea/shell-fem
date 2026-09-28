@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.builders.outline_frames import (
+from blade_structure_utilities.load_utilities.section_loads.surface_traction.outline_frames import (
     blade_outline_to_unit_chord,
     rotate_traction_field,
 )
