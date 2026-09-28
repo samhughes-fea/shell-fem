@@ -11,11 +11,11 @@ from blade_structure_utilities.load_utilities.section_loads.surface_traction.sta
     StationAeroContext,
     build_station_load_field,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import ShellMeshInputs
+from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import ShellStripMeshingInputs
 from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
 
 
-def _minimal_shell_inputs() -> ShellMeshInputs:
+def _minimal_shell_inputs() -> ShellStripMeshingInputs:
     ring = np.array(
         [
             [1.0, 0.0],
@@ -33,7 +33,7 @@ def _minimal_shell_inputs() -> ShellMeshInputs:
         thickness_m=0.01,
         closed=True,
     )
-    return ShellMeshInputs(
+    return ShellStripMeshingInputs(
         chord_m=1.0,
         twist_rad=0.0,
         layout_key="test",

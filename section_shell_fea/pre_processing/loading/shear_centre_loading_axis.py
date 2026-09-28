@@ -15,7 +15,7 @@ Opt-in Saint-Venant torsion about the sectorial shear centre uses
 helper) so pure ``T`` maps as twist about SC rather than the pitching origin.
 This is **not** a Channel-A periodic ``K6`` revive.
 
-When ``ShellMeshInputs.cell_wall_loops`` are present, SC comes from
+When ``ShellStripMeshingInputs.cell_wall_loops`` are present, SC comes from
 ``shear_centre_from_midlines`` (thin_wall_section / FEA-SC-002). Otherwise the
 outer-skin sectorial estimate is retained (FEA-SC-001 thickness refuse).
 Sectorial ω̂ / Batho / ``I_ω`` live on ``thin_wall_section.sectorial_warping``

@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (
-    NElements,
+    PanelElementCountSpec,
     PanelGlobalMap,
     cluster_is_collinear,
     clusters_from_section_strip_mesh,
@@ -81,7 +81,7 @@ def _validate_producer_clusters(
 def build_connected_panel_maps(
     zones: list[Any],
     *,
-    n_elements_per_panel: NElements | None = None,
+    n_elements_per_panel: PanelElementCountSpec | None = None,
     target_element_length_m: float | None = None,
     endpoint_tol: float = 1e-6,
     min_elements_per_panel: int = 2,

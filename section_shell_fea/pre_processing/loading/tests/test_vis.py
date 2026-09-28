@@ -17,7 +17,7 @@ from blade_structure_utilities.load_utilities.section_loads.surface_traction.sta
     build_station_load_field,
 )
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.loading.vis import write_station_load_pngs
-from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import ShellMeshInputs
+from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import ShellStripMeshingInputs
 from blade_structure_utilities.geometry_utilities.section_contract.shell_midline_strip import ShellMidlineStrip
 from blade_structure_utilities.geometry_utilities.coordinate_frames import rotate_S_to_B
 from blade_structure_utilities.load_utilities.section_loads import SectionOutlineGeometry
@@ -26,7 +26,7 @@ from blade_structure_utilities.load_utilities.section_loads import SectionOutlin
 _PIVOT = 0.333  # matches coordinate_frames.PIVOT_FRACTION_DEFAULT
 
 
-def _minimal_shell_inputs(*, twist_rad: float = 0.2) -> ShellMeshInputs:
+def _minimal_shell_inputs(*, twist_rad: float = 0.2) -> ShellStripMeshingInputs:
     # Canonical B: (X_B, Y_B) with X_B the thickness axis, +Y_B toward the TE, and
     # the pivot chordline at the origin -- so Y_LE < 0 < Y_TE. Unit chord.
     ring = np.array(
@@ -46,7 +46,7 @@ def _minimal_shell_inputs(*, twist_rad: float = 0.2) -> ShellMeshInputs:
         thickness_m=0.01,
         closed=True,
     )
-    return ShellMeshInputs(
+    return ShellStripMeshingInputs(
         chord_m=1.0,
         twist_rad=float(twist_rad),
         layout_key="test",

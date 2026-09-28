@@ -2,7 +2,7 @@
 
 The theory-agnostic geometry seam shared by shell formulations (FSDT/MITC4,
 external CalculiX). :func:`shell_panel_topology_from_shell_inputs` builds the FE
-panel topology from already-materialised :class:`ShellMeshInputs`; production
+panel topology from already-materialised :class:`ShellStripMeshingInputs`; production
 periodic solves in :mod:`.periodic` consume the same ``shell_inputs`` this way.
 
 Split out of the former ``thin_wall_bridge`` god-module; shared shell panel
@@ -20,7 +20,7 @@ from blade_structure_utilities.geometry_utilities.section_geometry.midlines.sect
 )
 from blade_structure_utilities.material_utilities.section_bind import LaminateLike, MaterialZone
 from blade_structure_utilities.mesh_utilities.section_mesh.handoff.shell_inputs import (
-    ShellMeshInputs,
+    ShellStripMeshingInputs,
 )
 
 
@@ -32,7 +32,7 @@ class ShellPanelTopology:
 ``shell_inputs`` polylines — no SDF re-evaluation after the contract handoff.
     """
 
-    shell_inputs: ShellMeshInputs
+    shell_inputs: ShellStripMeshingInputs
     zones: tuple[MaterialZone, ...]
     webs_geom: tuple[Any, ...]
     n_cells: int
@@ -87,7 +87,7 @@ def build_shell_panel_topology(
     the FE solve uses ``shell_inputs`` polylines.
     """
     warnings.warn(
-        "build_shell_panel_topology is deprecated; build ShellMeshInputs via "
+        "build_shell_panel_topology is deprecated; build ShellStripMeshingInputs via "
         "shell_mesh_inputs_from_geometry_result and call "
         "shell_panel_topology_from_shell_inputs.",
         DeprecationWarning,
@@ -172,7 +172,7 @@ def build_shell_panel_topology(
 
 
 def shell_panel_topology_from_shell_inputs(
-    shell_inputs: ShellMeshInputs,
+    shell_inputs: ShellStripMeshingInputs,
     *,
     section: SectionMidlineHost | None = None,
     zones: tuple[MaterialZone, ...] | list[MaterialZone] | None = None,

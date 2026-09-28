@@ -19,7 +19,7 @@ from typing import Any
 import numpy as np
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.containers.types import ShellPanelResultants
-from blade_structure_utilities.mesh_utilities.section_mesh.strip.mesh_topology import NElements
+from blade_structure_utilities.mesh_utilities.section_mesh import PanelElementCountSpec
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.reference_thin_wall.section_vlasov import SectionVlasovResult
 from .solve import solve_global_coupled_ccx
 
@@ -32,7 +32,7 @@ def ccx_global_coupled_solve_from_thin_wall(
     sig_p: list,
     B: float,
     dB_dx: float,
-    n_elements_per_panel: NElements | None = None,
+    n_elements_per_panel: PanelElementCountSpec | None = None,
     reference_panel_index: int = 0,
     global_bc_mode: str = "contour_support",
     interface_constraint_mode: str = "shared",

@@ -511,7 +511,7 @@ def shell_from_recipe(
     layout: str,
     recipe: str | Path | Mapping[str, Any] | None = None,
 ) -> Any:
-    """Build ``ShellMeshInputs`` for ``layout`` from a station recipe mapping/JSON."""
+    """Build ``ShellStripMeshingInputs`` for ``layout`` from a station recipe mapping/JSON."""
     data = _load_recipe_mapping(recipe)
     thickness = dict(data.get("thickness") or DEFAULT_THICKNESS)
     chord = float(data.get("chord_m", data.get("chord", DEFAULT_CHORD)))

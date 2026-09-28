@@ -3,7 +3,7 @@
 Internal home for FE maps, global numbering, junction clustering, and
 ``ShellPanelTopology``. Strip-mesh generation and typed handoff remain owned by
 the public ``mesh_utilities.section_mesh`` barrel. Callers supply
-``SectionStripMesh`` / ``ShellMeshInputs``; this package must not execute
+``SectionStripMesh`` / ``ShellStripMeshingInputs``; this package must not execute
 ``SectionMeshRunner``.
 """
 
@@ -35,7 +35,7 @@ from .global_numbering import (
 )
 from .shell_mesh_map import (
     GlobalNodeMeta,
-    NElements,
+    PanelElementCountSpec,
     PanelGlobalMap,
     build_panel_mesh_maps,
     cluster_is_collinear,
@@ -77,7 +77,7 @@ __all__ = [
     "is_contour_support",
     "normalize_bc_mode",
     "GlobalNodeMeta",
-    "NElements",
+    "PanelElementCountSpec",
     "PanelGlobalMap",
     "build_panel_mesh_maps",
     "cluster_is_collinear",

@@ -13,7 +13,7 @@ warnings.warn(
 
 from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.mesh.shell_mesh_map import (  # noqa: E402,F401
     GlobalNodeMeta,
-    NElements,
+    PanelElementCountSpec,
     PanelGlobalMap,
     build_panel_mesh_maps,
     cluster_is_collinear,
@@ -34,7 +34,7 @@ from blade_structure_utilities.fem_utilities.section_shell_fea.pre_processing.me
 
 __all__ = [
     "GlobalNodeMeta",
-    "NElements",
+    "PanelElementCountSpec",
     "PanelGlobalMap",
     "build_panel_mesh_maps",
     "cluster_is_collinear",

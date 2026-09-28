@@ -13,15 +13,15 @@ from blade_structure_utilities.geometry_utilities.coordinate_frames import (
     FrameTag,
     require_frame_tag,
 )
-from blade_structure_utilities.mesh_utilities.section_mesh.strip.mesh_topology import (
-    NElements,
+from blade_structure_utilities.mesh_utilities.section_mesh import (
+    PanelElementCountSpec,
     cluster_points,
     panel_endpoints,
     panel_kind_from_label,
 )
 
 
-def resolve_n_elements(spec: NElements, pi: int, default: int = 10) -> int:
+def resolve_n_elements(spec: PanelElementCountSpec, pi: int, default: int = 10) -> int:
     if spec is None:
         return int(default)
     if isinstance(spec, numbers.Integral):
@@ -35,12 +35,12 @@ def resolve_n_elements(spec: NElements, pi: int, default: int = 10) -> int:
 
 def effective_n_elements_spec(
     zones: list[Any],
-    n_elements_per_panel: NElements,
+    n_elements_per_panel: PanelElementCountSpec,
     target_element_length_m: float | None,
     *,
     default_n: int = 10,
     min_n: int = 1,
-) -> NElements:
+) -> PanelElementCountSpec:
     """Resolve per-panel element counts.
 
     Production default is **length-based**: callers should pass
@@ -252,7 +252,7 @@ def panel_maps_from_section_strip_mesh(
 
 def build_panel_mesh_maps(
     zones: list[Any],
-    n_elem_spec: NElements | None = None,
+    n_elem_spec: PanelElementCountSpec | None = None,
     *,
     section_strip_mesh: Any | None = None,
 ) -> tuple[list[PanelGlobalMap], list[tuple[int, str, np.ndarray]]]:
@@ -431,7 +431,7 @@ def scatter_element_ke(
 
 __all__ = [
     "GlobalNodeMeta",
-    "NElements",
+    "PanelElementCountSpec",
     "PanelGlobalMap",
     "build_panel_mesh_maps",
     "cluster_is_collinear",
