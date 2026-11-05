@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from conftest import navier_fsdt_centre, simply_supported
-from composite_laminate_model import (
+from shell_fem import (
     DOF,
     AngleField,
     BoundaryConditions,
@@ -418,7 +418,7 @@ def test_mesh_wide_pressure_loads_only_exposed_solid_faces(cfrp):
     mesh = FEAMesh()
     solid_block(mesh, lam, 0.01, 0.01, 2, 2, element="hex20", elements_per_ply=2)
     assert len(mesh.covered_solids()) == 4 * 5
-    from composite_laminate_model import GlobalAssembler
+    from shell_fem import GlobalAssembler
 
     F = GlobalAssembler(sparse=False).assemble_loads(mesh, LoadCase().add_pressure(1000.0))
     assert mesh.standard_array(F)[:, 2].sum() == pytest.approx(1000.0 * 1e-4)

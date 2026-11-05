@@ -1,6 +1,6 @@
 """Cross-check the native solver against CalculiX on the benchmark plate.
 
-The model is the one ``laminate-benchmarks`` builds: a simply supported
+The model is the one ``shell-fem-benchmarks`` builds: a simply supported
 200 mm square plate with the asymmetric stack [0/45/-45/90/0/90] in T300/5208,
 loaded by 1 kPa pressure and a 50 K cool-down. The same ``AnalysisModel`` is
 run through ``NativePythonKernelAdapter`` and ``CalculiXKernelAdapter``.
@@ -24,8 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from _shared.plotting import REFERENCE, SERIES, TEXT_SECONDARY, plt, save
-from composite_laminate_model import CalculiXKernelAdapter, NativePythonKernelAdapter, StressDistributionVerifier
-from composite_laminate_model.run_solver_benchmarks import build_model
+from shell_fem import CalculiXKernelAdapter, NativePythonKernelAdapter, StressDistributionVerifier
+from shell_fem.run_solver_benchmarks import build_model
 
 WORK_DIR = Path(__file__).resolve().parent / "calculix_run"
 

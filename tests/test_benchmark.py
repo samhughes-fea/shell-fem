@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from composite_laminate_model import run_solver_benchmarks
-from composite_laminate_model import KernelStatus, StressDistributionVerifier, ThicknessProfile
+from shell_fem import run_solver_benchmarks
+from shell_fem import KernelStatus, StressDistributionVerifier, ThicknessProfile
 
 
 def test_array_statistics():

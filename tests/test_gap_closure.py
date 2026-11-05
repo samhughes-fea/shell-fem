@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from conftest import navier_fsdt_centre, simply_supported
-from composite_laminate_model import (
+from shell_fem import (
     DOF,
     BoundaryConditions,
     CalculiXDeckWriter,
@@ -44,7 +44,7 @@ from composite_laminate_model import (
     laminate_at_temperature,
     register_criterion,
 )
-from composite_laminate_model.laminate_mesh_builders import _structured
+from shell_fem.laminate_mesh_builders import _structured
 
 ELEMENTS = ("quad4", "tri3", "quad8")
 

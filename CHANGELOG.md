@@ -8,6 +8,18 @@ All notable changes to this project are listed here. The format follows
 
 ### Changed
 
+- **Split.** This repository is shell-fem, the finite-element half of
+  composite-laminate-model, with its history. The package is `shell_fem`. The ply
+  and laminate behaviour (materials, `Ply`, `Laminate`, ABD, the CLPT / FSDT / RZT /
+  layerwise section stiffness, hygrothermal states, temperature-dependent materials,
+  failure criteria, `PaganoPlate`) moved to
+  [laminate-constitutive-model](https://github.com/samhughes-fea/laminate-constitutive-model),
+  which this package depends on and re-exports, so `from shell_fem import Laminate`
+  works. Their tests and examples 05 and 13 moved with them.
+- The benchmark command is `shell-fem-benchmarks` (was `laminate-benchmarks`).
+
+### Changed
+
 - The package is now `composite_laminate_model`, split out of composite-laminate-fea
   with its history. The implicit geometry is its own package,
   [implicit-geometry-kernel](https://github.com/samhughes-fea/implicit-geometry-kernel)

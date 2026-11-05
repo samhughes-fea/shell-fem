@@ -6,7 +6,7 @@ cases. The best angle depends entirely on the load: near 0 degrees for
 uniaxial tension, 45 degrees for shear, and a compromise for combined loads.
 (Tsai-Wu puts the uniaxial optimum at 10 rather than 0 degrees because its
 quadratic surface lets fibres exceed Xt when the matrix is in transverse
-compression; see example 05.) This is
+compression; see laminate-constitutive-model's example 01.) This is
 the simplest form of laminate design optimisation, and every point is a
 linear static analysis.
 
@@ -22,7 +22,7 @@ import numpy as np
 
 from _shared.membrane import MembraneCell
 from _shared.plotting import SERIES, TEXT_SECONDARY, plt, save
-from composite_laminate_model import Laminate, TsaiWuCriterion, create_default_library
+from shell_fem import Laminate, TsaiWuCriterion, create_default_library
 
 PLY_T = 0.125e-3
 ANGLES = np.arange(0, 91, 5)

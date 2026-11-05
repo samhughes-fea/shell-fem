@@ -17,7 +17,7 @@ and how to read the results.
 | 02 | [Through-thickness stresses](02_through_thickness_stresses/) | σx and τxz in a thick [0/90/0] plate for each theory against exact 3D elasticity, with equilibrium recovery and CalculiX | `ExactStressRecoverer`, `EquilibriumStressRecoverer` |
 | 03 | [Result fidelity levels](03_result_fidelity/) | The same solution at Gauss points, elements, nodes and global totals, with convergence against Navier | `ResultsExtractor` |
 | 04 | [Thermal warping](04_thermal_warping/) | Cure cool-down shapes of [0/90], [45/-45] and [0/90]s plates, against laminate theory | `HygrothermalState`, `HygrothermalEngine` |
-| 05 | [Failure envelopes](05_failure_envelopes/) | Maximum stress, Tsai-Hill, Tsai-Wu and Hashin envelopes for a T300/5208 ply | failure criteria |
+| 05 | [Failure envelopes](https://github.com/samhughes-fea/laminate-constitutive-model/tree/main/examples/01_failure_envelopes/) (moved to laminate-constitutive-model) | Maximum stress, Tsai-Hill, Tsai-Wu and Hashin envelopes for a T300/5208 ply | failure criteria |
 | 06 | [Progressive damage](06_progressive_damage/) | A [0/90]s strip in tension from first-ply to fibre failure, against a CLT ply-discount analysis | `ProgressiveDamageAnalysis` |
 | 07 | [CalculiX cross-check](07_calculix_crosscheck/) | Native solver against CalculiX on the benchmark plate | kernels, `StressDistributionVerifier` |
 | 08 | [Open hole with Gmsh](08_open_hole_gmsh/) | A graded Gmsh quad mesh around a hole; Kt of four laminates against Lekhnitskii | `GmshPlateBuilder`, `GmshMeshImporter` |
@@ -25,7 +25,7 @@ and how to read the results.
 | 10 | [Bending-twist coupling](10_bending_twist_coupling/) | Tip twist of an off-axis cantilever against ply angle | clamped supports, `integrate_abd` |
 | 11 | [Laminate failure envelope](11_laminate_failure_envelope/) | First-ply failure in N_x–N_y, with and without cure stress | `TsaiWuCriterion`, `HygrothermalState` |
 | 12 | [Temperature gradient and moisture](12_temperature_gradient_and_moisture/) | Face-to-face temperature difference; moisture undoing cure warp | `HygrothermalState` gradients |
-| 13 | [Stiffness polars](13_stiffness_polars/) | Ex, Gxy and νxy against direction for four stacks | `Laminate`, `integrate_abd` |
+| 13 | [Stiffness polars](https://github.com/samhughes-fea/laminate-constitutive-model/tree/main/examples/02_stiffness_polars/) (moved to laminate-constitutive-model) | Ex, Gxy and νxy against direction for four stacks | `Laminate`, `integrate_abd` |
 | 14 | [Ply-angle sweep](14_ply_angle_sweep/) | Best [±θ]2s angle for four load cases | failure criteria |
 | 15 | [Solver scaling](15_solver_scaling/) | Runtime against DOFs for sparse, dense and CalculiX | `SparseLinearSolver`, `DenseLinearSolver` |
 | 16 | [Material comparison](16_material_comparison/) | One plate in five library materials: stiffness, strength, mass | `create_default_library`, `ResultsExtractor` |

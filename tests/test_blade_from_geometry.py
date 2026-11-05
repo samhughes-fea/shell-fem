@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from composite_laminate_model import BladeBuilder, FSDTModel, Laminate, create_default_library
+from shell_fem import BladeBuilder, FSDTModel, Laminate, create_default_library
 from implicit_geometry_kernel import Airfoil, BladeGeometry, Station
 
 
