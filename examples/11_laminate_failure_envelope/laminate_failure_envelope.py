@@ -21,7 +21,7 @@ import numpy as np
 
 from _shared.membrane import MembraneCell
 from _shared.plotting import SERIES, TEXT_SECONDARY, plt, save
-from composite_laminate_model import HygrothermalState, Laminate, TsaiWuCriterion, create_default_library
+from shell_fem import HygrothermalState, Laminate, TsaiWuCriterion, create_default_library
 
 PLY_T, DELTA_T = 0.125e-3, -150.0
 LAMINATES = {

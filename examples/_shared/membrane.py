@@ -12,7 +12,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from composite_laminate_model import (
+from shell_fem import (
     DOF,
     BoundaryConditions,
     ExactStressRecoverer,

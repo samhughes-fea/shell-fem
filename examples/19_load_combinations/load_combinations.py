@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from _shared.plotting import SERIES, TEXT_SECONDARY, plt, save
-from composite_laminate_model import (
+from shell_fem import (
     DOF,
     BoundaryConditions,
     FSDTModel,

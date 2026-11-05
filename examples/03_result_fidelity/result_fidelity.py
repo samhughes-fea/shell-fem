@@ -25,7 +25,7 @@ from matplotlib.colors import Normalize
 
 from _shared.analytical import navier_clpt_moment_field
 from _shared.plotting import REFERENCE, SEQUENTIAL, SERIES, TEXT_SECONDARY, plt, save, simply_supported
-from composite_laminate_model import (
+from shell_fem import (
     CLPTModel,
     FEAMesh,
     FSDTModel,

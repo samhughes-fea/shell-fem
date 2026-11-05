@@ -34,7 +34,7 @@ import numpy as np
 
 from _shared.iea15mw import DATA, build_segment, material_cards
 from _shared.plotting import GRID, REFERENCE, SERIES, TEXT_SECONDARY, plt, save
-from composite_laminate_model import (
+from shell_fem import (
     Airfoil,
     BladeBuilder,
     FSDTModel,

@@ -46,7 +46,7 @@ laminate needs only three unit solves.
 - **Uniaxial tension wants fibres along the load.** Tsai-Wu puts the optimum at
   10° rather than 0°. Its quadratic surface lets the fibres carry more than Xt
   when the matrix is in transverse compression, which a small angle creates
-  (see example 05). A maximum-stress or Hashin check would put it at 0°.
+  (see laminate-constitutive-model's example 01, [failure envelopes](https://github.com/samhughes-fea/laminate-constitutive-model/tree/main/examples/01_failure_envelopes/)). A maximum-stress or Hashin check would put it at 0°.
 - **Shear wants ±45°**, where the fibres carry the shear as tension and
   compression.
 - **Equibiaxial load wants ±45°.** For [±θ] under N_x = N_y, θ and 90° − θ are

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from composite_laminate_model import (
+from shell_fem import (
     DOF,
     Airfoil,
     BladeBuilder,

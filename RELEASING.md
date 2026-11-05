@@ -4,12 +4,11 @@ Nothing is published to PyPI automatically. A release is three deliberate steps.
 
 ## 1. Prepare
 
-1. Set `__version__` in `src/composite_laminate_model/__init__.py`;
+1. Set `__version__` in `src/shell_fem/__init__.py`;
    `pyproject.toml` reads it from there. This package depends on
-   [implicit-geometry-kernel](https://github.com/samhughes-fea/implicit-geometry-kernel),
-   and [anisotropic-section-model](https://github.com/samhughes-fea/anisotropic-section-model)
-   depends on it, so release in that order: geometry kernel, laminate model, section
-   model.
+   [implicit-geometry-kernel](https://github.com/samhughes-fea/implicit-geometry-kernel)
+   and [laminate-constitutive-model](https://github.com/samhughes-fea/laminate-constitutive-model),
+   so release those first.
 2. Move the `Unreleased` notes in `CHANGELOG.md` under the new version and date.
 3. Check locally:
 
@@ -38,8 +37,8 @@ anything to PyPI.
 
 One-time setup:
 
-1. On PyPI, add a trusted publisher for the project `composite-laminate-model`:
-   owner `samhughes-fea`, repository `composite-laminate-model`, workflow
+1. On PyPI, add a trusted publisher for the project `shell-fem`:
+   owner `samhughes-fea`, repository `shell-fem`, workflow
    `release.yml`, environment `pypi`.
 2. In the GitHub repository settings, create an environment called `pypi`
    (optionally with required reviewers, so every upload needs an approval).
