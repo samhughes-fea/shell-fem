@@ -6,6 +6,10 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+- CI installs laminate-constitutive-model at its v0.2.0 tag.
+
+## [0.1.0] - 2026-11-05
+
 ### Changed
 
 - **Split.** This repository is shell-fem, the finite-element half of
@@ -85,7 +89,7 @@ All notable changes to this project are listed here. The format follows
   first release.
 - `tests/test_package_split.py` checks every import against those boundaries.
 
-## [0.1.0] - not yet released
+## composite-laminate-fea 0.1.0 (never released)
 
 First release of `composite-laminate-fea` (import name `laminate_modelling_package`).
 
