@@ -61,9 +61,10 @@ python examples/03_result_fidelity/result_fidelity.py   # or one at a time
 
 The scripts also run straight from a clone without installing, because they add
 `src/` to the import path. Examples 08 and 18 need Gmsh. Examples 07 and 25 need CalculiX on the `PATH`
-as `ccx` (`apt install calculix-ccx`) and skip themselves without it. Example 24 reads
-its reference data from a committed file; regenerating that file needs WISDEM
-(`data/prepare_reference_data.py`). Example 02
+as `ccx` (`apt install calculix-ccx`) and skip themselves without it. Examples 24 to 26
+read the IEA 15 MW blade from the private reference-blades catalogue (clone it to
+`reference_blades/`, git-ignored, or set `REFERENCE_BLADES_DIR`) and skip themselves
+without it; blade definitions are never committed here. Example 02
 adds a CalculiX overlay when `ccx` is present.
 
 ## Layout
@@ -77,6 +78,7 @@ examples/
 │   ├── analytical.py           Navier series solutions used as references
 │   ├── membrane.py             one-element membrane cell for failure envelopes and sweeps
 │   ├── iea15mw.py              IEA 15 MW blade stations as BladeBuilder regions and laminates
+│   ├── reference_blades.py     finds the private reference-blades checkout
 │   └── thin_wall.py            thin-walled beam reference for closed multi-cell sections (examples 20, 21)
 └── NN_<name>/
     ├── README.md               walkthrough with the figures

@@ -2,11 +2,12 @@
 
 The IEA Wind 15 MW reference turbine publishes its blade as a full layup (windIO
 file): airfoils, chord, spar caps, webs, sandwich panels and trailing-edge
-reinforcement, with materials. ``data/iea15mw_sections.json`` holds that layup at
-six stations as PreComp sees it (sector boundaries on each surface, laminae per
-sector, web positions), PreComp's section properties for each, and the published
-stiffness and mass data of the turbine model. ``data/prepare_reference_data.py``
-regenerates it with WISDEM.
+reinforcement, with materials. ``iea15/derived/precomp_sections.json`` in the private
+reference-blades catalogue holds that layup at six stations as PreComp sees it (sector
+boundaries on each surface, laminae per sector, web positions), PreComp's section
+properties for each, and the published stiffness and mass data of the turbine model.
+Without a checkout of the catalogue (see ``_shared/reference_blades.py``) this example
+is skipped.
 
 Each station is built as a prismatic shell segment, eight chords long, with
 ``BladeBuilder`` (laminates growing inward from the outer mould line, meshed on
@@ -32,7 +33,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from _shared.iea15mw import DATA, build_segment, material_cards
+from _shared.reference_blades import ReferenceBladesUnavailable
+
+try:
+    from _shared.iea15mw import DATA, build_segment, material_cards
+except ReferenceBladesUnavailable as exc:  # the blade lives in the private catalogue
+    if __name__ != "__main__":
+        raise
+    print(f"Skipped: {exc}")
+    sys.exit(0)
 from _shared.plotting import GRID, REFERENCE, SERIES, TEXT_SECONDARY, plt, save
 from shell_fem import (
     Airfoil,

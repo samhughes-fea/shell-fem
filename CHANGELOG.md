@@ -7,6 +7,10 @@ All notable changes to this project are listed here. The format follows
 ## [Unreleased]
 
 - CI installs laminate-constitutive-model at its v0.2.0 tag.
+- Examples 24 to 26 read the IEA 15 MW section data from the private reference-blades
+  catalogue (`examples/_shared/reference_blades.py`) and skip without it. The
+  committed `iea15mw_sections.json` and its producer script are removed; figures and
+  results stay.
 
 ## [0.1.0] - 2026-11-05
 

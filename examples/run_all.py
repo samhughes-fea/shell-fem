@@ -21,6 +21,9 @@ def main() -> int:
         start = time.perf_counter()
         try:
             runpy.run_path(str(script), run_name="__main__")
+        except SystemExit as exc:  # a clean exit (e.g. a skipped reference-blade example) is not a failure
+            if exc.code not in (0, None):
+                failures.append(script.parent.name)
         except Exception:  # keep going so one broken example does not hide the rest
             traceback.print_exc()
             failures.append(script.parent.name)
