@@ -2,7 +2,7 @@
 
 The IEA Wind 15 MW reference turbine publishes its blade as a full layup (windIO
 file): airfoils, chord, spar caps, webs, sandwich panels and trailing-edge
-reinforcement, with materials. ``iea15/derived/precomp_sections.json`` in the private
+reinforcement, with materials. ``iea15/derived/sections/precomp/precomp_sections.json`` in the private
 reference-blades catalogue holds that layup at six stations as PreComp sees it (sector
 boundaries on each surface, laminae per sector, web positions), PreComp's section
 properties for each, and the published stiffness and mass data of the turbine model.

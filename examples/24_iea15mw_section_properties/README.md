@@ -31,7 +31,7 @@ like. The IEA 15 MW file holds both the layup and the properties.
 The blade's section data (airfoil points, sector boundaries on each surface,
 laminae per sector, web positions, as PreComp sees them at six stations) are not
 stored in this public repository. They live in the private reference-blades
-catalogue as `iea15/derived/precomp_sections.json`, made there by running WISDEM's
+catalogue as `iea15/derived/sections/precomp/precomp_sections.json`, made there by running WISDEM's
 blade model on the yaml and re-running PreComp with zero twist so its properties
 are in the chord frame. To run examples 24 to 26, clone that catalogue to
 `reference_blades/` at the root of this repository (git-ignored) or set
@@ -148,7 +148,7 @@ mould-line meshes as an expected failure.
 
 ## Things to try
 
-- Add stations: edit `TARGETS` in reference-blades' `iea15/derived/make_precomp_sections.py`
+- Add stations: edit `TARGETS` in reference-blades' `iea15/derived/sections/precomp/make_precomp_sections.py`
   and rerun it (needs `pip install wisdem pyyaml`).
 - Pass `mesh_surface="outer"` to `build_segment` to put the skins back on the
   mould line: EA and mass then match PreComp within 0.3%, and the Quad4 root-tube
