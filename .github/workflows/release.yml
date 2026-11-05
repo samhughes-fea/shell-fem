@@ -44,7 +44,7 @@ jobs:
           python -m venv /tmp/wheel-env
           # the geometry kernel is not on PyPI yet: install it from its repository first
           /tmp/wheel-env/bin/pip install "implicit-geometry-kernel @ git+https://github.com/samhughes-fea/implicit-geometry-kernel@v0.2.0"
-          /tmp/wheel-env/bin/pip install "laminate-constitutive-model @ git+https://github.com/samhughes-fea/laminate-constitutive-model@LCM_PIN"
+          /tmp/wheel-env/bin/pip install "laminate-constitutive-model @ git+https://github.com/samhughes-fea/laminate-constitutive-model@1470931cdd520b6a8050fab5c3cc245262d83550"
           /tmp/wheel-env/bin/pip install dist/*.whl
           cd /tmp && /tmp/wheel-env/bin/python -c "import shell_fem as sf; print(sf.__version__, len(sf.__all__), 'public names')"
           /tmp/wheel-env/bin/shell-fem-benchmarks --n 4 --work-dir /tmp/bench
