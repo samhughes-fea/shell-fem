@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from shell_fem import run_solver_benchmarks
+from shell_fem.verification import solver_benchmarks as run_solver_benchmarks
 from shell_fem import KernelStatus, StressDistributionVerifier, ThicknessProfile
 
 
