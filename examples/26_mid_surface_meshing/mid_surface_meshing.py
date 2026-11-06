@@ -28,7 +28,15 @@ sys.path.insert(0, str(HERE.parent))
 
 import numpy as np
 
-from _shared.iea15mw import DATA, build_segment, material_cards
+from _shared.reference_blades import ReferenceBladesUnavailable
+
+try:
+    from _shared.iea15mw import DATA, build_segment, material_cards
+except ReferenceBladesUnavailable as exc:  # the blade lives in the private catalogue
+    if __name__ != "__main__":
+        raise
+    print(f"Skipped: {exc}")
+    sys.exit(0)
 from _shared.plotting import GRID, REFERENCE, SERIES, TEXT_SECONDARY, plt, save
 from shell_fem import (
     Airfoil,
