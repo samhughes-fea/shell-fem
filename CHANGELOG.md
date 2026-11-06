@@ -6,6 +6,34 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Package layout.** The flat `laminate_*` modules moved into `pre_processing/`
+  (containers, element_library, property_library, load_library, mesh_library,
+  model_check), `processing/` (static operations and results, progressive damage),
+  `simulation_runner/` (static, progressive damage, and the solver backends that were
+  `kernels/`), `post_processing/` (VTK, beam section properties) and `verification/`.
+  Imports point one way only, checked by `tests/test_layout.py`. The public API
+  (`from shell_fem import ...`) is unchanged. The old paths (`shell_fem.laminate_*`,
+  `shell_fem.kernels`, `shell_fem.run_solver_benchmarks`) still import, with a
+  DeprecationWarning, until 0.3.0. The two compatibility files `laminate_fea_engine.py`
+  and `laminate_kernels.py` are now old paths too.
+- The `shell-fem-benchmarks` command runs `shell_fem.verification.solver_benchmarks`.
+
+### Added
+
+- The static solve as one class per stage: `AssembleGlobalSystem`,
+  `ConstrainGlobalSystem`, `ReduceConstrainedSystem`, `SolveReducedSystem`,
+  `AssembleLoadVector`, `ReconstructGlobalField`, `ComputePrimaryResults`, passing
+  the system states `GlobalSystem`, `ConstrainedSystem`, `ReducedSystem`,
+  `FactorisedSystem`.
+- `LinearStaticRunner(mesh, bcs, load_cases, combinations).execute().get_results()`
+  returns `LinearStaticResults` (solutions by name plus `StaticDiagnostics`, the wall
+  time of each stage). `StructuralGlobalSolver` keeps its API and runs the same stages,
+  with the same results to the last bit.
+
+### Other
+
 - CI installs laminate-constitutive-model at its v0.2.0 tag.
 - Examples 24 to 26 read the IEA 15 MW section data from the private reference-blades
   catalogue (`examples/_shared/reference_blades.py`) and skip without it. The
