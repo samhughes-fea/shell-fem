@@ -50,32 +50,55 @@ composite-laminate-model.
 ├── src/
 │   └── shell_fem/                          shell and solid FEA
 │       ├── __init__.py                     public API and __version__ (pyproject reads it)
-│       ├── run_solver_benchmarks.py        benchmark runner (shell-fem-benchmarks command)
-│       ├── laminate_elements.py            ShellElement, Tri3 / Quad4 / Quad8 shells, ElementRegistry
-│       ├── laminate_curved_shell.py        curved Quad8 / Tri6 shells (normals from the surface)
-│       ├── laminate_solid.py               layered Hex8 / Hex20 solids, solid_block, shell-solid coupling
-│       ├── laminate_blade.py               BladeBuilder, BladeMesh, beam_section_properties (shell-derived)
-│       ├── laminate_blade_geometry.py      BladeBuilder.from_geometry: shells meshed from the implicit geometry
-│       ├── laminate_blade_kernel_mesh.py   BladeBuilder.from_shell_mesh: shells on the kernel's own shell mesh
-│       ├── laminate_connectors.py          reference nodes, rigid_link (RBE2), distributing_link (RBE3)
-│       ├── laminate_layup.py               PlyDefinition, Layup: ply books, ply drops, per-ply results
-│       ├── laminate_orientation.py         FixedDirection, CylindricalDirection, FieldDirection
-│       ├── laminate_fea_engine.py          compatibility imports for the two modules above
-│       ├── laminate_stress_recovery.py     StressRecoverer, ExactStressRecoverer
-│       ├── laminate_equilibrium.py         EquilibriumStressRecoverer (σz, interlaminar shear, delamination)
-│       ├── laminate_progressive_damage.py  SmearedCrackDegradation, ProgressiveDamageAnalysis
-│       ├── laminate_solver_pipeline.py     FEAMesh, BoundaryConditions, LoadCase, LoadCombination, solver
-│       ├── laminate_mesh_builders.py       RectangularPlateBuilder, CylindricalPanelBuilder
-│       ├── laminate_gmsh.py                GmshMeshImporter, GmshPlateBuilder (optional Gmsh meshing)
-│       ├── laminate_model_check.py         ModelChecker: quality, slenderness, units, supports
-│       ├── kernels/                        FEAKernel + Native / CalculiX / Nastran adapters and deck writers
-│       ├── laminate_kernels.py             compatibility imports for kernels/
-│       ├── laminate_benchmark_stress.py    StressDistributionVerifier, ThicknessProfile
-│       ├── laminate_results.py             ResultsExtractor: Gauss point, ply, element, node and global results
-│       └── laminate_vtk.py                 write_vtu / write_pvd: ParaView files, one cell per ply
+│       ├── pre_processing/                 prepares the model; solves nothing
+│       │   ├── containers/                 FEAMesh (nodes, elements, sets, DOF numbering), BoundaryConditions
+│       │   ├── element_library/            shell.py (ShellElement, Tri3 / Quad4 / Quad8), curved_shell.py (curved
+│       │   │                               Quad8 / Tri6), solid.py (layered Hex8 / Hex20), connectors.py (RBE2, RBE3)
+│       │   ├── property_library/           layup.py (ply books, ply drops), orientation.py (material directions)
+│       │   ├── load_library/               load_case.py: LoadCase, LoadCombination, line and body loads
+│       │   ├── mesh_library/               builders.py (plates, panels), gmsh.py, blade.py (BladeBuilder,
+│       │   │                               BladeMesh), blade_geometry.py (from_geometry), blade_kernel_mesh.py
+│       │   │                               (from_shell_mesh on the kernel's own shell mesh, PCOMP assignment)
+│       │   └── model_check.py              ModelChecker: quality, slenderness, units, supports
+│       ├── processing/                     computes; one folder per analysis type
+│       │   ├── static/operations/          one class per solve stage (see below), linear solvers, system states
+│       │   ├── static/results/             SolutionResult, primary results, ResultsExtractor, stress recovery,
+│       │   │                               3D-equilibrium σz and interlaminar shear
+│       │   └── progressive_damage/         DamageState, SmearedCrackDegradation
+│       ├── simulation_runner/              sequences the stages and owns the results
+│       │   ├── static/                     LinearStaticRunner, StructuralGlobalSolver, solve_kernel_pcomp
+│       │   ├── progressive_damage/         ProgressiveDamageAnalysis (load, degrade, re-solve)
+│       │   └── backends/                   FEAKernel + native / CalculiX / Nastran adapters and deck writers
+│       ├── post_processing/                vtk.py (ParaView files, one cell per ply),
+│       │                                   beam_section_properties.py (6 x 6 / 7 x 7 from the shell model)
+│       ├── verification/                   Pagano stress verifier, benchmark runner (shell-fem-benchmarks)
+│       └── _legacy.py                      the 0.1 module paths (shell_fem.laminate_*), until 0.3.0
 ├── examples/                               worked examples with figures (see examples/README.md)
 └── tests/                                  pytest suite
 ```
+
+A linear static solve is a sequence of stage classes in `processing/static/operations`,
+each one engineering step from one system state to the next, and
+`simulation_runner/static/LinearStaticRunner` runs them in order:
+
+| stage | step | output |
+|---|---|---|
+| `AssembleGlobalSystem` | element stiffness and springs into global K | `GlobalSystem` |
+| `ConstrainGlobalSystem` | supports and multi-point constraints as U = T q + g | `ConstrainedSystem` |
+| `ReduceConstrainedSystem` | K_r = Tᵀ K T | `ReducedSystem` |
+| `SolveReducedSystem` | factorise once, then K_r q = Tᵀ (F − K g) for each load case | `FactorisedSystem`, q |
+| `AssembleLoadVector` | nodal, pressure, line, body and hygrothermal loads into F | F |
+| `ReconstructGlobalField` | U = T q + g | U |
+| `ComputePrimaryResults` | reactions R = K U − F | `SolutionResult` |
+
+```python
+results = LinearStaticRunner(mesh, bcs, [dead, wind], [LoadCombination("uls", {"dead": 1.35, "wind": 1.5})]).execute().get_results()
+results["uls"].displacements, results.diagnostics.phase_times   # wall time of each stage
+```
+
+`StructuralGlobalSolver().solve(...)` / `solve_many` / `solve_combinations` run the same stages.
+Imports point one way only: pre_processing ← processing ← simulation_runner ←
+post_processing (checked by `tests/test_layout.py`).
 
 ## Install
 

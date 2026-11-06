@@ -41,7 +41,7 @@ Issues = "https://github.com/samhughes-fea/shell-fem/issues"
 Changelog = "https://github.com/samhughes-fea/shell-fem/blob/main/CHANGELOG.md"
 
 [project.scripts]
-shell-fem-benchmarks = "shell_fem.run_solver_benchmarks:cli"
+shell-fem-benchmarks = "shell_fem.verification.solver_benchmarks:cli"
 
 [tool.setuptools.dynamic]
 version = { attr = "shell_fem.__version__" }

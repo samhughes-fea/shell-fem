@@ -8,7 +8,7 @@ displacements and ply stresses.
 
 ## The model
 
-The model is the one the `shell-fem-benchmarks` runner (`shell_fem.run_solver_benchmarks`) builds:
+The model is the one the `shell-fem-benchmarks` runner (`shell_fem.verification.solver_benchmarks`) builds:
 
 | Item | Value |
 |---|---|

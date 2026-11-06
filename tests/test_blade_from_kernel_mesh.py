@@ -3,8 +3,7 @@
 import numpy as np
 import pytest
 
-from shell_fem import BladeBuilder, FSDTModel, Laminate, create_default_library
-from shell_fem.laminate_blade import beam_section_properties
+from shell_fem import BladeBuilder, FSDTModel, Laminate, beam_section_properties, create_default_library
 from implicit_geometry_kernel import Airfoil, BladeGeometry, Station
 
 kernel_mesh = pytest.importorskip("implicit_geometry_kernel.mesh")
