@@ -6,6 +6,10 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+- Requires implicit-geometry-kernel 0.9.1 or later (CI installs the v0.9.1 tag and the
+  system GEOS library, `libgeos-dev`, which the kernel now loads). Layout codes carry
+  their anchoring and rib tokens (`"2D-F-LC-0R"`) and `BladeGeometry` takes
+  `pivot_fraction`; see the kernel's `docs/MIGRATING.md`.
 - CI installs laminate-constitutive-model at its v0.2.0 tag.
 - Examples 24 to 26 read the IEA 15 MW section data from the private reference-blades
   catalogue (`examples/_shared/reference_blades.py`) and skip without it. The

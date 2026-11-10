@@ -29,7 +29,7 @@ def laminates():
 def _geometry(stations=None, **kw):
     options = dict(spar_cap_thickness=0.008, shear_web_thickness=0.002, web_positions=(0.18, 0.48))
     options.update(kw)
-    return BladeGeometry(stations or _prismatic(), "2D-F", 0.003, **options)
+    return BladeGeometry(stations or _prismatic(), "2D-F-LC-0R", 0.003, pivot_fraction=0.3, **options)
 
 
 @pytest.fixture(scope="module")
@@ -88,8 +88,8 @@ def test_geometry_mesh_errors(laminates):
         BladeBuilder.from_geometry(_geometry(), n_span=1, element="quad4").build(
             dict(laminates, cap=Laminate.from_angles(lib.get("T300/5208"), [0] * 8, 0.5e-3)), FSDTModel())
     stations = [Station(0.0, 2.0, AIRFOIL, pitch_axis=0.3), Station(10.0, 1.0, AIRFOIL, pitch_axis=0.3)]
-    dropped = BladeGeometry(stations, "2D-F", 0.004, spar_cap_thickness=0.008, shear_web_thickness=0.004,
-                            web_offsets=(0.4, 1.2))
+    dropped = BladeGeometry(stations, "2D-F-LE-0R", 0.004, spar_cap_thickness=0.008, shear_web_thickness=0.004,
+                            web_offsets=(0.4, 1.2), pivot_fraction=0.3)
     with pytest.raises(ValueError, match="different walls"):
         BladeBuilder.from_geometry(dropped, n_span=1, element="quad4").build(laminates, FSDTModel())
 
@@ -97,8 +97,8 @@ def test_geometry_mesh_errors(laminates):
 def test_geometry_mesh_laminates_as_functions_of_span(laminates):
     lib = create_default_library()
     glass = lib.get("E-glass/epoxy")
-    geo = BladeGeometry(_prismatic(), "2D-F", lambda z: 0.003 if z < 2.0 else 0.004, spar_cap_thickness=0.008,
-                        shear_web_thickness=0.002, web_positions=(0.18, 0.48))
+    geo = BladeGeometry(_prismatic(), "2D-F-LC-0R", lambda z: 0.003 if z < 2.0 else 0.004, spar_cap_thickness=0.008,
+                        shear_web_thickness=0.002, web_positions=(0.18, 0.48), pivot_fraction=0.3)
     thin, thick = laminates["skin"], Laminate.from_angles(glass, [0, 45, -45, 0, 0, -45, 45, 0], 0.5e-3)
     blade = BladeBuilder.from_geometry(geo, n_span=[0.0, 0.5, 1.0], element="quad4").build(
         dict(laminates, skin=lambda z: thin if z < 2.0 else thick), FSDTModel())
