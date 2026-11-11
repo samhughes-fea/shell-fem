@@ -6,6 +6,8 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-11
+
 - Requires implicit-geometry-kernel 0.9.1 or later (CI installs the v0.9.1 tag and the
   system GEOS library, `libgeos-dev`, which the kernel now loads). Layout codes carry
   their anchoring and rib tokens (`"2D-F-LC-0R"`) and `BladeGeometry` takes

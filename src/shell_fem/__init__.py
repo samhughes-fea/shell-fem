@@ -141,7 +141,7 @@ from .laminate_blade import (
 )
 from .laminate_connectors import add_reference_node, distributing_link, rigid_link
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 import types as _types
 
