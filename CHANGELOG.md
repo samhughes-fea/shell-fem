@@ -6,6 +6,18 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+- `BladeBuilder.from_shell_mesh(shell_mesh, geometry=None)` builds the shell model on the
+  geometry kernel's own shell mesh (`implicit_geometry_kernel.mesh.shell_mesh`, kernel
+  0.9.2), with no remeshing: kernel quads become `quad4` elements, rib and tip-closure
+  polygons `tri3` fans about a centroid node. Each element's laminate is looked up per
+  layer by wall label, region or kind (`"rib"` for ribs; the tip closure is skin), and a
+  capped skin is the cap + skin stack with the kernel's eccentricity as its offset.
+  Normals are the kernel's (skin out of the section, webs to the trailing edge, ribs
+  and tip along +z). `BladeMesh.shell_mesh` keeps the kernel mesh. EA, EI and GJ match
+  `from_geometry` within 0.8 % on a prismatic 2D-F blade.
+- Requires implicit-geometry-kernel 0.9.2 (CI installs it by commit until the v0.9.2
+  tag exists).
+
 ## [0.2.0] - 2026-11-11
 
 - Requires implicit-geometry-kernel 0.9.1 or later (CI installs the v0.9.1 tag and the

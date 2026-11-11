@@ -55,11 +55,14 @@ class BladeMesh:
     _smoothing: Optional[float] = field(default=None, repr=False, compare=False)
     # the BladeGeometry a mesh from ``BladeBuilder.from_geometry`` was cut from
     geometry: Optional[object] = field(default=None, repr=False, compare=False)
+    # the kernel ShellMesh a mesh from ``BladeBuilder.from_shell_mesh`` was built on
+    shell_mesh: Optional[object] = field(default=None, repr=False, compare=False)
 
     @property
     def surface(self) -> str:
         """``"mid"`` for skins meshed on their mid-surface, ``"outer"`` on the mould line."""
-        return "mid" if self.mould_line is not None or self.geometry is not None else "outer"
+        on_mid = self.mould_line is not None or self.geometry is not None or self.shell_mesh is not None
+        return "mid" if on_mid else "outer"
 
     def nodes(self, name: str) -> List[int]:
         try:
@@ -217,6 +220,17 @@ class BladeBuilder:
         from .laminate_blade_geometry import GeometryBladeBuilder
 
         return GeometryBladeBuilder(geometry, n_span, element, element_size, wall_elements, material_axis)
+
+    @staticmethod
+    def from_shell_mesh(shell_mesh, geometry=None, material_axis=(0.0, 0.0, 1.0)) -> "KernelMeshBladeBuilder":  # noqa: F821
+        """Use the geometry kernel's own ``ShellMesh`` (``implicit_geometry_kernel.mesh.shell_mesh``).
+
+        See ``KernelMeshBladeBuilder``: kernel quads become ``quad4`` elements and rib and
+        tip polygons ``tri3`` fans, on the kernel's nodes, with no remeshing.
+        """
+        from .laminate_blade_kernel_mesh import KernelMeshBladeBuilder
+
+        return KernelMeshBladeBuilder(shell_mesh, geometry, material_axis)
 
     # ------------------------------------------------------------ geometry
     def _station_at(self, z: float):
