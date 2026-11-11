@@ -105,3 +105,23 @@ def test_geometry_mesh_laminates_as_functions_of_span(laminates):
     t = {round(e.laminate.thickness, 6) for e in blade.mesh.shell_elements
          if e.element_id in set(blade.elements("skin_suction_surface:leading_edge"))}
     assert t == {0.003, 0.004}
+
+
+def test_capped_skin_stays_on_the_skin_mid_surface_with_an_offset_laminate(geometry_blade):
+    """Cap + skin elements share the skin's reference surface; the stack is eccentric."""
+    blade = geometry_blade
+    by_id = {e.element_id: e for e in blade.mesh.shell_elements}
+    caps = set(blade.elements("caps"))
+    for eid in caps:
+        lam = by_id[eid].laminate
+        assert lam.thickness == pytest.approx(0.011)
+        assert lam.offset == pytest.approx(-0.004)  # half the 8 mm cap, inward
+    for eid in set(blade.elements("skin")) - caps:
+        assert by_id[eid].laminate.offset == 0.0
+    # nodes of the capped run lie on the skin mid-surface of the cut
+    skin = np.vstack([w.xy for w in blade.geometry.section_at(0.0).walls_of("skin")])
+    for eid in list(caps)[:20]:
+        for n in by_id[eid].node_ids:
+            x = blade.mesh.node_coordinates(n)
+            if abs(x[2]) < 1e-12:
+                assert np.min(np.linalg.norm(skin - x[:2], axis=1)) < 2e-3
