@@ -15,8 +15,7 @@ All notable changes to this project are listed here. The format follows
   Normals are the kernel's (skin out of the section, webs to the trailing edge, ribs
   and tip along +z). `BladeMesh.shell_mesh` keeps the kernel mesh. EA, EI and GJ match
   `from_geometry` within 0.8 % on a prismatic 2D-F blade.
-- Requires implicit-geometry-kernel 0.9.2 (CI installs it by commit until the v0.9.2
-  tag exists).
+- Requires implicit-geometry-kernel 0.9.2 (CI installs the v0.9.2 tag).
 
 ## [0.2.0] - 2026-11-11
 
