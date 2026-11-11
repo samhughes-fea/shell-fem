@@ -11,8 +11,10 @@ The shells lie where ``SectionCut.mid_surface()`` puts the walls, the same graph
 - skins on their mid-surface (inward from the outer mould line by half their
   thickness), with normals out of the section;
 - spar caps merged into the skin they are bonded to: along the bond the shell is the
-  cap and skin stacked (cap plies inside, skin plies outside) on the stack's
-  mid-surface, as a cap laid on a skin is;
+  cap and skin stacked (cap plies inside, skin plies outside). Its nodes stay on the
+  skin mid-surface, where the geometry puts them, and the stacked laminate carries an
+  offset of half the cap thickness inward, so its mid-plane is the stack's, as a cap
+  laid on a skin is;
 - webs between the skins' mid-surfaces, with normals towards the trailing edge.
 
 Each wall run between junctions (where walls meet, or where a skin changes region or
@@ -277,7 +279,11 @@ class GeometryBladeBuilder:
                 return parts[0]
             ids = tuple(id(p) for p in parts)
             if ids not in stacks:
-                stacks[ids] = Laminate([ply for p in parts for ply in p.plies], "+".join(p.name for p in parts))
+                # nodes are on the outer layer's (the skin's) mid-surface: the stack's
+                # mid-plane lies half the inner layers' thickness inside it (-e3)
+                inner = sum(p.thickness for p in parts[:-1])
+                stacks[ids] = Laminate([ply for p in parts for ply in p.plies], "+".join(p.name for p in parts),
+                                       offset=parts[-1].offset - 0.5 * inner)
             return stacks[ids]
 
         # elements

@@ -81,10 +81,12 @@ composite-laminate-model.
 The package is not on PyPI yet. It depends on
 [implicit-geometry-kernel](https://github.com/samhughes-fea/implicit-geometry-kernel)
 and [laminate-constitutive-model](https://github.com/samhughes-fea/laminate-constitutive-model),
-so install those first, then this package from a clone:
+so install those first, then this package from a clone. The kernel loads the
+system GEOS library (`apt install libgeos-dev`, `brew install geos` or
+`conda install geos`):
 
 ```bash
-pip install "implicit-geometry-kernel @ git+https://github.com/samhughes-fea/implicit-geometry-kernel@v0.2.0"
+pip install "implicit-geometry-kernel @ git+https://github.com/samhughes-fea/implicit-geometry-kernel@v0.9.1"
 pip install "laminate-constitutive-model @ git+https://github.com/samhughes-fea/laminate-constitutive-model@v0.2.0"
 pip install -e .             # NumPy only (dense solver)
 pip install -e ".[sparse]"   # + SciPy sparse solver
@@ -101,7 +103,7 @@ Numba. SciPy is optional: without it the solver falls back to dense Cholesky.
 
 | Package | Holds | Depends on |
 | --- | --- | --- |
-| [implicit-geometry-kernel](https://github.com/samhughes-fea/implicit-geometry-kernel) | `Airfoil`, `Station`, `SkinRegion`, `ShearWeb`, `BladeGeometry` and the implicit section geometry: 40 structural layouts, wall midlines and cells at any span position | numpy, shapely, numba |
+| [implicit-geometry-kernel](https://github.com/samhughes-fea/implicit-geometry-kernel) | `Airfoil`, `Station`, `SkinRegion`, `ShearWeb`, `BladeGeometry` and the implicit section geometry: 40 structural layouts, wall midlines and cells at any span position | numpy, numba, system GEOS (`libgeos-dev`) |
 | [laminate-constitutive-model](https://github.com/samhughes-fea/laminate-constitutive-model) | materials, `Ply`, `Laminate`, ABD, the CLPT / FSDT / RZT / layerwise section stiffness, hygrothermal states, failure criteria, `PaganoPlate` | numpy |
 | **shell-fem** (this one) | shell and solid elements, solver, constraints and links, stress recovery, layups, progressive damage, Gmsh, CalculiX and Nastran kernels, `BladeBuilder`, `beam_section_properties` | the geometry kernel and the constitutive model |
 | [anisotropic-section-model](https://github.com/samhughes-fea/anisotropic-section-model) | `ThinWalledSection`, `RestrainedTorsionBeam`, `GeneralizedBeam`, `TimoshenkoBeam`: thin-walled beam-section theory | the constitutive model |
@@ -230,8 +232,8 @@ anywhere, and `BladeBuilder.from_geometry` meshes the walls along the span:
 ```python
 from implicit_geometry_kernel import BladeGeometry
 
-geo = BladeGeometry(stations, "2D-F", skin_thickness=0.003, spar_cap_thickness=0.008,
-                    shear_web_thickness=0.002, web_positions=(0.18, 0.48))
+geo = BladeGeometry(stations, "2D-F-LC-0R", skin_thickness=0.003, spar_cap_thickness=0.008,
+                    shear_web_thickness=0.002, web_positions=(0.18, 0.48), pivot_fraction=0.35)
 blade = BladeBuilder.from_geometry(geo, n_span=12).build({"skin": skin, "cap": cap, "web": web}, FSDTModel())
 ```
 

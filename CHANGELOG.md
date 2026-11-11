@@ -6,6 +6,17 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-11
+
+- Requires implicit-geometry-kernel 0.9.1 or later (CI installs the v0.9.1 tag and the
+  system GEOS library, `libgeos-dev`, which the kernel now loads). Layout codes carry
+  their anchoring and rib tokens (`"2D-F-LC-0R"`) and `BladeGeometry` takes
+  `pivot_fraction`; see the kernel's `docs/MIGRATING.md`.
+- `BladeBuilder.from_geometry`: a spar cap bonded to a skin stays on the skin mid-surface,
+  where the kernel now keeps it, and the stacked cap + skin laminate has an offset of half
+  the cap thickness inward. Skin and capped-skin elements share one reference surface;
+  the stack's eccentricity is in the laminate. Section stiffness is as before (EI within
+  0.3 % on the example 20 section).
 - CI installs laminate-constitutive-model at its v0.2.0 tag.
 - Examples 24 to 26 read the IEA 15 MW section data from the private reference-blades
   catalogue (`examples/_shared/reference_blades.py`) and skip without it. The

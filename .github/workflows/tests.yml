@@ -18,11 +18,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install CalculiX and the Gmsh runtime
-        run: sudo apt-get update && sudo apt-get install -y calculix-ccx libglu1-mesa
+        run: sudo apt-get update && sudo apt-get install -y calculix-ccx libglu1-mesa libgeos-dev
       - name: Install the geometry kernel and the constitutive model
         # not on PyPI yet: install them from their repositories
         run: |
-          pip install "implicit-geometry-kernel @ git+https://github.com/samhughes-fea/implicit-geometry-kernel@v0.2.0"
+          pip install "implicit-geometry-kernel @ git+https://github.com/samhughes-fea/implicit-geometry-kernel@v0.9.1"
           pip install "laminate-constitutive-model @ git+https://github.com/samhughes-fea/laminate-constitutive-model@v0.2.0"
       - name: Install package
         run: pip install -e ".[dev]"
