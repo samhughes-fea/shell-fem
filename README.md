@@ -56,6 +56,7 @@ composite-laminate-model.
 │       ├── laminate_solid.py               layered Hex8 / Hex20 solids, solid_block, shell-solid coupling
 │       ├── laminate_blade.py               BladeBuilder, BladeMesh, beam_section_properties (shell-derived)
 │       ├── laminate_blade_geometry.py      BladeBuilder.from_geometry: shells meshed from the implicit geometry
+│       ├── laminate_blade_kernel_mesh.py   BladeBuilder.from_shell_mesh: shells on the kernel's own shell mesh
 │       ├── laminate_connectors.py          reference nodes, rigid_link (RBE2), distributing_link (RBE3)
 │       ├── laminate_layup.py               PlyDefinition, Layup: ply books, ply drops, per-ply results
 │       ├── laminate_orientation.py         FixedDirection, CylindricalDirection, FieldDirection
@@ -244,6 +245,27 @@ are bonded to. On example 20's section this matches the region-based model to wi
 which also builds the thin-walled section from the same cut).
 The geometry has one skin thickness per section, so sandwich panels that differ from
 region to region still need the region-based builder.
+
+The kernel also meshes the blade itself (`implicit_geometry_kernel.mesh.shell_mesh`):
+quads on the skin and webs, polygons on rib faces and the tip closure, one conforming
+sheet whose cells carry their partition, layers and cap eccentricity.
+`BladeBuilder.from_shell_mesh` builds the shell model on that mesh with no remeshing:
+quads become `quad4` elements and each polygon a fan of `tri3` elements about its
+centroid. Laminates are looked up as for `from_geometry`, plus `"rib"` for rib faces;
+the tip closure is skin. Ribs, web ends and the tip closure come with the mesh, so a
+blade whose webs start and stop along the span needs no splitting:
+
+```python
+from implicit_geometry_kernel.mesh import shell_mesh
+
+geo = BladeGeometry(stations, "2D-F-LC-4R", ...)  # four ribs
+sm = shell_mesh(geo, h=0.05)                      # element size 0.05 m
+blade = BladeBuilder.from_shell_mesh(sm, geo).build({"skin": skin, "cap": cap, "web": web, "rib": rib},
+                                                    FSDTModel())
+```
+
+On a prismatic 2D-F blade (6 chords long) its EA, EI and GJ match `from_geometry` within
+0.8 % at `h = c/10` and 0.3 % at `h = c/20`.
 
 ## Beam-section theory
 
