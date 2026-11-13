@@ -22,6 +22,11 @@ the kernel gives, ``-eccentricity``, so its mid-plane lies inside the skin
 mid-surface where the nodes are. Skin, cap, rib and tip laminates must match the
 mesh's layer thicknesses (within ``thickness_tol``).
 
+``build_pcomp`` skips that lookup. It takes one :class:`PcompAssignment` per kernel
+element: the plies already chosen for that partition, bottom to top, and
+``offset = eccentricity / thickness`` of the full stack. The nodes stay where the
+mesh put them. ``solve_kernel_pcomp`` runs the native static solver on that model.
+
 Element sets: every region (``cap_su``, ``web_0``, ``rib_1:cell_0``, ...), partition
 and layer label, the label before ``:``, ``skin`` (skins, including the capped
 parts), ``caps``, ``webs``, ``ribs``, ``tip_closure`` and ``all``. Node sets:
@@ -30,12 +35,13 @@ parts), ``caps``, ``webs``, ``ribs``, ``tip_closure`` and ``all``. Node sets:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Dict, List, Sequence, Tuple
 
 import numpy as np
 
 from laminate_constitutive_model.laminate_kinematics import KinematicModel
-from laminate_constitutive_model.laminate_mechanics import Laminate
+from laminate_constitutive_model.laminate_mechanics import Laminate, Ply
 
 
 def _keys(surface: str, label: str, position: int, n_layers: int) -> Tuple[str, ...]:
@@ -46,6 +52,38 @@ def _keys(surface: str, label: str, position: int, n_layers: int) -> Tuple[str, 
     else:
         kind = surface
     return tuple(dict.fromkeys((label, label.split(":")[0], kind)))
+
+
+@dataclass(frozen=True)
+class PcompAssignment:
+    """One Nastran PCOMP on a kernel shell element.
+
+    ``plies`` are bottom to top along the element normal, the PCOMP order.
+    ``offset`` is how far the node surface sits above the laminate mid-plane,
+    in units of the laminate thickness: 0 puts the nodes on the mid-plane.
+    A spar cap whose nodes stay on the skin mid-surface uses
+    ``eccentricity / thickness`` of the full stack (skin plus cap). The
+    constitutive mid-plane is then ``-offset * thickness`` (inward when the
+    fraction is positive and the normal points outward), and a Nastran deck
+    writes ``Z0 = -(0.5 + offset) * thickness``.
+    """
+
+    plies: Tuple[Ply, ...]
+    offset: float = 0.0
+    name: str = ""
+
+    def __post_init__(self) -> None:
+        plies = tuple(self.plies)
+        if not plies or not all(isinstance(p, Ply) for p in plies):
+            raise TypeError("PcompAssignment.plies must be one or more Ply instances")
+        if not np.isfinite(self.offset):
+            raise ValueError("PcompAssignment.offset must be finite")
+        object.__setattr__(self, "plies", plies)
+
+    def laminate(self) -> Laminate:
+        """The stack with its mid-plane at ``-offset * thickness``."""
+        thickness = float(sum(p.thickness for p in self.plies))
+        return Laminate(self.plies, self.name, offset=-float(self.offset) * thickness)
 
 
 class KernelMeshBladeBuilder:
@@ -71,14 +109,7 @@ class KernelMeshBladeBuilder:
 
     def build(self, laminates, kinematics: KinematicModel, thickness_tol: float = 0.01, **element_options):
         """The ``BladeMesh``. ``laminates`` maps labels, regions or kinds to laminates (or functions of z)."""
-        from .laminate_blade import BladeMesh
-        from .laminate_solver_pipeline import FEAMesh
-
         sm = self.shell_mesh
-        options = dict(element_options)
-        options.setdefault("material_axis", self.material_axis)
-        tri_options = {k: v for k, v in options.items() if k != "membrane"}
-        xyz = np.asarray(sm.nodes, dtype=float)
 
         def laminate_of(keys: Sequence[str], z: float) -> Laminate:
             for key in keys:
@@ -114,22 +145,69 @@ class KernelMeshBladeBuilder:
                                        offset=offset)
             return stacks[key]
 
+        caps = [sm.surface[i] == "skin" and len(sm.layers[i]) > 1 for i in range(len(sm.elements))]
+        return self._assemble(laminate_for, kinematics, caps, None, element_options)
+
+    def build_pcomp(self, assignments: Sequence[PcompAssignment], kinematics: KinematicModel,
+                    material_axes=None, **element_options):
+        """The ``BladeMesh`` from one PCOMP per kernel element.
+
+        ``assignments`` follows ``shell_mesh.elements``. ``material_axes`` is one
+        0-degree direction, or one direction per kernel element; each is projected
+        onto the element. The assignment's ``offset`` is used as given: the kernel
+        eccentricity is not applied a second time.
+        """
+        sm = self.shell_mesh
+        assignments = tuple(assignments)
+        if len(assignments) != len(sm.elements):
+            raise ValueError(f"{len(assignments)} PCOMP assignments for {len(sm.elements)} kernel elements")
+        if material_axes is not None:
+            axes = np.asarray(material_axes, dtype=float)
+            if axes.shape == (3,):
+                material_axes = np.tile(axes, (len(assignments), 1))
+            elif axes.shape != (len(assignments), 3):
+                raise ValueError("material_axes must be one direction or one per kernel element")
+            else:
+                material_axes = axes
+
+        def laminate_for(i: int, _z: float) -> Laminate:
+            return assignments[i].laminate()
+
+        caps = [sm.surface[i] == "skin" and assignments[i].offset != 0.0
+                for i in range(len(sm.elements))]
+        return self._assemble(laminate_for, kinematics, caps, material_axes, element_options)
+
+    def _assemble(self, laminate_for, kinematics, caps, material_axes, element_options):
+        from .laminate_blade import BladeMesh
+        from .laminate_solver_pipeline import FEAMesh
+
+        sm = self.shell_mesh
+        xyz = np.asarray(sm.nodes, dtype=float)
         mesh = FEAMesh()
         for k, p in enumerate(xyz):
             mesh.add_node(k + 1, p)
         next_node = len(xyz) + 1
         elements: Dict[str, List[int]] = {}
+        source: List[Tuple[int, ...]] = []
         eid = 1
         for i, conn in enumerate(sm.elements):
             pts = xyz[list(conn)]
             lam = laminate_for(i, float(pts[:, 2].mean()))
             surface = sm.surface[i]
             layers = tuple(sm.layers[i])
-            sets = [sm.name[i], sm.partition[i]] + [v for label in layers for v in (label, label.split(":")[0])]
+            # the kernel mesh calls this ``name``; tidalshell's copy of the same mesh calls it ``region``
+            region = sm.name[i] if hasattr(sm, "name") else sm.region[i]
+            sets = [region, sm.partition[i]] + [v for label in layers for v in (label, label.split(":")[0])]
             sets.append({"skin": "skin", "web": "webs", "rib": "ribs"}.get(surface, surface))
-            if surface == "skin" and len(layers) > 1:
+            if caps[i]:
                 sets.append("caps")
             sets = list(dict.fromkeys(sets))
+            options = dict(element_options)
+            if material_axes is None:
+                options.setdefault("material_axis", self.material_axis)
+            else:
+                options["material_axis"] = material_axes[i]
+            tri_options = {k: v for k, v in options.items() if k != "membrane"}
             ids = [k + 1 for k in conn]
             if len(ids) == 4:
                 new = [eid]
@@ -144,6 +222,7 @@ class KernelMeshBladeBuilder:
                     mesh.add_element(eid, [centre, a, b], lam, kinematics, element_type="tri3", **tri_options)
                     new.append(eid)
                     eid += 1
+            source.append(tuple(new))
             for name in sets:
                 elements.setdefault(name, []).extend(new)
 
@@ -163,11 +242,42 @@ class KernelMeshBladeBuilder:
         elements["all"] = mesh.element_ids
         stations = tuple(self.geometry.stations) if self.geometry is not None else ()
         return BladeMesh(mesh, node_sets, elements, stations, np.asarray(sm.stations, dtype=float),
-                         geometry=self.geometry, shell_mesh=sm)
+                         geometry=self.geometry, shell_mesh=sm, source_elements=tuple(source))
 
     def __repr__(self) -> str:
         sm = self.shell_mesh
         return f"KernelMeshBladeBuilder({len(sm.elements)} kernel elements, {len(sm.stations)} stations)"
 
 
-__all__ = ["KernelMeshBladeBuilder"]
+def solve_kernel_pcomp(shell_mesh, assignments: Sequence[PcompAssignment], boundary_conditions,
+                       load_cases, kinematics: KinematicModel | None = None, material_axes=None,
+                       **element_options):
+    """Solve the kernel shell mesh with the given PCOMP assignment.
+
+    Returns ``(blade, results)``. ``results`` is one :class:`~shell_fem.KernelResult`
+    per load case, from the native static solver. One factorisation serves every case.
+    """
+    from laminate_constitutive_model.laminate_kinematics import FSDTModel
+
+    from .kernels.base import KernelResult, KernelStatus
+    from .laminate_solver_pipeline import LoadCase, StructuralGlobalSolver
+
+    if isinstance(load_cases, LoadCase):
+        cases = [load_cases]
+    else:
+        cases = list(load_cases)
+    if not cases:
+        raise ValueError("solve_kernel_pcomp needs at least one load case")
+    blade = KernelMeshBladeBuilder(shell_mesh).build_pcomp(
+        assignments, FSDTModel() if kinematics is None else kinematics,
+        material_axes=material_axes, **element_options)
+    solutions = StructuralGlobalSolver().solve_many(blade.mesh, boundary_conditions, cases)
+    results = [
+        KernelResult("native", KernelStatus.SUCCESS, displacements=sol.displacement_map(),
+                     info={"solve_time": sol.solve_time, **sol.info})
+        for sol in solutions
+    ]
+    return blade, results
+
+
+__all__ = ["KernelMeshBladeBuilder", "PcompAssignment", "solve_kernel_pcomp"]
