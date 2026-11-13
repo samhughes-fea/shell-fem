@@ -25,7 +25,7 @@ import numpy as np
 
 from _shared.plotting import REFERENCE, SERIES, TEXT_SECONDARY, plt, save
 from shell_fem import CalculiXKernelAdapter, NativePythonKernelAdapter, StressDistributionVerifier
-from shell_fem.run_solver_benchmarks import build_model
+from shell_fem.verification.solver_benchmarks import build_model
 
 WORK_DIR = Path(__file__).resolve().parent / "calculix_run"
 

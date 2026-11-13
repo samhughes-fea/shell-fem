@@ -44,7 +44,7 @@ from shell_fem import (
     laminate_at_temperature,
     register_criterion,
 )
-from shell_fem.laminate_mesh_builders import _structured
+from shell_fem.pre_processing.mesh_library.builders import _structured
 
 ELEMENTS = ("quad4", "tri3", "quad8")
 
