@@ -46,6 +46,28 @@ class GlobalAssembler:
         np.add.at(K, (rows, cols), vals)
         return K
 
+    def scatter_element_matrices(self, mesh: FEAMesh, element_matrix):
+        """Assemble a global matrix from ``element_matrix(shell)`` in global DOFs."""
+        n = mesh.n_dof
+        rows, cols, vals = [], [], []
+        for element in mesh.shell_elements:
+            matrix = np.asarray(element_matrix(element), dtype=float)
+            dofs = mesh.element_dofs(element)
+            size = dofs.size
+            if matrix.shape != (size, size):
+                raise ValueError(f"Element {element.element_id} matrix has shape {matrix.shape}, expected {(size, size)}")
+            rows.append(np.repeat(dofs, size))
+            cols.append(np.tile(dofs, size))
+            vals.append(matrix.ravel())
+        if not rows:
+            raise ValueError("Mesh has no shell elements")
+        rows, cols, vals = np.concatenate(rows), np.concatenate(cols), np.concatenate(vals)
+        if self.sparse:
+            return _sp.csr_matrix((vals, (rows, cols)), shape=(n, n))
+        M = np.zeros((n, n))
+        np.add.at(M, (rows, cols), vals)
+        return M
+
     def element_load_vector(self, element: ShellElement, load_case: LoadCase, exposed: bool = True) -> np.ndarray:
         """Distributed loads on one element (pressure, body, hygrothermal) in global DOFs.
 

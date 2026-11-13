@@ -39,6 +39,16 @@ All notable changes to this project are listed here. The format follows
   directions) for any element, mesh and element options, with
   `run_obstacle_course`. Example 27 runs it on all five elements and
   `tests/test_shell_benchmarks.py` checks it.
+- `deflection_profile` reads a static solution as section-mean translation, rotation
+  and twist along one axis. The span is z.
+- `outer_ply_stress_strain` returns CLPT in-plane stress and strain at the outer
+  face of the bottom ply and the top ply (`eps = eps0 + z kappa`). `z` is measured
+  from the element reference surface, so a laminate offset stays the eccentricity.
+- `linear_buckling` returns the positive load factors of one reference load and the
+  corresponding modes.
+- `vibration_modes` returns the shell model's natural frequencies and
+  mass-normalised mode shapes. Those are the blade modes. A hub, shaft or rotor
+  is not assembled.
 - The static solve as one class per stage: `AssembleGlobalSystem`,
   `ConstrainGlobalSystem`, `ReduceConstrainedSystem`, `SolveReducedSystem`,
   `AssembleLoadVector`, `ReconstructGlobalField`, `ComputePrimaryResults`, passing
