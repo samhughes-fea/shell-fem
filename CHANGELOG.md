@@ -6,6 +6,16 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Warped flat shells move rigidly.** Flat Quad4 and Quad8 elements work on their
+  nodes projected onto a mean plane. On a warped element, a rigid rotation strained
+  that projection (a residual of about 1e-2 of K on one warped Quad4), which made
+  twisted and doubly curved meshes of flat elements far too stiff. Each projected
+  point is now tied to its node by a rigid offset along the normal (MacNeal's
+  warping correction; `warping_correction=True`, the default). Flat elements on
+  flat meshes are unchanged bit for bit; the curved elements are not affected.
+
 ### Changed
 
 - **Package layout.** The flat `laminate_*` modules moved into `pre_processing/`
@@ -24,6 +34,11 @@ All notable changes to this project are listed here. The format follows
 
 ### Added
 
+- `shell_fem.verification.shell_benchmarks`: the shell obstacle course
+  (Scordelis-Lo roof, pinched cylinder, pinched hemisphere, twisted beam in both
+  directions) for any element, mesh and element options, with
+  `run_obstacle_course`. Example 27 runs it on all five elements and
+  `tests/test_shell_benchmarks.py` checks it.
 - The static solve as one class per stage: `AssembleGlobalSystem`,
   `ConstrainGlobalSystem`, `ReduceConstrainedSystem`, `SolveReducedSystem`,
   `AssembleLoadVector`, `ReconstructGlobalField`, `ComputePrimaryResults`, passing
