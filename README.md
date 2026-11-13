@@ -87,7 +87,7 @@ system GEOS library (`apt install libgeos-dev`, `brew install geos` or
 `conda install geos`):
 
 ```bash
-pip install "implicit-geometry-kernel @ git+https://github.com/samhughes-fea/implicit-geometry-kernel@v0.9.1"
+pip install "implicit-geometry-kernel @ git+https://github.com/samhughes-fea/implicit-geometry-kernel@K9"
 pip install "laminate-constitutive-model @ git+https://github.com/samhughes-fea/laminate-constitutive-model@v0.2.0"
 pip install -e .             # NumPy only (dense solver)
 pip install -e ".[sparse]"   # + SciPy sparse solver
