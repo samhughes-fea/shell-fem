@@ -57,6 +57,8 @@ class BladeMesh:
     geometry: Optional[object] = field(default=None, repr=False, compare=False)
     # the kernel ShellMesh a mesh from ``BladeBuilder.from_shell_mesh`` was built on
     shell_mesh: Optional[object] = field(default=None, repr=False, compare=False)
+    # shell element ids created from each kernel element, in kernel order
+    source_elements: Tuple[Tuple[int, ...], ...] = ()
 
     @property
     def surface(self) -> str:
@@ -227,6 +229,8 @@ class BladeBuilder:
 
         See ``KernelMeshBladeBuilder``: kernel quads become ``quad4`` elements and rib and
         tip polygons ``tri3`` fans, on the kernel's nodes, with no remeshing.
+        ``build`` looks laminates up by label. ``build_pcomp`` takes one PCOMP per kernel
+        element, including the cap offset ``eccentricity / thickness``.
         """
         from .laminate_blade_kernel_mesh import KernelMeshBladeBuilder
 

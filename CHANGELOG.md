@@ -6,6 +6,13 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+- `KernelMeshBladeBuilder.build_pcomp` and `solve_kernel_pcomp` take the kernel shell
+  mesh and one PCOMP per kernel element. Plies are bottom to top. `offset` is the
+  node surface above the laminate mid-plane as a fraction of the thickness
+  (`eccentricity / thickness` for a cap whose nodes stay on the skin mid-surface).
+  The constitutive mid-plane is `-offset * thickness`, and the Nastran deck writes
+  that as PCOMP `Z0 = -(0.5 + offset) * thickness`. `solve_kernel_pcomp` runs the
+  native static solver on that mesh.
 - `BladeBuilder.from_shell_mesh(shell_mesh, geometry=None)` builds the shell model on the
   geometry kernel's own shell mesh (`implicit_geometry_kernel.mesh.shell_mesh`, kernel
   0.9.2), with no remeshing: kernel quads become `quad4` elements, rib and tip-closure

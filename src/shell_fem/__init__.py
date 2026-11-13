@@ -139,6 +139,7 @@ from .laminate_blade import (
     beam_section_properties,
     transform_beam_stiffness,
 )
+from .laminate_blade_kernel_mesh import PcompAssignment, solve_kernel_pcomp
 from .laminate_connectors import add_reference_node, distributing_link, rigid_link
 
 __version__ = "0.2.0"
