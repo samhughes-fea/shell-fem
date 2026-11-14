@@ -64,15 +64,19 @@ composite-laminate-model.
 │       │   ├── static/operations/          one class per solve stage (see below), linear solvers, system states
 │       │   ├── static/results/             SolutionResult, primary results, ResultsExtractor, stress recovery,
 │       │   │                               3D-equilibrium σz and interlaminar shear
+│       │   ├── buckling/operations/        geometric stiffness K_g of a static prestress, buckling eigen-solve
+│       │   ├── buckling/results/           BucklingMode (load factor, mode shape)
 │       │   └── progressive_damage/         DamageState, SmearedCrackDegradation
 │       ├── simulation_runner/              sequences the stages and owns the results
 │       │   ├── static/                     LinearStaticRunner, StructuralGlobalSolver, solve_kernel_pcomp
+│       │   ├── buckling/                   LinearBucklingRunner (linear eigenvalue buckling)
 │       │   ├── progressive_damage/         ProgressiveDamageAnalysis (load, degrade, re-solve)
 │       │   └── backends/                   FEAKernel + native / CalculiX / Nastran adapters and deck writers
 │       ├── post_processing/                vtk.py (ParaView files, one cell per ply),
 │       │                                   beam_section_properties.py (6 x 6 / 7 x 7 from the shell model)
 │       ├── verification/                   shell obstacle course (Scordelis-Lo, pinched cylinder and hemisphere,
-│       │                                   twisted beam), Pagano stress verifier, benchmark runner (shell-fem-benchmarks)
+│       │                                   twisted beam), buckling benchmarks (plates, column, cylinder),
+│       │                                   Pagano stress verifier, benchmark runner (shell-fem-benchmarks)
 │       └── _legacy.py                      the 0.1 module paths (shell_fem.laminate_*), until 0.3.0
 ├── examples/                               worked examples with figures (see examples/README.md)
 └── tests/                                  pytest suite
@@ -98,6 +102,16 @@ results["uls"].displacements, results.diagnostics.phase_times   # wall time of e
 ```
 
 `StructuralGlobalSolver().solve(...)` / `solve_many` / `solve_combinations` run the same stages.
+
+Linear buckling (`simulation_runner/buckling/LinearBucklingRunner`) runs the same static
+stages on a reference load case, then three more: `AssembleGeometricStiffness` (K_g of the
+membrane prestress), `SolveBucklingEigenproblem` (K_r φ = λ (−Tᵀ K_g T) φ on the same
+constraints) and `ComputeBucklingModes`. λ is the factor on the whole reference load.
+
+```python
+results = LinearBucklingRunner(mesh, bcs, load, n_modes=4).execute().get_results()
+results.critical_load_factor, results[0].displacement_array()   # lowest factor, first mode shape
+```
 Imports point one way only: pre_processing ← processing ← simulation_runner ←
 post_processing (checked by `tests/test_layout.py`).
 

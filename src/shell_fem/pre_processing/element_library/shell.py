@@ -475,6 +475,44 @@ class ShellElement(ABC):
         T = self.transformation
         return T.T @ self.local_stiffness_matrix() @ T
 
+    def membrane_prestress(self, u_elem: np.ndarray, xi: float, eta: float,
+                           state: Optional[HygrothermalState] = None) -> np.ndarray:
+        """Membrane resultants [Nx, Ny, Nxy] at (xi, eta) of a solved displacement field (local axes)."""
+        e, s = self.strain_state(u_elem, xi, eta)
+        return self.section_resultants(e, s, state)[0]
+
+    def geometric_stiffness_matrix(self, u_elem: Optional[np.ndarray] = None,
+                                   state: Optional[HygrothermalState] = None,
+                                   resultants: Optional[Sequence[float]] = None) -> np.ndarray:
+        """Geometric (initial stress) stiffness K_g in global DOFs.
+
+        K_g = sum over the stiffness points of G^T (I_3 x S) G w det J, with
+        S = [[Nx, Nxy], [Nxy, Ny]] the membrane prestress and G the in-plane gradient
+        of the three translations. The prestress is recovered at each point from the
+        element displacements ``u_elem`` (minus the hygrothermal ``state``), or is the
+        uniform ``resultants`` [Nx, Ny, Nxy] when given. Bending moments and transverse
+        shear do not enter, which is the usual linear buckling model for thin shells.
+        The tensor I_3 x S is the same in any orthonormal basis of the translations, so
+        the flat elements build it on their local DOFs (and pick up the warping
+        correction through ``transformation``) and the curved ones on the global DOFs.
+        """
+        if u_elem is None and resultants is None:
+            raise ValueError("give either the element displacements or uniform resultants")
+        uniform = None if resultants is None else np.asarray(resultants, dtype=float).reshape(3)
+        d, n = self.dofs_per_node, self.N_NODES
+        g = np.zeros((n, n))
+        for xi, eta, w in self.stiffness_rule():
+            _, detJ, dNdx = self.jacobian(xi, eta)
+            Nx, Ny, Nxy = uniform if uniform is not None else self.membrane_prestress(u_elem, xi, eta, state)
+            S = np.array([[Nx, Nxy], [Nxy, Ny]])
+            g += dNdx.T @ S @ dNdx * (w * detJ)
+        K = np.zeros((self.n_dof, self.n_dof))
+        for k in range(3):
+            idx = d * np.arange(n) + k
+            K[np.ix_(idx, idx)] = g
+        T = self.transformation
+        return T.T @ K @ T
+
     # --------------------------------------------------------------- loads
     def hygrothermal_resultants(self, state: HygrothermalState) -> Tuple[np.ndarray, np.ndarray]:
         return self._ht_engine.resultants(self._laminate, state)

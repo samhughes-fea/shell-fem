@@ -12,6 +12,9 @@ Solution        FEAMesh, BoundaryConditions, LoadCase, LoadCombination; LinearSt
                 (stages AssembleGlobalSystem, ConstrainGlobalSystem, ReduceConstrainedSystem,
                 SolveReducedSystem, ReconstructGlobalField, ComputePrimaryResults);
                 StructuralGlobalSolver (the earlier interface to the same stages)
+Buckling        LinearBucklingRunner (linear eigenvalue buckling under a reference load
+                case; stages AssembleGeometricStiffness, SolveBucklingEigenproblem,
+                ComputeBucklingModes), LinearBucklingResults, BucklingMode
 Meshing         BladeBuilder (airfoil skins, spar caps, shear webs, from_geometry and
                 from_shell_mesh; PcompAssignment and solve_kernel_pcomp for a kernel
                 shell mesh), the implicit_geometry_kernel types Airfoil, Station,
@@ -120,6 +123,9 @@ from shell_fem.simulation_runner.static.linear_static_simulation import (
     StaticDiagnostics,
     StructuralGlobalSolver,
 )
+from shell_fem.processing.buckling.operations import AssembleGeometricStiffness, SolveBucklingEigenproblem
+from shell_fem.processing.buckling.results import BucklingMode, ComputeBucklingModes
+from shell_fem.simulation_runner.buckling import LinearBucklingResults, LinearBucklingRunner
 from shell_fem.processing.static.results.containers import (
     ElementField,
     GaussPointField,

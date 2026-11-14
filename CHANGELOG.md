@@ -34,6 +34,21 @@ All notable changes to this project are listed here. The format follows
 
 ### Added
 
+- **Linear buckling.** `LinearBucklingRunner(mesh, bcs, load_case, n_modes)` solves
+  the reference load case, assembles the geometric stiffness of its membrane prestress
+  and solves K_r φ = λ (−K_g,r) φ on the same constraints. The stages are classes:
+  `AssembleGeometricStiffness`, `SolveBucklingEigenproblem` (dense below 1500 free DOFs,
+  Lanczos above; positive load factors only, or both signs) and `ComputeBucklingModes`.
+  `LinearBucklingResults` holds the modes (`BucklingMode`: load factor and mode shape
+  scaled to a unit largest translation, `as_solution()` for VTK), the reference static
+  solution and the stage timings. Every shell element has
+  `geometric_stiffness_matrix(u_elem, state)` and `membrane_prestress`; hygrothermal
+  prestress counts. Solid elements are refused.
+- `shell_fem.verification.buckling_benchmarks`: simply supported plates in compression
+  (isotropic or specially orthotropic, any aspect ratio), shear and restrained heating,
+  a cantilever column and a cylinder in axial compression, each against its classical
+  closed form. Example 28 runs them on all five elements and `tests/test_buckling.py`
+  checks them. `isotropic_laminate` takes an optional thermal expansion coefficient.
 - `shell_fem.verification.shell_benchmarks`: the shell obstacle course
   (Scordelis-Lo roof, pinched cylinder, pinched hemisphere, twisted beam in both
   directions) for any element, mesh and element options, with
