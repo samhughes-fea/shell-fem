@@ -92,6 +92,7 @@ class ShellElement(ABC):
         hygrothermal_engine: Optional[HygrothermalEngine] = None,
         material_axis=None,
         warn_warping: bool = True,
+        warping_correction: bool = True,
     ):
         coordinates = np.asarray(coordinates, dtype=float)
         n = self.N_NODES
@@ -108,6 +109,7 @@ class ShellElement(ABC):
         self.drilling_factor = float(drilling_factor)
         self.material_axis = material_axis
         self.warn_warping = bool(warn_warping)
+        self.warping_correction = bool(warping_correction)
         self._laminate = laminate
         self._kinematics = kinematics
         self._ht_engine = hygrothermal_engine or HygrothermalEngine()
@@ -174,7 +176,8 @@ class ShellElement(ABC):
         self.frame = np.vstack([e1, e2, e3])  # rows: local axes in global components
         local = (X - centre) @ self.frame.T
         self.local_xy = local[:, :2]
-        self.warping = float(np.max(np.abs(local[:, 2])))
+        self.node_offsets = local[:, 2].copy()  # distance of each node from the mean plane
+        self.warping = float(np.max(np.abs(self.node_offsets)))
         for xi, eta, _ in self.stiffness_rule() + self.shear_rule():
             if self.jacobian(xi, eta)[1] <= 0.0:
                 raise ValueError(f"Element {self.element_id} has a non-positive Jacobian; check node ordering")
@@ -273,6 +276,7 @@ class ShellElement(ABC):
             "hygrothermal_engine": self._ht_engine,
             "material_axis": self.material_axis,
             "warn_warping": False,
+            "warping_correction": self.warping_correction,
         }
 
     def _clone(self, **changes) -> "ShellElement":
@@ -293,13 +297,26 @@ class ShellElement(ABC):
 
     @property
     def transformation(self) -> np.ndarray:
-        """Global -> local DOF rotation (block diagonal; enrichment amplitudes are local)."""
+        """Global -> local DOF map (block diagonal; enrichment amplitudes are local).
+
+        A flat element works on its nodes projected onto the mean plane. For a warped
+        element (``warping_correction=True``, the default) each projected point is tied
+        to its node by a rigid offset of length z_i along the normal, so the in-plane
+        translations there are u - z_i theta_y and v + z_i theta_x (MacNeal's warping
+        correction). This keeps rigid-body motion exact on warped elements; without it,
+        twisted and doubly curved meshes of flat elements are far too flexible.
+        """
         d = self.dofs_per_node
         T = np.eye(self.n_dof)
+        correct = self.warping_correction and self.warping > 0.0
         for i in range(self.N_NODES):
             c = d * i
             T[c : c + 3, c : c + 3] = self.frame
             T[c + 3 : c + 6, c + 3 : c + 6] = self.frame
+            if correct:
+                z = self.node_offsets[i]
+                T[c, c + 3 : c + 6] -= z * self.frame[1]      # u' = u - z theta_y
+                T[c + 1, c + 3 : c + 6] += z * self.frame[0]  # v' = v + z theta_x
         return T
 
     # ----------------------------------------------------------- operators

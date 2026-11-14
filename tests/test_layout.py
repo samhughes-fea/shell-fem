@@ -2,7 +2,9 @@
 
     pre_processing  <-  processing  <-  simulation_runner  <-  post_processing / verification
 
-Each layer imports only the layers to its left (and itself).
+Each layer imports only the layers to its left (and itself). The one exception is
+``verification.benchmark_stress``, a dependency-free container (``ThicknessProfile``)
+that the solver backends use.
 """
 
 import ast
@@ -40,7 +42,7 @@ ALLOWED = {
     "processing": {"pre_processing", "processing"},
     "simulation_runner": {"pre_processing", "processing", "simulation_runner", "verification"},
     "post_processing": {"pre_processing", "processing", "simulation_runner", "post_processing"},
-    "verification": {"verification"},
+    "verification": {"pre_processing", "processing", "simulation_runner", "verification"},
 }
 
 # Known exception: Layup.ply_failure reads a solved result (a lazy import inside the method).
@@ -65,6 +67,11 @@ def test_layers_import_in_one_direction_only():
                 if target is not None and target not in ALLOWED[layer] and where not in EXCEPTIONS:
                     wrong.append(f"{where} (line {line})")
     assert wrong == []
+
+
+def test_benchmark_stress_imports_nothing_from_shell_fem():
+    path = ROOT / "verification" / "benchmark_stress.py"
+    assert [target for target, _ in _shell_fem_imports(path)] == []
 
 
 def test_top_level_has_only_the_package_entry_points():

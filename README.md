@@ -71,7 +71,8 @@ composite-laminate-model.
 │       │   └── backends/                   FEAKernel + native / CalculiX / Nastran adapters and deck writers
 │       ├── post_processing/                vtk.py (ParaView files, one cell per ply),
 │       │                                   beam_section_properties.py (6 x 6 / 7 x 7 from the shell model)
-│       ├── verification/                   Pagano stress verifier, benchmark runner (shell-fem-benchmarks)
+│       ├── verification/                   shell obstacle course (Scordelis-Lo, pinched cylinder and hemisphere,
+│       │                                   twisted beam), Pagano stress verifier, benchmark runner (shell-fem-benchmarks)
 │       └── _legacy.py                      the 0.1 module paths (shell_fem.laminate_*), until 0.3.0
 ├── examples/                               worked examples with figures (see examples/README.md)
 └── tests/                                  pytest suite
