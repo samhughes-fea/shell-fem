@@ -20,6 +20,7 @@ import numpy as np
 from laminate_constitutive_model.laminate_hygrothermal import NULL_STATE
 from shell_fem.pre_processing.load_library.load_case import LoadCase
 from shell_fem.processing.static.results.containers import SolutionResult
+from shell_fem.stage_log import stage
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,12 @@ def outer_ply_stress_strain(solution: SolutionResult, load_case: Optional[LoadCa
     with any kinematic model; the in-plane recovery used here is the classical
     one, eps(z) = eps0 + z kappa, not an enriched through-thickness strain.
     """
+    with stage("shell_fem", "outer_ply"):
+        return _outer_ply_stress_strain(solution, load_case)
+
+
+def _outer_ply_stress_strain(solution: SolutionResult,
+                             load_case: Optional[LoadCase] = None) -> OuterPlyField:
     load_case = load_case if load_case is not None else solution.load_case
     rows = {k: [] for k in ("eid", "face", "ply", "z", "xyz", "eg", "em", "emat", "sg", "sm")}
     shells = solution.mesh.shell_elements

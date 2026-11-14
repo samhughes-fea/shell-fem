@@ -14,6 +14,7 @@ from shell_fem.pre_processing.containers.boundary_conditions import BoundaryCond
 from shell_fem.processing.static.operations.assembly import AssembleGlobalSystem
 from shell_fem.processing.vibration.operations import AssembleMassMatrix, SolveVibrationEigenproblem
 from shell_fem.simulation_runner.shell_mesh import as_shell_mesh
+from shell_fem.stage_log import stage
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,11 @@ def vibration_modes(mesh, bcs: BoundaryConditions, n_modes: int = 6) -> Vibratio
     default six modes are the first six of that blade. Pass ``n_modes`` for a
     different count. Rotor assembly is left to the caller.
     """
+    with stage("shell_fem", "shell_vibration"):
+        return _vibration_modes(mesh, bcs, n_modes)
+
+
+def _vibration_modes(mesh, bcs: BoundaryConditions, n_modes: int) -> VibrationModes:
     shell = as_shell_mesh(mesh)
     if any(element.laminate.areal_density() <= 0.0 for element in shell.shell_elements):
         raise ValueError("vibration needs a positive laminate density on every shell element")
