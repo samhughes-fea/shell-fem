@@ -33,7 +33,8 @@ from typing import Callable, Dict, List, Sequence
 
 import numpy as np
 
-from laminate_constitutive_model import ElasticProperties3D, Laminate, MaterialCard, StrengthProperties3D
+from laminate_constitutive_model import (ElasticProperties3D, HygrothermalProperties, Laminate, MaterialCard,
+                                         StrengthProperties3D)
 from laminate_constitutive_model.laminate_kinematics import FSDTModel
 from shell_fem.pre_processing.containers.boundary_conditions import BoundaryConditions
 from shell_fem.pre_processing.containers.mesh import DOF
@@ -59,10 +60,12 @@ class BenchmarkResult:
         return self.value / self.reference
 
 
-def isotropic_laminate(E: float, nu: float, t: float) -> Laminate:
+def isotropic_laminate(E: float, nu: float, t: float, alpha: float = 0.0) -> Laminate:
+    """One isotropic ply of thickness t (thermal expansion ``alpha``, no strength limits)."""
     G = E / (2.0 * (1.0 + nu))
+    thermal = HygrothermalProperties(alpha, alpha, alpha) if alpha else None
     card = MaterialCard("isotropic", ElasticProperties3D(E1=E, E2=E, E3=E, v12=nu, v13=nu, v23=nu, G12=G, G13=G, G23=G),
-                        StrengthProperties3D(1e30, 1e30, 1e30, 1e30, 1e30), density=1.0)
+                        StrengthProperties3D(1e30, 1e30, 1e30, 1e30, 1e30), thermal, density=1.0)
     return Laminate.from_angles(card, [0], t)
 
 

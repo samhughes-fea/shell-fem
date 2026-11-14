@@ -44,8 +44,24 @@ All notable changes to this project are listed here. The format follows
 - `outer_ply_stress_strain` returns CLPT in-plane stress and strain at the outer
   face of the bottom ply and the top ply (`eps = eps0 + z kappa`). `z` is measured
   from the element reference surface, so a laminate offset stays the eccentricity.
-- `linear_buckling` returns the positive load factors of one reference load and the
-  corresponding modes.
+- `linear_buckling(mesh, bcs, load_case, n_modes=1)` returns the positive load factors
+  of one reference load and the corresponding modes.
+- `LinearBucklingRunner(mesh, bcs, load_case, n_modes).execute().get_results()` runs
+  the same reference load, then `AssembleGeometricStiffness`, `SolveBucklingEigenproblem`
+  (dense below 1500 free DOFs, Lanczos above; positive load factors, or both signs)
+  and `ComputeBucklingModes`. `LinearBucklingResults` holds the modes (`BucklingMode`:
+  load factor and mode shape scaled to a unit largest translation, `as_solution()` for
+  VTK), the reference static solution and the stage timings. It does not replace
+  `linear_buckling`.
+- Shell elements gain `membrane_prestress` and `geometric_stiffness_matrix(..., resultants=)`
+  for a uniform membrane prestress. `geometric_stiffness_matrix(u_elem, state)`, the call
+  `linear_buckling` makes, is unchanged. Hygrothermal prestress counts. The runner refuses
+  solid elements.
+- `shell_fem.verification.buckling_benchmarks`: simply supported plates in compression
+  (isotropic or specially orthotropic, any aspect ratio), shear and restrained heating,
+  a cantilever column and a cylinder in axial compression, each against its classical
+  closed form. Example 28 runs them on all five elements and `tests/test_buckling.py`
+  checks them. `isotropic_laminate` takes an optional thermal expansion coefficient.
 - `vibration_modes` returns the shell model's natural frequencies and
   mass-normalised mode shapes. Those are the blade modes. A hub, shaft or rotor
   is not assembled.

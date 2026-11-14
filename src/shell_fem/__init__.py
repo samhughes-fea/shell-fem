@@ -25,7 +25,9 @@ Beam properties beam_section_properties: beam stiffness extracted from a shell m
 Results         ResultsExtractor (Gauss point, element, node, ply, solid and global levels);
                 deflection_profile (section translation, rotation and twist along one axis);
                 outer_ply_stress_strain (CLPT stress and strain on the outer ply faces);
-                linear_buckling (load factors of one reference load);
+                linear_buckling (positive load factors of one reference load);
+                LinearBucklingRunner (the same reference load, dense or Lanczos eigen-solve,
+                positive factors or both signs, BucklingMode shapes);
                 vibration_modes (natural frequencies and mass-normalised blade modes);
                 write_vtu, write_pvd, VTKExporter (ParaView output, per-ply cells)
 Post-processing ExactStressRecoverer, EquilibriumStressRecoverer (sigma_z and interlaminar
@@ -159,7 +161,10 @@ from shell_fem.post_processing.beam_section_properties import (
 )
 from shell_fem.pre_processing.mesh_library.blade_kernel_mesh import PcompAssignment
 from shell_fem.simulation_runner.static.kernel_pcomp import solve_kernel_pcomp
+from shell_fem.processing.buckling.eigen import SolveBucklingEigenproblem
+from shell_fem.processing.buckling.results import BucklingMode, ComputeBucklingModes
 from shell_fem.simulation_runner.buckling.buckling_simulation import BucklingResult, linear_buckling
+from shell_fem.simulation_runner.buckling.linear_buckling_simulation import LinearBucklingResults, LinearBucklingRunner
 from shell_fem.simulation_runner.vibration.vibration_simulation import VibrationModes, vibration_modes
 from shell_fem.pre_processing.element_library.connectors import add_reference_node, distributing_link, rigid_link
 
