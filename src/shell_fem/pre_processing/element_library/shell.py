@@ -115,6 +115,8 @@ class ShellElement(ABC):
         self._ht_engine = hygrothermal_engine or HygrothermalEngine()
         self._section: Optional[GeneralizedSection] = None
         self._K_local: Optional[np.ndarray] = None
+        self._M_local: Optional[np.ndarray] = None
+        self._inertia: Optional[np.ndarray] = None
         self._recovery_map: Optional[np.ndarray] = None
         self._build_local_frame()
 
@@ -474,6 +476,93 @@ class ShellElement(ABC):
         """Element stiffness in global DOFs: K = T^T K_local T."""
         T = self.transformation
         return T.T @ self.local_stiffness_matrix() @ T
+
+    def _inertia_per_area(self) -> np.ndarray:
+        """Mass per unit area on the local nodal DOFs, ∫ ρ L(z)^T L(z) dz.
+
+        The shell kinematics are u = u0 + z θ_y, v = v0 - z θ_x, w = w0, plus any
+        through-thickness enrichment H(z) a. θ_z is not in that field; it takes the
+        same rotary inertia as bending so a free drilling DOF does not leave the
+        mass matrix singular. z is measured from the reference surface, so a laminate
+        offset (PCOMP Z0) moves the mass centre off the nodes.
+        """
+        if self._inertia is not None:
+            return self._inertia
+        d = self.dofs_per_node
+        C = np.zeros((d, d))
+        basis = self.section.basis
+        pts, wts = _gauss_1d(3)
+        for (z_b, z_t), ply in zip(self.laminate.ply_bounds(), self.laminate.plies):
+            rho = ply.material.density
+            if rho == 0.0:
+                continue
+            half, mid = 0.5 * (z_t - z_b), 0.5 * (z_t + z_b)
+            for g, w in zip(pts, wts):
+                z = mid + half * g
+                L = np.zeros((3, d))
+                L[0, 0] = 1.0
+                L[0, 4] = z
+                L[1, 1] = 1.0
+                L[1, 3] = -z
+                L[2, 2] = 1.0
+                if basis is not None:
+                    H, _ = basis.evaluate(float(z))
+                    for j in range(basis.n_functions):
+                        ax = 6 + 2 * j
+                        L[0, ax] += H[j, 0, 0]
+                        L[0, ax + 1] += H[j, 0, 1]
+                        L[1, ax] += H[j, 1, 0]
+                        L[1, ax + 1] += H[j, 1, 1]
+                C += rho * (L.T @ L) * (w * half)
+        rotary = float(C[3, 3] + C[4, 4])
+        if rotary <= 0.0:
+            rotary = float(C[2, 2]) * self.laminate.thickness ** 2 / 12.0
+        C[5, 5] += rotary
+        self._inertia = C
+        return C
+
+    def local_mass_matrix(self) -> np.ndarray:
+        """Consistent mass in local DOFs, ∫ N^T (∫ ρ L^T L dz) N dA."""
+        if self._M_local is not None:
+            return self._M_local
+        C = self._inertia_per_area()
+        M = np.zeros((self.n_dof, self.n_dof))
+        for xi, eta, w in self.stiffness_rule():
+            N, _ = self.shape_functions(xi, eta)
+            _, detJ, _ = self.jacobian(xi, eta)
+            # Block i, j is N_i N_j C. kron places C in that block.
+            M += np.kron(np.outer(N, N), C) * (w * detJ)
+        self._M_local = 0.5 * (M + M.T)
+        return self._M_local
+
+    def mass_matrix(self) -> np.ndarray:
+        """Element consistent mass in global DOFs."""
+        T = self.transformation
+        return T.T @ self.local_mass_matrix() @ T
+
+    def geometric_stiffness_matrix(self, u_elem: np.ndarray, state: Optional[HygrothermalState] = None) -> np.ndarray:
+        """Initial-stress stiffness in global DOFs from the element's membrane forces.
+
+        Kg = ∫ G^T N G dA, with N the membrane force resultants [Nxx, Nyy, Nxy]
+        (tension positive) and G the gradients of the translational shape functions.
+        Compression makes Kg negative. The buckling problem is (K + λ Kg) φ = 0.
+        """
+        d = self.dofs_per_node
+        Ks = np.zeros((self.n_dof, self.n_dof))
+        for xi, eta, w in self.stiffness_rule():
+            _, detJ, dNdx = self.jacobian(xi, eta)
+            e, s = self.strain_state(u_elem, xi, eta)
+            N, _, _ = self.section_resultants(e, s, state)
+            S = np.array([[N[0], N[2]], [N[2], N[1]]])
+            dA = w * detJ
+            for comp in (0, 1, 2):
+                G = np.zeros((2, self.n_dof))
+                for i in range(self.N_NODES):
+                    G[:, d * i + comp] = dNdx[:, i]
+                Ks += (G.T @ S @ G) * dA
+        Ks = 0.5 * (Ks + Ks.T)
+        T = self.transformation
+        return T.T @ Ks @ T
 
     # --------------------------------------------------------------- loads
     def hygrothermal_resultants(self, state: HygrothermalState) -> Tuple[np.ndarray, np.ndarray]:

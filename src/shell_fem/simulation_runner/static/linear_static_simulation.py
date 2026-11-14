@@ -32,6 +32,7 @@ from shell_fem.processing.static.operations.reduction import ReduceConstrainedSy
 from shell_fem.processing.static.operations.solution import SolveReducedSystem
 from shell_fem.processing.static.results.compute_primary import ComputePrimaryResults, combine_solutions
 from shell_fem.processing.static.results.containers import SolutionResult
+from shell_fem.processing.stage_log import stage
 
 
 @dataclass
@@ -180,7 +181,8 @@ class StructuralGlobalSolver:
         self.last_diagnostics: Optional[StaticDiagnostics] = None
 
     def solve(self, mesh: FEAMesh, bcs: BoundaryConditions, load_case: LoadCase) -> SolutionResult:
-        return self.solve_many(mesh, bcs, [load_case])[0]
+        with stage("shell_fem", "shell_static"):
+            return self.solve_many(mesh, bcs, [load_case])[0]
 
     def solve_many(self, mesh: FEAMesh, bcs: BoundaryConditions, load_cases: Sequence[LoadCase]) -> List[SolutionResult]:
         """Solve several load cases with one assembly and one factorisation."""

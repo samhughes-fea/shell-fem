@@ -23,6 +23,10 @@ Beam properties beam_section_properties: beam stiffness extracted from a shell m
                 Timoshenko-Vlasov 7 x 7 with EΓ; shear/tension centres),
                 transform_beam_stiffness
 Results         ResultsExtractor (Gauss point, element, node, ply, solid and global levels);
+                deflection_profile (section translation, rotation and twist along one axis);
+                outer_ply_stress_strain (CLPT stress and strain on the outer ply faces);
+                linear_buckling (load factors of one reference load);
+                vibration_modes (natural frequencies and mass-normalised blade modes);
                 write_vtu, write_pvd, VTKExporter (ParaView output, per-ply cells)
 Post-processing ExactStressRecoverer, EquilibriumStressRecoverer (sigma_z and interlaminar
                 shear from 3D equilibrium), SmearedCrackDegradation, ProgressiveDamageAnalysis
@@ -131,6 +135,8 @@ from shell_fem.processing.static.results.containers import (
 )
 from shell_fem.processing.static.results.results_extractor import ResultsExtractor, extrapolation_matrix
 from shell_fem.processing.static.results.stress_recovery import ExactStressRecoverer, PointStressState, StressRecoverer
+from shell_fem.processing.static.results.deflection import DeflectionProfile, deflection_profile
+from shell_fem.processing.static.results.outer_ply import OuterPlyField, outer_ply_stress_strain
 from shell_fem.pre_processing.element_library.curved_shell import CurvedQuad8ShellElement, CurvedShellElement, Tri6ShellElement
 from shell_fem.pre_processing.property_library.layup import AngleField, Layup, PlyDefinition, PlyDrop, ReferenceDirection, TabulatedDrape
 from shell_fem.pre_processing.element_library.solid import (
@@ -153,6 +159,8 @@ from shell_fem.post_processing.beam_section_properties import (
 )
 from shell_fem.pre_processing.mesh_library.blade_kernel_mesh import PcompAssignment
 from shell_fem.simulation_runner.static.kernel_pcomp import solve_kernel_pcomp
+from shell_fem.simulation_runner.buckling.buckling_simulation import BucklingResult, linear_buckling
+from shell_fem.simulation_runner.vibration.vibration_simulation import VibrationModes, vibration_modes
 from shell_fem.pre_processing.element_library.connectors import add_reference_node, distributing_link, rigid_link
 
 __version__ = "0.2.0"
