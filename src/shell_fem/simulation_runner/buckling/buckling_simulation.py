@@ -16,7 +16,7 @@ from shell_fem.processing.buckling.operations import AssembleGeometricStiffness,
 from shell_fem.processing.static.operations.assembly import AssembleGlobalSystem
 from shell_fem.simulation_runner.shell_mesh import as_shell_mesh
 from shell_fem.simulation_runner.static.linear_static_simulation import StructuralGlobalSolver
-from shell_fem.stage_log import stage
+from shell_fem.processing.stage_log import stage
 
 
 @dataclass(frozen=True)

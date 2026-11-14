@@ -32,7 +32,7 @@ from shell_fem.processing.static.operations.reduction import ReduceConstrainedSy
 from shell_fem.processing.static.operations.solution import SolveReducedSystem
 from shell_fem.processing.static.results.compute_primary import ComputePrimaryResults, combine_solutions
 from shell_fem.processing.static.results.containers import SolutionResult
-from shell_fem.stage_log import stage
+from shell_fem.processing.stage_log import stage
 
 
 @dataclass

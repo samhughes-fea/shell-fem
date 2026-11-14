@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from shell_fem.stage_log import collecting, fold_reports, stage
+from shell_fem.processing.stage_log import collecting, fold_reports, stage
 
 
 def test_a_stage_records_seconds_and_an_error_keeps_its_time() -> None:

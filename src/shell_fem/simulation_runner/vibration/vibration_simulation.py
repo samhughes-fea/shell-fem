@@ -14,7 +14,7 @@ from shell_fem.pre_processing.containers.boundary_conditions import BoundaryCond
 from shell_fem.processing.static.operations.assembly import AssembleGlobalSystem
 from shell_fem.processing.vibration.operations import AssembleMassMatrix, SolveVibrationEigenproblem
 from shell_fem.simulation_runner.shell_mesh import as_shell_mesh
-from shell_fem.stage_log import stage
+from shell_fem.processing.stage_log import stage
 
 
 @dataclass(frozen=True)

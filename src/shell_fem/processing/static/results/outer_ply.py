@@ -20,7 +20,7 @@ import numpy as np
 from laminate_constitutive_model.laminate_hygrothermal import NULL_STATE
 from shell_fem.pre_processing.load_library.load_case import LoadCase
 from shell_fem.processing.static.results.containers import SolutionResult
-from shell_fem.stage_log import stage
+from shell_fem.processing.stage_log import stage
 
 
 @dataclass(frozen=True)
