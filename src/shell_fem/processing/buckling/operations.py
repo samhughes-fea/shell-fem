@@ -1,4 +1,12 @@
-"""Buckling stages: geometric stiffness from a static solution, then the load factors."""
+"""Buckling stages for ``linear_buckling``: geometric stiffness, then the positive load factors.
+
+``LinearBucklingRunner`` uses ``geometric.AssembleGeometricStiffness`` and
+``eigen.SolveBucklingEigenproblem`` (dense or Lanczos, either sign). Those classes
+share these names and live in their own modules so this call shape stays:
+
+    AssembleGeometricStiffness(mesh, solution).run() -> K_g
+    SolveBucklingEigenproblem(mesh, bcs, n_modes).run(K, K_g) -> factors, modes
+"""
 
 from __future__ import annotations
 

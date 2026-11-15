@@ -64,15 +64,23 @@ composite-laminate-model.
 │       │   ├── static/operations/          one class per solve stage (see below), linear solvers, system states
 │       │   ├── static/results/             SolutionResult, primary results, ResultsExtractor, stress recovery,
 │       │   │                               3D-equilibrium σz and interlaminar shear
+│       │   ├── buckling/                   linear_buckling stages in operations.py; LinearBucklingRunner
+│       │   │                               stages in geometric.py, eigen.py and results/
+│       │   ├── vibration/                  shell natural frequencies and mode shapes
+│       │   ├── eigenpairs.py               dense and ARPACK solves for linear_buckling and vibration
+│       │   ├── stage_log.py                blade.stage timing reports
 │       │   └── progressive_damage/         DamageState, SmearedCrackDegradation
 │       ├── simulation_runner/              sequences the stages and owns the results
 │       │   ├── static/                     LinearStaticRunner, StructuralGlobalSolver, solve_kernel_pcomp
+│       │   ├── buckling/                   linear_buckling and LinearBucklingRunner
+│       │   ├── vibration/                  vibration_modes (blade modes; a rotor is not assembled)
 │       │   ├── progressive_damage/         ProgressiveDamageAnalysis (load, degrade, re-solve)
 │       │   └── backends/                   FEAKernel + native / CalculiX / Nastran adapters and deck writers
 │       ├── post_processing/                vtk.py (ParaView files, one cell per ply),
 │       │                                   beam_section_properties.py (6 x 6 / 7 x 7 from the shell model)
 │       ├── verification/                   shell obstacle course (Scordelis-Lo, pinched cylinder and hemisphere,
-│       │                                   twisted beam), Pagano stress verifier, benchmark runner (shell-fem-benchmarks)
+│       │                                   twisted beam), buckling benchmarks (plates, column, cylinder),
+│       │                                   Pagano stress verifier, benchmark runner (shell-fem-benchmarks)
 │       └── _legacy.py                      the 0.1 module paths (shell_fem.laminate_*), until 0.3.0
 ├── examples/                               worked examples with figures (see examples/README.md)
 └── tests/                                  pytest suite
@@ -98,6 +106,18 @@ results["uls"].displacements, results.diagnostics.phase_times   # wall time of e
 ```
 
 `StructuralGlobalSolver().solve(...)` / `solve_many` / `solve_combinations` run the same stages.
+
+`linear_buckling(mesh, bcs, load_case, n_modes=1)` returns the positive load factors of that
+reference load and the modes. `LinearBucklingRunner` runs the same static stages, then
+geometric stiffness of the membrane prestress, a dense or Lanczos eigen-solve (positive
+load factors, or both signs) and `ComputeBucklingModes`.
+
+```python
+factors = linear_buckling(mesh, bcs, load, n_modes=1).load_factors
+results = LinearBucklingRunner(mesh, bcs, load, n_modes=4).execute().get_results()
+results.critical_load_factor, results[0].displacement_array()   # lowest factor, first mode shape
+```
+
 Imports point one way only: pre_processing ← processing ← simulation_runner ←
 post_processing (checked by `tests/test_layout.py`).
 
