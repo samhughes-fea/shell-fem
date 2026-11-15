@@ -53,5 +53,7 @@ def _vibration_modes(mesh, bcs: BoundaryConditions, n_modes: int) -> VibrationMo
         raise ValueError("vibration needs a positive laminate density on every shell element")
     K = AssembleGlobalSystem(shell, bcs).run().K
     M = AssembleMassMatrix(shell).run()
-    omega, modes = SolveVibrationEigenproblem(shell, bcs, n_modes).run(K, M)
+    with stage("shell_fem", "eigen_solve") as rec:
+        omega, modes = SolveVibrationEigenproblem(shell, bcs, n_modes).run(K, M)
+        rec.set("modes", int(np.asarray(omega).size))
     return VibrationModes(omega, omega / (2.0 * np.pi), modes)

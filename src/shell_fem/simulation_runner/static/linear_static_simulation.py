@@ -80,20 +80,43 @@ class _Timer:
         self.diagnostics.add(self.phase, time.perf_counter() - self.t0)
 
 
+def _nonzeros(matrix: object) -> int:
+    nnz = getattr(matrix, "nnz", None)
+    if isinstance(nnz, int) and not isinstance(nnz, bool):
+        return nnz
+    import numpy as np
+    return int(np.count_nonzero(np.asarray(matrix)))
+
+
+def _solver_name(name: object) -> str | None:
+    if isinstance(name, str) and name and not any(ch.isspace() for ch in name):
+        return name
+    return None
+
+
 def _run_stages(mesh: FEAMesh, bcs: BoundaryConditions, load_cases: Sequence[LoadCase], assembler: GlobalAssembler,
                 eliminator: ConstraintEliminator, linear_solver: LinearSystemSolver,
                 diagnostics: StaticDiagnostics) -> List[SolutionResult]:
     """Run the static stages for several load cases on one mesh and one set of constraints."""
     start = time.perf_counter()
-    with _Timer(diagnostics, "assemble"):
-        system = AssembleGlobalSystem(mesh, bcs, assembler).run()
-    with _Timer(diagnostics, "constrain"):
-        constrained = ConstrainGlobalSystem(mesh, bcs, eliminator).run(system)
-    with _Timer(diagnostics, "reduce"):
-        reduced = ReduceConstrainedSystem().run(constrained)
+    with stage("shell_fem", "assemble") as rec:
+        with _Timer(diagnostics, "assemble"):
+            system = AssembleGlobalSystem(mesh, bcs, assembler).run()
+        with _Timer(diagnostics, "constrain"):
+            constrained = ConstrainGlobalSystem(mesh, bcs, eliminator).run(system)
+        with _Timer(diagnostics, "reduce"):
+            reduced = ReduceConstrainedSystem().run(constrained)
+        rec.set("elements", int(mesh.n_elements))
+        rec.set("free_dof", int(constrained.n_free))
+        rec.set("nonzeros", _nonzeros(reduced.K_r))
     solver = SolveReducedSystem(linear_solver)
-    with _Timer(diagnostics, "factorise"):
-        factorised = solver.factorise(reduced)
+    with stage("shell_fem", "factor") as rec:
+        rec.set("free_dof", int(constrained.n_free))
+        solver_name = _solver_name(linear_solver.name)
+        if solver_name is not None:
+            rec.set("solver", solver_name)
+        with _Timer(diagnostics, "factorise"):
+            factorised = solver.factorise(reduced)
     setup = time.perf_counter() - start
     diagnostics.n_dof, diagnostics.n_free, diagnostics.linear_solver = mesh.n_dof, constrained.n_free, linear_solver.name
 
@@ -101,17 +124,19 @@ def _run_stages(mesh: FEAMesh, bcs: BoundaryConditions, load_cases: Sequence[Loa
         ComputePrimaryResults(mesh, system)
     info = {"n_dof": mesh.n_dof, "n_free": constrained.n_free, "linear_solver": linear_solver.name}
     results: List[SolutionResult] = []
-    for load_case in load_cases:
-        t0 = time.perf_counter()
-        with _Timer(diagnostics, "assemble_loads"):
-            F = loads.run(load_case)
-        with _Timer(diagnostics, "solve"):
-            q = solver.solve(factorised, F)
-        with _Timer(diagnostics, "reconstruct"):
-            U = reconstruct.run(reduced, q)
-        with _Timer(diagnostics, "primary_results"):
-            elapsed = time.perf_counter() - t0 + (setup if not results else 0.0)
-            results.append(primary.run(U, F, load_case, elapsed, info))
+    with stage("shell_fem", "recover") as rec:
+        rec.set("elements", int(mesh.n_elements))
+        for load_case in load_cases:
+            t0 = time.perf_counter()
+            with _Timer(diagnostics, "assemble_loads"):
+                F = loads.run(load_case)
+            with _Timer(diagnostics, "solve"):
+                q = solver.solve(factorised, F)
+            with _Timer(diagnostics, "reconstruct"):
+                U = reconstruct.run(reduced, q)
+            with _Timer(diagnostics, "primary_results"):
+                elapsed = time.perf_counter() - t0 + (setup if not results else 0.0)
+                results.append(primary.run(U, F, load_case, elapsed, info))
     return results
 
 

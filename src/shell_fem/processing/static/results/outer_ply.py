@@ -55,8 +55,10 @@ def outer_ply_stress_strain(solution: SolutionResult, load_case: Optional[LoadCa
     with any kinematic model; the in-plane recovery used here is the classical
     one, eps(z) = eps0 + z kappa, not an enriched through-thickness strain.
     """
-    with stage("shell_fem", "outer_ply"):
-        return _outer_ply_stress_strain(solution, load_case)
+    with stage("shell_fem", "outer_ply") as rec:
+        field = _outer_ply_stress_strain(solution, load_case)
+        rec.set("elements", int(np.unique(np.asarray(field.element_ids)).size))
+        return field
 
 
 def _outer_ply_stress_strain(solution: SolutionResult,
