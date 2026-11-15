@@ -49,10 +49,22 @@ def linear_buckling(mesh, bcs: BoundaryConditions, load_case: LoadCase, n_modes:
         return _linear_buckling(mesh, bcs, load_case, n_modes)
 
 
+def _nonzeros(matrix: object) -> int:
+    nnz = getattr(matrix, "nnz", None)
+    if isinstance(nnz, int) and not isinstance(nnz, bool):
+        return nnz
+    return int(np.count_nonzero(np.asarray(matrix)))
+
+
 def _linear_buckling(mesh, bcs: BoundaryConditions, load_case: LoadCase, n_modes: int) -> BucklingResult:
     shell = as_shell_mesh(mesh)
     solution = StructuralGlobalSolver().solve(shell, bcs, load_case)
     K = AssembleGlobalSystem(shell, bcs).run().K
-    Kg = AssembleGeometricStiffness(shell, solution).run()
-    factors, modes = SolveBucklingEigenproblem(shell, bcs, n_modes).run(K, Kg)
+    with stage("shell_fem", "geometric_stiffness") as rec:
+        Kg = AssembleGeometricStiffness(shell, solution).run()
+        rec.set("elements", int(shell.n_elements))
+        rec.set("nonzeros", _nonzeros(Kg))
+    with stage("shell_fem", "eigen_solve") as rec:
+        factors, modes = SolveBucklingEigenproblem(shell, bcs, n_modes).run(K, Kg)
+        rec.set("modes", int(np.asarray(factors).size))
     return BucklingResult(factors, modes, load_case.name)
