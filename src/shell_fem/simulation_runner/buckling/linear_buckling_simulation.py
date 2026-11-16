@@ -17,7 +17,9 @@ reference solution, a dense or Lanczos eigen-solve, and negative load factors.
 
 The load factor of a mode multiplies the whole reference load case. Loads that
 should not scale (a dead weight under a varying wind load, say) need a nonlinear
-or a two-step analysis, which this runner does not do.
+or a two-step analysis, which this runner does not do. Post-buckling of panels
+and webs is scoped in ``GeometricNonlinearRunner`` (Newton and follower
+pressure are still missing; ``K_g`` here is the linear-buckling matrix only).
 """
 
 from __future__ import annotations

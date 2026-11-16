@@ -87,7 +87,9 @@ What the numbers show:
 
 - **Linear buckling scales the whole reference load.** A load that should stay fixed
   (dead weight under a growing wind load, say) needs a two-step or nonlinear
-  analysis, which shell-fem does not do yet.
+  analysis, which shell-fem does not do yet. Post-buckling of panels and webs, and
+  large deflection, are scoped in `GeometricNonlinearRunner` (Newton and follower
+  pressure are still missing; `K_g` here is the linear-buckling matrix only).
 - **Only the membrane prestress enters K_g.** Bending moments and transverse shear do
   not, which is the usual linear buckling model for thin shells.
 - **Shells and layered solids.** Solids contribute the geometric stiffness of their
