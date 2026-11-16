@@ -3,7 +3,7 @@
 ``SolutionResult`` is the primary result of one load case: global displacements,
 reactions and the load vector. The field dataclasses are what ``ResultsExtractor``
 returns at each fidelity level (Gauss point, ply point, element, solid point, node,
-global totals).
+global totals) and the formulation operators cached beside them.
 """
 
 from __future__ import annotations
@@ -71,6 +71,32 @@ class SolutionResult:
 # ---------------------------------------------------------------------------
 # Result containers
 # ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class FormulationField:
+    """Element operators and section matrices at every recovery Gauss point.
+
+    One row per point, same indexing as ``GaussPointField``. Variable-size
+    operators (``N``, ``B_*``, ``C_ee``, ``C_ss``) are stacked when every point
+    has the same shape, otherwise object arrays of ndarrays. ``weight`` is the
+    raw quadrature weight; the area share is ``weight * detJ``.
+    """
+
+    element_ids: np.ndarray
+    point_index: np.ndarray
+    natural: np.ndarray  # (n, 2) xi, eta
+    xyz: np.ndarray  # (n, 3)
+    weight: np.ndarray  # quadrature weight (not times det J)
+    detJ: np.ndarray
+    jacobian: np.ndarray  # (n, 2, 2) J = [[x,xi, y,xi], [x,eta, y,eta]]
+    n_dof: np.ndarray  # element DOF count at the point
+    N: np.ndarray  # shape functions (n, n_nodes) or object
+    B_membrane: np.ndarray  # (n, 3, n_dof) or object; acts on global element u
+    B_bending: np.ndarray  # (n, 3, n_dof) or object
+    B_shear: np.ndarray  # (n, 2, n_dof) or object
+    C_ee: np.ndarray  # section membrane-bending constitutive
+    C_ss: np.ndarray  # section shear constitutive
+
+
 @dataclass(frozen=True)
 class GaussPointField:
     """Section-level results at every integration point (one row per point)."""
