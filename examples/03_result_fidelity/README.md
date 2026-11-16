@@ -28,6 +28,7 @@ gp = ex.gauss_points()    # GaussPointField: xyz, weight, eps0, kappa, gamma0, N
 el = ex.elements()        # ElementField: centroid, area, N, M, Q, energy split, worst failure index
 nd = ex.nodes()           # NodalField: displacement, reaction, N, M, Q (extrapolated and averaged)
 pl = ex.ply_points()      # PlyPointField: ply stresses at the bottom, middle and top of each ply
+# ply_stack_stress_strain(result) is the same field; pass EquilibriumStressRecoverer for σz
 tot = ex.totals()         # GlobalTotals: strain energy split, external work, reactions, equilibrium residual
 ex.to_csv("results/")     # one CSV per level
 ```

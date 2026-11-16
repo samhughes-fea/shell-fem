@@ -133,7 +133,7 @@ class ResultsExtractor:
         return field_
 
     def _ply_points(self, plies, positions) -> PlyPointField:
-        out = {k: [] for k in ("eid", "idx", "ply", "z", "xyz", "eg", "em", "emat", "sg", "sm", "tg", "tm", "fi", "mode")}
+        out = {k: [] for k in ("eid", "idx", "ply", "z", "xyz", "eg", "em", "emat", "sg", "sm", "tg", "tm", "fi", "mode", "sz")}
         for element in self.mesh.shell_elements:
             u = self.solution.element_displacements(element.element_id)
             state = self._state(element)
@@ -156,6 +156,7 @@ class ResultsExtractor:
                                 element.element_id, i, k, z, xyz,
                                 p.strain_total, p.strain_mechanical, ply.to_material_strain(p.strain_mechanical),
                                 p.stress_global, p.stress_material, p.shear_global, p.shear_material, fi, mode,
+                                p.normal_stress,
                             ),
                         ):
                             out[key].append(value)
@@ -163,6 +164,7 @@ class ResultsExtractor:
         return PlyPointField(
             a["eid"], a["idx"], a["ply"], a["z"], a["xyz"],
             a["eg"], a["em"], a["emat"], a["sg"], a["sm"], a["tg"], a["tm"], a["fi"], a["mode"],
+            a["sz"].astype(float),
         )
 
     # ------------------------------------------------------- element level
@@ -396,3 +398,23 @@ class ResultsExtractor:
             csv.writer(handle).writerows([("quantity", "value"), *rows])
         out["totals"] = path
         return out
+
+
+def ply_stack_stress_strain(
+    solution: SolutionResult,
+    recoverer: Optional[StressRecoverer] = None,
+    load_case: Optional[LoadCase] = None,
+    criterion: Optional[FailureCriterion] = None,
+    positions: Sequence = PLY_POSITIONS,
+) -> PlyPointField:
+    """Ply stress and strain through the full stack at every shell Gauss point.
+
+    This is the through-thickness counterpart of ``outer_ply_stress_strain``, which
+    only returns the two outer faces from CLPT. The default recoverer is constitutive
+    (``ExactStressRecoverer``). Pass ``EquilibriumStressRecoverer(solution, load_case)``
+    for interlaminar shear and σz from 3D equilibrium. Any kinematic model works,
+    including ``RefinedZigZagModel(condensed=True)`` on the same 6-DOF mesh as FSDT.
+    """
+    return ResultsExtractor(
+        solution, load_case=load_case, recoverer=recoverer, criterion=criterion
+    ).ply_points(positions=positions)

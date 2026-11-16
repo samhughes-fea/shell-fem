@@ -113,6 +113,8 @@ def test_ply_fields_failure_and_nodal_stresses(plate):
     assert len(pp.z) == mesh.n_elements * 4 * lam.n_plies * 3
     assert pp.strain_global.shape == pp.stress_global.shape == (pp.z.size, 3)
     assert pp.strain_mechanical.shape == pp.strain_material.shape == (pp.z.size, 3)
+    assert pp.normal_stress.shape == (pp.z.size,)
+    assert np.allclose(pp.normal_stress, 0.0)
     assert np.allclose(pp.strain_global, pp.strain_mechanical)
     for i in (0, pp.z.size // 2, pp.z.size - 1):
         ply = lam.plies[int(pp.ply_index[i])]
@@ -148,3 +150,4 @@ def test_csv_export(plate, tmp_path):
     assert "strain_global_0" in ply_header
     assert "strain_mechanical_0" in ply_header
     assert "strain_material_0" in ply_header
+    assert "normal_stress" in ply_header

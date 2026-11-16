@@ -229,7 +229,8 @@ class VTKExporter:
             for key in set(zip(pp.element_ids.tolist(), pp.ply_index.tolist())):
                 mask = (pp.element_ids == key[0]) & (pp.ply_index == key[1])
                 s = planar[mask].mean(axis=0)
-                stress[key] = np.array([s[0], s[1], 0.0, s[3], s[4], s[2]])
+                s33 = float(pp.normal_stress[mask].mean())
+                stress[key] = np.array([s[0], s[1], s33, s[3], s[4], s[2]])
             if self.criterion is not None:
                 full = self.results.ply_points()
                 for key in set(zip(full.element_ids.tolist(), full.ply_index.tolist())):

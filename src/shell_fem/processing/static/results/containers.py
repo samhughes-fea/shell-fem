@@ -106,6 +106,7 @@ class PlyPointField:
     shear_material: np.ndarray  # (m, 2) [t23, t13]
     failure_index: np.ndarray  # (m,) NaN when no criterion was given
     failure_mode: np.ndarray  # (m,) mode names ('' when no criterion)
+    normal_stress: np.ndarray  # (m,) σz; zero unless EquilibriumStressRecoverer is used
 
 
 @dataclass(frozen=True)

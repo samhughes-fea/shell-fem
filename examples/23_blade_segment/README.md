@@ -98,4 +98,5 @@ resultants, and `vtk/blade_segment_plies.vtu` for each ply's failure index.
 - Taper the segment (a smaller tip station) and load it with a spanwise pressure
   `lambda x: q * x[2] / LENGTH`.
 - Swap `FSDTModel()` for `RefinedZigZagModel()` to resolve core shear in the
-  panels.
+  panels, or `RefinedZigZagModel(condensed=True)` to keep the same 6-DOF mesh
+  and still use the harmonic core stiffness.

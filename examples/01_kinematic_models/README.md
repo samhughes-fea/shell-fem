@@ -17,6 +17,11 @@ span-to-thickness ratio a/h goes from 100 (thin) down to 4 (very thick).
 | Mesh | 12 × 12 Quad4 |
 | Models | `CLPTModel`, `FSDTModel` (k = 5/6), `RefinedZigZagModel`, `LayerwiseModel` |
 
+`RefinedZigZagModel(condensed=True)` is the 6-DOF sibling of FSDT: same mesh and
+DOFs, harmonic shear stiffness A_s = hG instead of k Σ G h. It is not in the
+figure (the curves here use independent ψ). Use it when the extra zig-zag
+amplitudes are not wanted, for example a sandwich cap on an FSDT blade mesh.
+
 ```bash
 python examples/01_kinematic_models/kinematic_models.py
 ```
