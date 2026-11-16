@@ -208,3 +208,23 @@ def _csr(A):
         A = 0.5 * (A + A.T)
         return A.tocsr()
     return _sp.csr_matrix(_dense(A))
+
+
+def element_mode_energy(mesh: FEAMesh, modes: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Per-element strain energy 1/2 φ_e^T K_e φ_e of every shell for each mode column.
+
+    Returns ``(element_ids, energy)`` with ``energy`` of shape (n_elements, n_modes).
+    """
+    modes = np.asarray(modes, dtype=float)
+    if modes.ndim != 2:
+        raise ValueError("modes must have shape (n_dof, n_modes)")
+    shells = mesh.shell_elements
+    energy = np.zeros((len(shells), modes.shape[1]))
+    ids = np.empty(len(shells), dtype=int)
+    for j, element in enumerate(shells):
+        ids[j] = element.element_id
+        dofs = mesh.element_dofs(element)
+        ke = element.stiffness_matrix()
+        u = modes[dofs, :]
+        energy[j] = 0.5 * np.einsum("ij,ij->j", u, ke @ u)
+    return ids, energy

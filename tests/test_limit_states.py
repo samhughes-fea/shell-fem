@@ -8,6 +8,7 @@ import pytest
 from conftest import simply_supported
 from shell_fem import (
     DOF,
+    AssembleGlobalSystem,
     BoundaryConditions,
     CLPTModel,
     ExactStressRecoverer,
@@ -22,6 +23,7 @@ from shell_fem import (
     vibration_modes,
 )
 from shell_fem.processing import eigenpairs
+from shell_fem.processing.vibration.operations import AssembleMassMatrix, rigid_body_displacements
 
 
 def _plate_modulus(material, h):
@@ -54,6 +56,9 @@ def test_element_mass_of_a_rigid_translation_is_the_laminate_mass(aluminium):
     mass = element.laminate.areal_density() * element.area
     assert mass == pytest.approx(aluminium.density * h * element.area)
     assert float(u @ element.mass_matrix() @ u) == pytest.approx(mass, rel=1e-12)
+    r = rigid_body_displacements(mesh)
+    assembled = float(r[:, 2] @ (AssembleMassMatrix(mesh).run() @ r[:, 2]))
+    assert assembled == pytest.approx(mass, rel=1e-12)
 
 
 def test_deflection_profile_matches_the_cantilever_beam(aluminium):
@@ -149,6 +154,15 @@ def test_vibration_modes_match_the_kirchhoff_plate(aluminium):
     centre = mesh.closest_node((a / 2.0, a / 2.0))
     centre_w = abs(modes.modes[mesh.dof_index(centre, DOF.UZ), 0])
     assert centre_w > 0.0
+    assert modes.generalised_mass == pytest.approx(np.ones(3), rel=1e-8, abs=1e-12)
+    assert modes.participation.shape == (3, 6)
+    assert modes.element_strain_energy.shape == (mesh.n_elements, 3)
+    assert np.array_equal(modes.element_ids, [e.element_id for e in mesh.shell_elements])
+    assert abs(modes.participation[0, 2]) > abs(modes.participation[0, 0])
+    assert abs(modes.participation[0, 2]) > abs(modes.participation[0, 1])
+    phi = modes.modes[:, 0]
+    k_phi = float(phi @ (AssembleGlobalSystem(mesh, bcs).run().K @ phi))
+    assert 2.0 * float(modes.element_strain_energy[:, 0].sum()) == pytest.approx(k_phi, rel=1e-8)
 
 
 def test_cantilever_vibration_matches_the_beam(aluminium):
@@ -184,6 +198,12 @@ def test_linear_buckling_matches_the_classical_plate(aluminium):
     assert result.load_factors[0] == pytest.approx(Ncr, rel=0.03)
     assert result.load_factors[1] > result.load_factors[0]
     assert np.max(np.abs(result.modes[:, 0])) == pytest.approx(1.0)
+    assert result.element_energy.shape == (mesh.n_elements, 2)
+    assert np.array_equal(result.element_ids, [e.element_id for e in mesh.shell_elements])
+    phi = result.modes[:, 0]
+    k_phi = float(phi @ (AssembleGlobalSystem(mesh, bcs).run().K @ phi))
+    assert 2.0 * float(result.element_energy[:, 0].sum()) == pytest.approx(k_phi, rel=1e-8)
+    assert float(result.element_energy[:, 0].sum()) > 0.0
 
 
 def test_sparse_buckling_matches_the_dense_plate(aluminium, monkeypatch):
