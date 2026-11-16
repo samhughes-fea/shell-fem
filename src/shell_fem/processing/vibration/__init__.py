@@ -3,6 +3,16 @@
 The modes are the shell model's. A rotor, hub or shaft is not assembled here.
 """
 
-from shell_fem.processing.vibration.operations import AssembleMassMatrix, SolveVibrationEigenproblem
+from shell_fem.processing.vibration.operations import (
+    AssembleMassMatrix,
+    SolveVibrationEigenproblem,
+    modal_mass_metrics,
+    rigid_body_displacements,
+)
 
-__all__ = ["AssembleMassMatrix", "SolveVibrationEigenproblem"]
+__all__ = [
+    "AssembleMassMatrix",
+    "SolveVibrationEigenproblem",
+    "modal_mass_metrics",
+    "rigid_body_displacements",
+]

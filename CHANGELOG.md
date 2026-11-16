@@ -34,6 +34,15 @@ All notable changes to this project are listed here. The format follows
 
 ### Added
 
+- `PlyPointField` now includes in-plane total, mechanical and material strains at
+  each ply sample (bottom, mid and top of every ply).
+- `GlobalTotals.mass` is the model mass: laminate areal density times element area,
+  summed over shells and solids.
+- `VibrationModes` reports generalised mass (`φ^T M φ`), mass participation
+  (`φ^T M r` for the six rigid-body directions about the origin) and per-element
+  modal strain energy (`½ φ_e^T K_e φ_e`).
+- `BucklingResult` reports per-element strain energy of each buckling mode.
+- Result CSVs from `ResultsExtractor.to_csv` start with `# schema=shell-fem/results@1`.
 - `shell_fem.verification.shell_benchmarks`: the shell obstacle course
   (Scordelis-Lo roof, pinched cylinder, pinched hemisphere, twisted beam in both
   directions) for any element, mesh and element options, with

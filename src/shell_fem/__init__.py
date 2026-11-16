@@ -135,7 +135,11 @@ from shell_fem.processing.static.results.containers import (
     SolidPointField,
     SolutionResult,
 )
-from shell_fem.processing.static.results.results_extractor import ResultsExtractor, extrapolation_matrix
+from shell_fem.processing.static.results.results_extractor import (
+    RESULTS_CSV_SCHEMA,
+    ResultsExtractor,
+    extrapolation_matrix,
+)
 from shell_fem.processing.static.results.stress_recovery import ExactStressRecoverer, PointStressState, StressRecoverer
 from shell_fem.processing.static.results.deflection import DeflectionProfile, deflection_profile
 from shell_fem.processing.static.results.outer_ply import OuterPlyField, outer_ply_stress_strain

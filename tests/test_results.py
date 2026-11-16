@@ -11,6 +11,7 @@ from shell_fem import (
     HygrothermalState,
     Laminate,
     LoadCase,
+    RESULTS_CSV_SCHEMA,
     ResultsExtractor,
     StructuralGlobalSolver,
     integrate_abd,
@@ -51,6 +52,9 @@ def test_energy_split_and_global_balance(plate):
     assert totals.reaction_resultant[2] == pytest.approx(-1.0e3 * A * A)
     assert totals.energy_split["bending"] > 0.9 * totals.strain_energy
     assert totals.max_displacement["UZ"][1] == mesh.closest_node((A / 2, A / 2))
+    expected_mass = sum(e.laminate.areal_density() * e.area for e in mesh.elements)
+    assert totals.mass == pytest.approx(expected_mass)
+    assert totals.mass == pytest.approx(lam.areal_density() * A * A)
 
 
 def test_centre_moments_at_every_level_match_navier(plate):
@@ -96,6 +100,10 @@ def test_thermal_resultants_are_mechanical(aluminium):
     ex = ResultsExtractor(result)
     assert np.allclose(ex.gauss_points().N, 0.0, atol=1e-3)
     assert ex.totals().equilibrium_residual < 1e-9
+    pp = ex.ply_points()
+    assert np.allclose(pp.strain_mechanical, 0.0, atol=1e-10)
+    alpha = aluminium.hygrothermal.alpha1
+    assert pp.strain_global[:, :2] == pytest.approx(alpha * 80.0, rel=1e-8, abs=1e-12)
 
 
 def test_ply_fields_failure_and_nodal_stresses(plate):
@@ -103,6 +111,13 @@ def test_ply_fields_failure_and_nodal_stresses(plate):
     ex = ResultsExtractor(result, criterion=HashinCriterion("3d"))
     pp = ex.ply_points()
     assert len(pp.z) == mesh.n_elements * 4 * lam.n_plies * 3
+    assert pp.strain_global.shape == pp.stress_global.shape == (pp.z.size, 3)
+    assert pp.strain_mechanical.shape == pp.strain_material.shape == (pp.z.size, 3)
+    assert np.allclose(pp.strain_global, pp.strain_mechanical)
+    for i in (0, pp.z.size // 2, pp.z.size - 1):
+        ply = lam.plies[int(pp.ply_index[i])]
+        assert ply.Q_bar @ pp.strain_mechanical[i] == pytest.approx(pp.stress_global[i], rel=1e-10, abs=1e-8)
+        assert pp.strain_material[i] == pytest.approx(ply.to_material_strain(pp.strain_mechanical[i]))
     assert np.all(np.isfinite(pp.failure_index))
     totals = ex.totals()
     assert totals.max_failure[0] == pytest.approx(np.max(pp.failure_index))
@@ -120,6 +135,16 @@ def test_csv_export(plate, tmp_path):
     lam, mesh, result = plate
     paths = ResultsExtractor(result).to_csv(tmp_path, include_plies=False)
     assert set(paths) == {"gauss_points", "elements", "nodes", "totals"}
-    header = paths["nodes"].read_text().splitlines()[0].split(",")
+    schema = f"# schema={RESULTS_CSV_SCHEMA}"
+    for path in paths.values():
+        assert path.read_text().splitlines()[0] == schema
+    header = paths["nodes"].read_text().splitlines()[1].split(",")
     assert header[:3] == ["node_ids", "xyz_0", "xyz_1"]
-    assert len(paths["gauss_points"].read_text().splitlines()) == mesh.n_elements * 4 + 1
+    assert len(paths["gauss_points"].read_text().splitlines()) == mesh.n_elements * 4 + 2
+    totals = dict(line.split(",") for line in paths["totals"].read_text().splitlines()[2:])
+    assert float(totals["mass"]) == pytest.approx(ResultsExtractor(result).totals().mass)
+    ply_paths = ResultsExtractor(result).to_csv(tmp_path / "plies", include_plies=True)
+    ply_header = ply_paths["ply_points"].read_text().splitlines()[1]
+    assert "strain_global_0" in ply_header
+    assert "strain_mechanical_0" in ply_header
+    assert "strain_material_0" in ply_header

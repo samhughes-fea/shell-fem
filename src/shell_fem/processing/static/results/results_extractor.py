@@ -11,9 +11,9 @@
                   ply stresses extrapolated from the recovery points with each
                   element's own fit and averaged over the elements sharing each node.
 4. Ply / z      - any of the above evaluated at a chosen ply position.
-5. Global       - total strain energy and its split, external work, applied and
-                  reaction force/moment resultants, equilibrium residual, and peak
-                  values with their locations.
+5. Global       - total strain energy and its split, external work, model mass,
+                  applied and reaction force/moment resultants, equilibrium residual,
+                  and peak values with their locations.
 
 "Gauss points" here are each element's recovery points (2x2 for Quad4 and Quad8,
 three interior points for Tri3). For the bilinear Quad4 the element centroid is the
@@ -41,6 +41,8 @@ from shell_fem.processing.static.results.containers import (
     SolutionResult,
 )
 from shell_fem.processing.static.results.stress_recovery import ExactStressRecoverer, StressRecoverer
+
+RESULTS_CSV_SCHEMA = "shell-fem/results@1"
 
 
 def extrapolation_matrix(points: Sequence[Tuple[float, float]]) -> np.ndarray:
@@ -118,7 +120,7 @@ class ResultsExtractor:
         return self._gauss
 
     def ply_points(self, plies: Optional[Sequence[int]] = None, positions: Sequence = PLY_POSITIONS) -> PlyPointField:
-        """Ply stresses (and failure indices if a criterion was given) at every Gauss point.
+        """Ply strains, stresses and (if a criterion was given) failure indices at every Gauss point.
 
         The default call (all plies at bottom, mid and top) is cached.
         """
@@ -131,7 +133,7 @@ class ResultsExtractor:
         return field_
 
     def _ply_points(self, plies, positions) -> PlyPointField:
-        out = {k: [] for k in ("eid", "idx", "ply", "z", "xyz", "sg", "sm", "tg", "tm", "fi", "mode")}
+        out = {k: [] for k in ("eid", "idx", "ply", "z", "xyz", "eg", "em", "emat", "sg", "sm", "tg", "tm", "fi", "mode")}
         for element in self.mesh.shell_elements:
             u = self.solution.element_displacements(element.element_id)
             state = self._state(element)
@@ -139,18 +141,29 @@ class ResultsExtractor:
             for i, (xi, eta, _) in enumerate(element.gauss_points()):
                 xyz = element.global_coordinates(xi, eta)
                 for k in ply_ids:
+                    ply = element.laminate.plies[k]
                     for position in positions:
                         z, side = self.ply_height(element, k, position)
                         p = self.recoverer.recover(element, u, z, xi, eta, state, side)
                         if self.criterion is not None:
-                            res = self.criterion.evaluate(p.material_stress_3d(), element.laminate.plies[k].material.strength)
+                            res = self.criterion.evaluate(p.material_stress_3d(), ply.material.strength)
                             fi, mode = res.index, res.mode.value
                         else:
                             fi, mode = np.nan, ""
-                        for key, value in zip(out, (element.element_id, i, k, z, xyz, p.stress_global, p.stress_material, p.shear_global, p.shear_material, fi, mode)):
+                        for key, value in zip(
+                            out,
+                            (
+                                element.element_id, i, k, z, xyz,
+                                p.strain_total, p.strain_mechanical, ply.to_material_strain(p.strain_mechanical),
+                                p.stress_global, p.stress_material, p.shear_global, p.shear_material, fi, mode,
+                            ),
+                        ):
                             out[key].append(value)
         a = {k: np.array(v) for k, v in out.items()}
-        return PlyPointField(a["eid"], a["idx"], a["ply"], a["z"], a["xyz"], a["sg"], a["sm"], a["tg"], a["tm"], a["fi"], a["mode"])
+        return PlyPointField(
+            a["eid"], a["idx"], a["ply"], a["z"], a["xyz"],
+            a["eg"], a["em"], a["emat"], a["sg"], a["sm"], a["tg"], a["tm"], a["fi"], a["mode"],
+        )
 
     # ------------------------------------------------------- element level
     def elements(self) -> ElementField:
@@ -320,10 +333,12 @@ class ResultsExtractor:
                            for e in self.mesh.solid_elements)
         if self.mesh.has_solids:
             split["solid"] = float(solid_energy)
+        mass = float(sum(e.laminate.areal_density() * e.area for e in self.mesh.elements))
         return GlobalTotals(
             strain_energy=float(el.energy_total.sum()) + float(solid_energy),
             energy_split=split,
             external_work=self.solution.external_work,
+            mass=mass,
             applied_resultant=applied,
             reaction_resultant=reaction,
             equilibrium_residual=residual,
@@ -345,6 +360,7 @@ class ResultsExtractor:
                     names.append(f"{name}_{c}")
                     data.append(values[:, c])
         with path.open("w", newline="") as handle:
+            handle.write(f"# schema={RESULTS_CSV_SCHEMA}\n")
             writer = csv.writer(handle)
             writer.writerow(names)
             writer.writerows(zip(*data))
@@ -364,13 +380,19 @@ class ResultsExtractor:
             pp = self.ply_points()
             out["ply_points"] = self._write_table(directory / "ply_points.csv", {f.name: getattr(pp, f.name) for f in fields(pp)})
         t = self.totals()
-        rows = [("strain_energy", t.strain_energy), ("external_work", t.external_work), ("equilibrium_residual", t.equilibrium_residual)]
+        rows = [
+            ("strain_energy", t.strain_energy),
+            ("external_work", t.external_work),
+            ("mass", t.mass),
+            ("equilibrium_residual", t.equilibrium_residual),
+        ]
         rows += [(f"energy_{k}", v) for k, v in t.energy_split.items()]
         rows += [(f"applied_{n}", v) for n, v in zip(("Fx", "Fy", "Fz", "Mx", "My", "Mz"), t.applied_resultant)]
         rows += [(f"reaction_{n}", v) for n, v in zip(("Fx", "Fy", "Fz", "Mx", "My", "Mz"), t.reaction_resultant)]
         rows += [(f"max_{k}", v[0]) for k, v in t.max_displacement.items()]
         path = directory / "totals.csv"
         with path.open("w", newline="") as handle:
+            handle.write(f"# schema={RESULTS_CSV_SCHEMA}\n")
             csv.writer(handle).writerows([("quantity", "value"), *rows])
         out["totals"] = path
         return out

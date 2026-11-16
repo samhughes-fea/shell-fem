@@ -13,6 +13,7 @@ import numpy as np
 from shell_fem.pre_processing.containers.boundary_conditions import BoundaryConditions
 from shell_fem.pre_processing.load_library.load_case import LoadCase
 from shell_fem.processing.buckling.operations import AssembleGeometricStiffness, SolveBucklingEigenproblem
+from shell_fem.processing.eigenpairs import element_mode_energy
 from shell_fem.processing.static.operations.assembly import AssembleGlobalSystem
 from shell_fem.simulation_runner.shell_mesh import as_shell_mesh
 from shell_fem.simulation_runner.static.linear_static_simulation import StructuralGlobalSolver
@@ -27,11 +28,15 @@ class BucklingResult:
     so the critical load is the first factor times the reference load.
     ``modes`` has shape (n_dof, n_modes). Each column is a full displacement
     vector scaled so its largest absolute component is 1.
+    ``element_energy`` is 1/2 φ_e^T K_e φ_e per shell element per mode, in
+    ``element_ids`` order.
     """
 
     load_factors: np.ndarray
     modes: np.ndarray
     load_case: str
+    element_ids: np.ndarray
+    element_energy: np.ndarray
 
     def __len__(self) -> int:
         return int(self.load_factors.size)
@@ -67,4 +72,5 @@ def _linear_buckling(mesh, bcs: BoundaryConditions, load_case: LoadCase, n_modes
     with stage("shell_fem", "eigen_solve") as rec:
         factors, modes = SolveBucklingEigenproblem(shell, bcs, n_modes).run(K, Kg)
         rec.set("modes", int(np.asarray(factors).size))
-    return BucklingResult(factors, modes, load_case.name)
+    ids, energy = element_mode_energy(shell, modes)
+    return BucklingResult(factors, modes, load_case.name, ids, energy)

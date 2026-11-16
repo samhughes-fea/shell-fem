@@ -90,13 +90,16 @@ class GaussPointField:
 
 @dataclass(frozen=True)
 class PlyPointField:
-    """Ply stresses at Gauss points (one row per point and sampled height)."""
+    """Ply stresses and in-plane strains at Gauss points (one row per point and sampled height)."""
 
     element_ids: np.ndarray
     point_index: np.ndarray
     ply_index: np.ndarray
     z: np.ndarray
     xyz: np.ndarray
+    strain_global: np.ndarray  # (m, 3) [ex, ey, gxy] total strain, local shell axes
+    strain_mechanical: np.ndarray  # (m, 3) total minus free hygrothermal expansion
+    strain_material: np.ndarray  # (m, 3) [e11, e22, g12]
     stress_global: np.ndarray  # (m, 3) [sx, sy, txy]
     stress_material: np.ndarray  # (m, 3) [s11, s22, t12]
     shear_global: np.ndarray  # (m, 2) [t_yz, t_xz]
@@ -155,6 +158,7 @@ class GlobalTotals:
     strain_energy: float
     energy_split: Dict[str, float]
     external_work: float
+    mass: float  # sum of laminate areal density times element area (shells and solids)
     applied_resultant: np.ndarray  # [Fx, Fy, Fz, Mx, My, Mz] about the origin
     reaction_resultant: np.ndarray
     equilibrium_residual: float  # |applied + reactions| / sum|nodal forces| (moments over model size)
