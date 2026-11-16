@@ -6,6 +6,7 @@ import pytest
 from shell_fem import (
     BoundaryConditions,
     DOF,
+    FEAMesh,
     Laminate,
     LinearBucklingRunner,
     LoadCase,
