@@ -78,8 +78,9 @@ class LinearBucklingRunner:
     >>> results = LinearBucklingRunner(mesh, bcs, load, n_modes=4).execute().get_results()
     >>> results.critical_load_factor, results[0].displacement_array()
 
-    The prestress is the membrane field of the linear static solution of ``load_case``;
-    the buckling problem uses the same constraints. Shell elements only.
+    The prestress is the field of the linear static solution of ``load_case``
+    (membrane resultants on shells, Cauchy stress on layered solids); the
+    buckling problem uses the same constraints.
     """
 
     def __init__(

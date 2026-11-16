@@ -1,8 +1,7 @@
 """Geometric stiffness stage for LinearBucklingRunner.
 
 ``operations.AssembleGeometricStiffness`` is the stage ``linear_buckling`` calls. This
-one returns a ``GeometricSystem``, refuses solid elements, and is what
-``LinearBucklingRunner`` sequences.
+one returns a ``GeometricSystem`` and is what ``LinearBucklingRunner`` sequences.
 """
 
 from __future__ import annotations
@@ -12,19 +11,18 @@ from typing import Optional
 import numpy as np
 
 from shell_fem.pre_processing.containers.mesh import FEAMesh
-from shell_fem.pre_processing.element_library.shell import ShellElement
 from shell_fem.processing.buckling.states import GeometricSystem
 from shell_fem.processing.static.operations.linear_solvers import HAVE_SCIPY, _sp
 from shell_fem.processing.static.results.containers import SolutionResult
 
 
 class AssembleGeometricStiffness:
-    """Stage: K_g of the membrane prestress of a solved reference load case.
+    """Stage: K_g of the prestress of a solved reference load case.
 
-    Every element must be a shell: the layered solids have no geometric stiffness yet,
-    and a model that contains them raises rather than buckle with part of its
-    stiffness missing. The hygrothermal state of the reference load case is taken
-    off the resultants, so a thermal load prestresses only where it is restrained.
+    Shells contribute the geometric stiffness of their membrane resultants;
+    layered solids contribute the geometric stiffness of their Cauchy stress.
+    The hygrothermal state of the reference load case is taken off the
+    prestress, so a thermal load prestresses only where it is restrained.
     """
 
     def __init__(self, mesh: FEAMesh, sparse: Optional[bool] = None):
@@ -38,10 +36,6 @@ class AssembleGeometricStiffness:
         load_case = reference.load_case
         rows, cols, vals = [], [], []
         for element in mesh.elements:
-            if not isinstance(element, ShellElement):
-                raise NotImplementedError(
-                    f"Element {element.element_id} ({element.TOPOLOGY}) has no geometric stiffness; "
-                    "linear buckling supports shell elements only")
             dofs = mesh.element_dofs(element)
             state = load_case.state_for(element.element_id) if load_case is not None else None
             if state is not None and state.is_null:

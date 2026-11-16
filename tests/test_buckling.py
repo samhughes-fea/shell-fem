@@ -126,17 +126,6 @@ def test_tension_finds_no_positive_buckling_load_but_the_reversed_load_does():
         -compression.execute().get_results().critical_load_factor, rel=1e-8)
 
 
-def test_solid_elements_are_refused():
-    mesh = FEAMesh()
-    for i, x in enumerate([(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0), (0, 0, .1), (1, 0, .1), (1, 1, .1), (0, 1, .1)],
-                          start=1):
-        mesh.add_node(i, x)
-    mesh.add_solid(1, range(1, 9), LAM)
-    bcs = BoundaryConditions().fix([1, 2, 3, 4], [DOF.UX, DOF.UY, DOF.UZ])
-    with pytest.raises(NotImplementedError, match="shell elements only"):
-        LinearBucklingRunner(mesh, bcs, LoadCase().add_nodal_load(5, DOF.UZ, -1.0)).execute()
-
-
 @pytest.mark.parametrize("element, n, tol", [("quad4", 16, 0.01), ("quad8", 8, 0.002), ("quad8_curved", 8, 0.002),
                                              ("tri6", 8, 0.002), ("tri3", 16, 0.04)])
 def test_simply_supported_plate_in_compression(element, n, tol):

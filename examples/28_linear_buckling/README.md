@@ -90,8 +90,9 @@ What the numbers show:
   analysis, which shell-fem does not do yet.
 - **Only the membrane prestress enters K_g.** Bending moments and transverse shear do
   not, which is the usual linear buckling model for thin shells.
-- **Shells only.** A model with layered solid elements raises an error rather than
-  buckle with part of its stiffness missing.
+- **Shells and layered solids.** Solids contribute the geometric stiffness of their
+  Cauchy stress, so a local solid patch at a ply drop or bond buckles with the
+  surrounding shells.
 - **Signs.** By default only positive load factors (the load as applied) are
   returned. Pass `SolveBucklingEigenproblem(n, signs="both")` for loads, such as
   shear, that buckle in either direction.

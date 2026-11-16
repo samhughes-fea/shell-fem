@@ -343,7 +343,9 @@ write_vtu("out/blade", solution, TsaiWuCriterion(), layered=True)   # model and 
   area and mass.
 - **Solids.** `LayeredHex8Element` (with incompatible modes) and
   `LayeredHex20Element` take a laminate through their thickness and give the full
-  3D stress state. `merge_coincident_nodes` joins solid blocks and
+  3D stress state, plus a consistent mass matrix and Cauchy-stress geometric
+  stiffness so a solid patch runs in modal and linear buckling, not only static.
+  `merge_coincident_nodes` joins solid blocks and
   `couple_shell_to_solid` ties shell edges to solid faces. See
   [example 22](https://github.com/samhughes-fea/shell-fem/tree/main/examples/22_ply_drop_solid_detail/).
 - **ParaView.** `write_vtu` writes the deformed model with displacements, stress

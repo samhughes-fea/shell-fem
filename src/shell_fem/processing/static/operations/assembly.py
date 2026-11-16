@@ -47,10 +47,14 @@ class GlobalAssembler:
         return K
 
     def scatter_element_matrices(self, mesh: FEAMesh, element_matrix):
-        """Assemble a global matrix from ``element_matrix(shell)`` in global DOFs."""
+        """Assemble a global matrix from ``element_matrix(element)`` in global DOFs.
+
+        Shells and layered solids both contribute. That is how a solid patch
+        enters the mass matrix and the geometric stiffness.
+        """
         n = mesh.n_dof
         rows, cols, vals = [], [], []
-        for element in mesh.shell_elements:
+        for element in mesh.elements:
             matrix = np.asarray(element_matrix(element), dtype=float)
             dofs = mesh.element_dofs(element)
             size = dofs.size
@@ -60,7 +64,7 @@ class GlobalAssembler:
             cols.append(np.tile(dofs, size))
             vals.append(matrix.ravel())
         if not rows:
-            raise ValueError("Mesh has no shell elements")
+            raise ValueError("Mesh has no elements")
         rows, cols, vals = np.concatenate(rows), np.concatenate(cols), np.concatenate(vals)
         if self.sparse:
             return _sp.csr_matrix((vals, (rows, cols)), shape=(n, n))

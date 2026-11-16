@@ -48,7 +48,7 @@ def modal_mass_metrics(mesh: FEAMesh, modes: np.ndarray, mass) -> Tuple[np.ndarr
 
 
 class AssembleMassMatrix:
-    """Stage: consistent mass of every shell element."""
+    """Stage: consistent mass of every shell and layered solid."""
 
     def __init__(self, mesh: FEAMesh, assembler: Optional[GlobalAssembler] = None):
         self.mesh = mesh
