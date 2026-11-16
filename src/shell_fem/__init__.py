@@ -129,6 +129,7 @@ from shell_fem.simulation_runner.static.linear_static_simulation import (
 )
 from shell_fem.processing.static.results.containers import (
     ElementField,
+    FormulationField,
     GaussPointField,
     GlobalTotals,
     NodalField,

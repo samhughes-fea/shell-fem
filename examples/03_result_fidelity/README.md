@@ -30,6 +30,7 @@ nd = ex.nodes()           # NodalField: displacement, reaction, N, M, Q (extrapo
 pl = ex.ply_points()      # PlyPointField: ply stresses at the bottom, middle and top of each ply
 # ply_stack_stress_strain(result) is the same field; pass EquilibriumStressRecoverer for σz
 tot = ex.totals()         # GlobalTotals: strain energy split, external work, reactions, equilibrium residual
+fm = ex.formulation()     # FormulationField: B, C_ee, C_ss, N, J, weights at the same Gauss points
 ex.to_csv("results/")     # one CSV per level
 ```
 

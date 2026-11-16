@@ -6,6 +6,7 @@ from shell_fem import (
     DOF,
     BoundaryConditions,
     FEAMesh,
+    FormulationField,
     FSDTModel,
     HashinCriterion,
     HygrothermalState,
@@ -133,16 +134,59 @@ def test_ply_fields_failure_and_nodal_stresses(plate):
         ex.nodal_ply_stress(0, frame="bogus")
 
 
+def test_formulation_operators_and_section_matrices(plate):
+    lam, mesh, result = plate
+    ex = ResultsExtractor(result)
+    form, gp = ex.formulation(), ex.gauss_points()
+    assert isinstance(form, FormulationField)
+    assert form.element_ids.shape == gp.element_ids.shape
+    assert np.array_equal(form.element_ids, gp.element_ids)
+    assert np.array_equal(form.point_index, gp.point_index)
+    assert np.allclose(form.natural, gp.natural)
+    assert np.allclose(form.xyz, gp.xyz)
+    assert np.allclose(form.weight * form.detJ, gp.weight)
+    assert form.N.ndim == 2 and np.allclose(form.N.sum(axis=1), 1.0)
+    assert form.B_membrane.shape[1:] == (3, int(form.n_dof[0]))
+    assert form.B_bending.shape[1:] == (3, int(form.n_dof[0]))
+    assert form.B_shear.shape[1:] == (2, int(form.n_dof[0]))
+    for i, element in enumerate(mesh.shell_elements):
+        for j, (xi, eta, w) in enumerate(element.recovery_rule()):
+            k = i * 4 + j
+            J, detJ, _ = element.jacobian(xi, eta)
+            N, _ = element.shape_functions(xi, eta)
+            B_m, B_b, B_s = element.strain_operators(xi, eta)
+            assert form.element_ids[k] == element.element_id
+            assert form.weight[k] == pytest.approx(w)
+            assert form.detJ[k] == pytest.approx(detJ)
+            assert np.allclose(form.jacobian[k], J)
+            assert np.allclose(form.N[k], N)
+            assert np.allclose(form.B_membrane[k], B_m)
+            assert np.allclose(form.B_bending[k], B_b)
+            assert np.allclose(form.B_shear[k], B_s)
+            assert np.allclose(form.C_ee[k], element.section.C_ee)
+            assert np.allclose(form.C_ss[k], element.section.C_ss)
+            NM = form.C_ee[k][:6] @ np.concatenate([gp.eps0[k], gp.kappa[k]])
+            Q = form.C_ss[k][:2] @ gp.gamma0[k]
+            assert NM[:3] == pytest.approx(gp.N[k], rel=1e-10, abs=1e-8)
+            assert NM[3:6] == pytest.approx(gp.M[k], rel=1e-10, abs=1e-8)
+            assert Q == pytest.approx(gp.Q[k], rel=1e-10, abs=1e-8)
+
+
 def test_csv_export(plate, tmp_path):
     lam, mesh, result = plate
     paths = ResultsExtractor(result).to_csv(tmp_path, include_plies=False)
-    assert set(paths) == {"gauss_points", "elements", "nodes", "totals"}
+    assert set(paths) == {"gauss_points", "elements", "nodes", "totals", "formulation"}
     schema = f"# schema={RESULTS_CSV_SCHEMA}"
     for path in paths.values():
         assert path.read_text().splitlines()[0] == schema
     header = paths["nodes"].read_text().splitlines()[1].split(",")
     assert header[:3] == ["node_ids", "xyz_0", "xyz_1"]
     assert len(paths["gauss_points"].read_text().splitlines()) == mesh.n_elements * 4 + 2
+    assert len(paths["formulation"].read_text().splitlines()) == mesh.n_elements * 4 + 2
+    form_header = paths["formulation"].read_text().splitlines()[1]
+    assert "detJ" in form_header
+    assert "weight" in form_header
+    assert "jacobian_0" in form_header
     totals = dict(line.split(",") for line in paths["totals"].read_text().splitlines()[2:])
     assert float(totals["mass"]) == pytest.approx(ResultsExtractor(result).totals().mass)
     ply_paths = ResultsExtractor(result).to_csv(tmp_path / "plies", include_plies=True)

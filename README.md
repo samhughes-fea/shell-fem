@@ -365,6 +365,7 @@ ex.ply_points()     # ply stresses (global and fibre axes) and failure indices
 ex.elements()       # element N, M, Q, strain-energy split, worst ply
 ex.nodes()          # displacements, reactions, extrapolated and averaged N, M, Q
 ex.totals()         # strain energy, external work, reaction sums, equilibrium residual
+ex.formulation()    # B, C_ee, C_ss, N, J, weights at the same recovery points
 ex.to_csv("results/")
 
 ply_stack_stress_strain(result)  # same ply field; constitutive recovery
