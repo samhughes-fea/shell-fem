@@ -34,6 +34,10 @@ All notable changes to this project are listed here. The format follows
 
 ### Added
 
+- `ResultsExtractor.formulation()` returns the element strain operators (`B_membrane`,
+  `B_bending`, `B_shear`), section matrices (`C_ee`, `C_ss`), shape functions,
+  Jacobian and quadrature weights at the same recovery points as `gauss_points()`.
+  `to_csv` writes a `formulation.csv` beside the result-level files.
 - `PlyPointField` now includes in-plane total, mechanical and material strains at
   each ply sample (bottom, mid and top of every ply).
 - Layered Hex8 and Hex20 solids assemble a consistent mass matrix and a Cauchy-stress

@@ -29,6 +29,7 @@ el = ex.elements()        # ElementField: centroid, area, N, M, Q, energy split,
 nd = ex.nodes()           # NodalField: displacement, reaction, N, M, Q (extrapolated and averaged)
 pl = ex.ply_points()      # PlyPointField: ply stresses at the bottom, middle and top of each ply
 tot = ex.totals()         # GlobalTotals: strain energy split, external work, reactions, equilibrium residual
+fm = ex.formulation()     # FormulationField: B, C_ee, C_ss, N, J, weights at the same Gauss points
 ex.to_csv("results/")     # one CSV per level
 ```
 

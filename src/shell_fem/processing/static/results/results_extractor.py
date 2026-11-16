@@ -1,6 +1,7 @@
 """Structured result extraction at every fidelity level.
 
-``ResultsExtractor`` turns a ``SolutionResult`` into plain NumPy arrays at five levels:
+``ResultsExtractor`` turns a ``SolutionResult`` into plain NumPy arrays at five
+result levels, plus the formulation operators cached beside them:
 
 1. Gauss point  - generalised strains and section resultants N, M, Q at each
                   integration point; ply stresses and failure indices at any z.
@@ -14,6 +15,8 @@
 5. Global       - total strain energy and its split, external work, model mass,
                   applied and reaction force/moment resultants, equilibrium residual,
                   and peak values with their locations.
+6. Formulation  - strain operators B, section matrices C_ee / C_ss, shape functions,
+                  Jacobian and quadrature weight at the same recovery points.
 
 "Gauss points" here are each element's recovery points (2x2 for Quad4 and Quad8,
 three interior points for Tri3). For the bilinear Quad4 the element centroid is the
@@ -37,8 +40,8 @@ from shell_fem.pre_processing.element_library.shell import ShellElement
 from laminate_constitutive_model.laminate_hygrothermal import HygrothermalState
 from shell_fem.pre_processing.load_library.load_case import LoadCase
 from shell_fem.processing.static.results.containers import (
-    PLY_POSITIONS, ElementField, GaussPointField, GlobalTotals, NodalField, PlyPointField, SolidPointField,
-    SolutionResult,
+    PLY_POSITIONS, ElementField, FormulationField, GaussPointField, GlobalTotals, NodalField,
+    PlyPointField, SolidPointField, SolutionResult,
 )
 from shell_fem.processing.static.results.stress_recovery import ExactStressRecoverer, StressRecoverer
 
@@ -75,6 +78,7 @@ class ResultsExtractor:
         self.recoverer = recoverer or ExactStressRecoverer(self.mesh.hygrothermal_engine)
         self.criterion = criterion
         self._gauss: Optional[GaussPointField] = None
+        self._formulation: Optional[FormulationField] = None
         self._elements: Optional[ElementField] = None
         self._plies: Optional[PlyPointField] = None
         self._solid: Optional[SolidPointField] = None
@@ -101,6 +105,13 @@ class ResultsExtractor:
             raise ValueError("ply position fraction must lie in [0, 1]")
         return z_b + fraction * (z_t - z_b), ("below" if fraction == 1.0 else "above")
 
+    @staticmethod
+    def _stack(values: List[np.ndarray]) -> np.ndarray:
+        try:
+            return np.stack(values)
+        except ValueError:
+            return np.array(values, dtype=object)
+
     # --------------------------------------------------------- Gauss level
     def gauss_points(self) -> GaussPointField:
         if self._gauss is not None:
@@ -118,6 +129,43 @@ class ResultsExtractor:
         a = {k: np.array(v) for k, v in rows.items()}
         self._gauss = GaussPointField(a["eid"], a["idx"], a["nat"], a["xyz"], a["w"], a["e"], a["k"], a["g"], a["N"], a["M"], a["Q"])
         return self._gauss
+
+    def formulation(self) -> FormulationField:
+        """Strain operators, section matrices, shape functions, Jacobian and weights.
+
+        Same recovery points as ``gauss_points``. ``B_membrane``, ``B_bending`` and
+        ``B_shear`` act on the global element displacement vector. ``C_ee`` and
+        ``C_ss`` are the element's section constitutive matrices, stored at every
+        point. ``weight`` is the raw quadrature weight; the area share stored on
+        ``GaussPointField.weight`` is ``weight * detJ``.
+        """
+        if self._formulation is not None:
+            return self._formulation
+        rows = {k: [] for k in (
+            "eid", "idx", "nat", "xyz", "w", "detJ", "J", "ndof", "N", "Bm", "Bb", "Bs", "Cee", "Css",
+        )}
+        for element in self.mesh.shell_elements:
+            C_ee = np.array(element.section.C_ee, copy=True)
+            C_ss = np.array(element.section.C_ss, copy=True)
+            for i, (xi, eta, w) in enumerate(element.recovery_rule()):
+                J, detJ, _ = element.jacobian(xi, eta)
+                N, _ = element.shape_functions(xi, eta)
+                B_m, B_b, B_s = element.strain_operators(xi, eta)
+                for key, value in zip(
+                    rows,
+                    (
+                        element.element_id, i, (xi, eta), element.global_coordinates(xi, eta),
+                        w, detJ, J, element.n_dof, N, B_m, B_b, B_s, C_ee, C_ss,
+                    ),
+                ):
+                    rows[key].append(value)
+        self._formulation = FormulationField(
+            np.array(rows["eid"]), np.array(rows["idx"]), np.array(rows["nat"]), np.array(rows["xyz"]),
+            np.array(rows["w"]), np.array(rows["detJ"]), self._stack(rows["J"]), np.array(rows["ndof"]),
+            self._stack(rows["N"]), self._stack(rows["Bm"]), self._stack(rows["Bb"]), self._stack(rows["Bs"]),
+            self._stack(rows["Cee"]), self._stack(rows["Css"]),
+        )
+        return self._formulation
 
     def ply_points(self, plies: Optional[Sequence[int]] = None, positions: Sequence = PLY_POSITIONS) -> PlyPointField:
         """Ply strains, stresses and (if a criterion was given) failure indices at every Gauss point.
@@ -366,13 +414,33 @@ class ResultsExtractor:
             writer.writerows(zip(*data))
         return path
 
+    @staticmethod
+    def _csv_columns(obj) -> Dict[str, np.ndarray]:
+        """Scalar and vector columns for CSV; skip object arrays and wide operator tensors."""
+        columns = {}
+        for item in fields(obj):
+            values = np.asarray(getattr(obj, item.name))
+            if values.dtype == object:
+                continue
+            if values.ndim > 2:
+                if values.shape[1:] == (2, 2):
+                    columns[item.name] = values.reshape(values.shape[0], 4)
+                continue
+            columns[item.name] = values
+        return columns
+
     def to_csv(self, directory, include_plies: bool = True) -> Dict[str, Path]:
         """Write every level to CSV files in ``directory``; returns {level: path}."""
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         out = {}
-        for level, obj in (("gauss_points", self.gauss_points()), ("elements", self.elements()), ("nodes", self.nodes())):
-            out[level] = self._write_table(directory / f"{level}.csv", {f.name: getattr(obj, f.name) for f in fields(obj)})
+        for level, obj in (
+            ("gauss_points", self.gauss_points()),
+            ("elements", self.elements()),
+            ("nodes", self.nodes()),
+            ("formulation", self.formulation()),
+        ):
+            out[level] = self._write_table(directory / f"{level}.csv", self._csv_columns(obj))
         if self.mesh.has_solids:
             sp = self.solid_points()
             out["solid_points"] = self._write_table(directory / "solid_points.csv", {f.name: getattr(sp, f.name) for f in fields(sp)})
