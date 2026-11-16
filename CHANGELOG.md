@@ -34,6 +34,14 @@ All notable changes to this project are listed here. The format follows
 
 ### Added
 
+- `ply_stack_stress_strain` returns ply stress and strain at the bottom, mid and
+  top of every ply (the through-thickness counterpart of `outer_ply_stress_strain`).
+  Pass `EquilibriumStressRecoverer` to carry interlaminar shear and σz; the
+  constitutive default is `ExactStressRecoverer`.
+- `PlyPointField.normal_stress` is σz at each ply sample (zero unless the
+  recoverer is equilibrium). VTK ply cells write that as s33.
+- Condensed RZT (`RefinedZigZagModel(condensed=True)`) is tested beside FSDT on
+  the same 6-DOF sandwich mesh, with both recoverers through the full stack.
 - `PlyPointField` now includes in-plane total, mechanical and material strains at
   each ply sample (bottom, mid and top of every ply).
 - Layered Hex8 and Hex20 solids assemble a consistent mass matrix and a Cauchy-stress

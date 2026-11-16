@@ -25,6 +25,7 @@ Beam properties beam_section_properties: beam stiffness extracted from a shell m
 Results         ResultsExtractor (Gauss point, element, node, ply, solid and global levels);
                 deflection_profile (section translation, rotation and twist along one axis);
                 outer_ply_stress_strain (CLPT stress and strain on the outer ply faces);
+                ply_stack_stress_strain (exact or equilibrium recovery through every ply);
                 linear_buckling (positive load factors of one reference load);
                 LinearBucklingRunner (the same reference load, dense or Lanczos eigen-solve,
                 positive factors or both signs, BucklingMode shapes);
@@ -139,6 +140,7 @@ from shell_fem.processing.static.results.results_extractor import (
     RESULTS_CSV_SCHEMA,
     ResultsExtractor,
     extrapolation_matrix,
+    ply_stack_stress_strain,
 )
 from shell_fem.processing.static.results.stress_recovery import ExactStressRecoverer, PointStressState, StressRecoverer
 from shell_fem.processing.static.results.deflection import DeflectionProfile, deflection_profile

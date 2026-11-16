@@ -67,3 +67,6 @@ Centre deflections are in mm.
 
 For sandwich structures, use `RefinedZigZagModel` or `LayerwiseModel`. FSDT's
 5/6 shear correction factor is only meant for a single material.
+`RefinedZigZagModel(condensed=True)` keeps FSDT's six DOFs per node and still
+uses the harmonic core stiffness; it is the drop-in 6-DOF variant, not the
+default (independent ψ) shown in the figure.

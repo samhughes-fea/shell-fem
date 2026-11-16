@@ -357,7 +357,7 @@ write_vtu("out/blade", solution, TsaiWuCriterion(), layered=True)   # model and 
 `ResultsExtractor` turns a solution into arrays at each level of fidelity:
 
 ```python
-from shell_fem import ResultsExtractor, TsaiWuCriterion
+from shell_fem import EquilibriumStressRecoverer, ResultsExtractor, TsaiWuCriterion, ply_stack_stress_strain
 
 ex = ResultsExtractor(result, load_case=loads, criterion=TsaiWuCriterion())
 ex.gauss_points()   # strains and N, M, Q at the 2x2 Gauss points
@@ -366,6 +366,9 @@ ex.elements()       # element N, M, Q, strain-energy split, worst ply
 ex.nodes()          # displacements, reactions, extrapolated and averaged N, M, Q
 ex.totals()         # strain energy, external work, reaction sums, equilibrium residual
 ex.to_csv("results/")
+
+ply_stack_stress_strain(result)  # same ply field; constitutive recovery
+ply_stack_stress_strain(result, recoverer=EquilibriumStressRecoverer(result, loads))
 ```
 
 For the bilinear element, moments and stresses are most accurate at element
@@ -502,7 +505,7 @@ If `ccx` or `nastran` is not on the `PATH`, that kernel still writes its input d
 - **Q̄ transform.** `Q̄ = T⁻¹ Q R T R⁻¹`, where R is the Reuter matrix. The tests check it against the Tsai–Pagano invariant form at every angle.
 - **CLPT.** The element is C0, so the Kirchhoff constraint is imposed with a penalty shear stiffness (1000 × Σ Q̄_s h). MITC4 shear keeps this free of locking. Transverse shear stresses are recovered with the parabolic equilibrium profile.
 - **FSDT.** A_s = k Σ Q̄_s h with k = 5/6.
-- **Refined zig-zag (RZT).** u(z) = u0 + z·β + φ(z)·ψ, with the zig-zag function φ built from the ply shear moduli (Tessler, Di Sciuva and Gherlone). The amplitudes ψ are extra nodal DOFs, so the element carries the zig-zag through the thickness and its gradients. `RefinedZigZagModel(condensed=True)` ties ψ to the mean shear instead (6 DOFs per node, shear stiffness A_s = hG).
+- **Refined zig-zag (RZT).** u(z) = u0 + z·β + φ(z)·ψ, with the zig-zag function φ built from the ply shear moduli (Tessler, Di Sciuva and Gherlone). The amplitudes ψ are extra nodal DOFs, so the element carries the zig-zag through the thickness and its gradients. `RefinedZigZagModel(condensed=True)` ties ψ to the mean shear instead (6 DOFs per node, shear stiffness A_s = hG), so it sits on the same mesh as FSDT. Exact and equilibrium recovery both run through the full stack via `ply_stack_stress_strain`. This is the 6-DOF sibling, not a substitute for independent ψ on a Pagano plate.
 - **Layerwise.** Each internal interface carries its own in-plane displacement (hat functions in z), optionally with sub-layers inside each ply. `LayerwiseModel(condensed=True)` condenses them out into a 6-DOF section.
 - **Generalised sections.** Every theory is written as ε(z) = E(z)·e and γ(z) = G(z)·s, with section matrices ∫EᵀQ̄E dz and ∫GᵀQ̄sG dz, so all theories share one element formulation.
 - **Elements.** Flat facets with a drilling penalty tying θz to ½(v,x − u,y). Quad4: 2×2 Gauss, MITC4 shear and incompatible (QM6) membrane modes, which removes in-plane shear locking. Tri3: constant-strain membrane with MITC3 shear (stiffer; use where quads cannot go). Quad8: serendipity, 3×3 Gauss with 2×2 selective-reduced shear. Each element has exactly six rigid-body modes and passes the membrane patch test on distorted meshes. Curved Quad8 (the default): degenerated-shell kinematics with a tangent frame at every integration point; membrane (with its coupling to bending, so offset and unsymmetric laminates keep a positive semi-definite stiffness) and transverse shear on 2×2 points, bending and drilling on 3×3. A single element keeps one non-communicable membrane mode, as S8R does; two or more have exactly six rigid-body modes.
