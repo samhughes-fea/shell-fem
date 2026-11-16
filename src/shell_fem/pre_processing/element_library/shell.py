@@ -598,9 +598,12 @@ class ShellElement(ABC):
         return self.transformation.T @ F
 
     def pressure_load_vector(self, pressure: Pressure) -> np.ndarray:
-        """Consistent load of a pressure acting along the element normal (+e3).
+        """Consistent load of a pressure acting along the undeformed normal (+e3).
 
-        ``pressure`` is a number or a function of the global position.
+        ``pressure`` is a number or a function of the global position. The normal
+        and the area come from the mesh, not from a displaced surface: this is a
+        dead pressure. A follower pressure (current normal, load stiffness) is
+        not assembled; see ``shell_fem.processing.nonlinear``.
         """
         F = np.zeros(self.n_dof)
         if not callable(pressure) and pressure == 0.0:

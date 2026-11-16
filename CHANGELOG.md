@@ -34,6 +34,19 @@ All notable changes to this project are listed here. The format follows
 
 ### Added
 
+- Geometric nonlinearity is scoped, not implemented: `geometric_nonlinearity_scope()`
+  lists what exists (linear static `K u = F`, linear buckling `(K + λ Kg) φ = 0`,
+  shell membrane `Kg`, solid Cauchy-stress `Kg`, dead pressure on the undeformed
+  normal) and what is missing (Newton, follower pressure, `Kg` in the static
+  tangent, updated geometry, arc-length post-buckling). `GeometricNonlinearRunner`,
+  `NewtonEquilibrium` and `AssembleFollowerPressure` raise
+  `GeometricNonlinearityNotImplemented`. Linear statics and linear buckling are
+  unchanged.
+- Labelled `StripHeaveAddedMass` on shells (Newman 1977 / Theodorsen 1935):
+  `m_a' = rho_fluid * pi * (chord/2)**2`, spread over the chord as areal density
+  `rho_fluid * pi * chord / 4` on the local-normal translation. Default vibration
+  is unchanged; pass `added_mass=` to `vibration_modes` to attach it. Solids skip
+  the strip model.
 - `ply_stack_stress_strain` returns ply stress and strain at the bottom, mid and
   top of every ply (the through-thickness counterpart of `outer_ply_stress_strain`).
   Pass `EquilibriumStressRecoverer` to carry interlaminar shear and σz; the

@@ -29,7 +29,9 @@ Results         ResultsExtractor (Gauss point, element, node, ply, solid and glo
                 linear_buckling (positive load factors of one reference load);
                 LinearBucklingRunner (the same reference load, dense or Lanczos eigen-solve,
                 positive factors or both signs, BucklingMode shapes);
-                vibration_modes (natural frequencies and mass-normalised blade modes);
+                GeometricNonlinearRunner (scoped post-buckling / large deflection; not a solver);
+                vibration_modes (natural frequencies and mass-normalised blade modes;
+                optional labelled strip-heave added mass);
                 write_vtu, write_pvd, VTKExporter (ParaView output, per-ply cells)
 Post-processing ExactStressRecoverer, EquilibriumStressRecoverer (sigma_z and interlaminar
                 shear from 3D equilibrium), SmearedCrackDegradation, ProgressiveDamageAnalysis
@@ -172,6 +174,23 @@ from shell_fem.processing.buckling.eigen import SolveBucklingEigenproblem
 from shell_fem.processing.buckling.results import BucklingMode, ComputeBucklingModes
 from shell_fem.simulation_runner.buckling.buckling_simulation import BucklingResult, linear_buckling
 from shell_fem.simulation_runner.buckling.linear_buckling_simulation import LinearBucklingResults, LinearBucklingRunner
+from shell_fem.processing.nonlinear import (
+    AssembleFollowerPressure,
+    GeometricNonlinearityNotImplemented,
+    GeometricNonlinearityScope,
+    NewtonEquilibrium,
+    geometric_nonlinearity_scope,
+)
+from shell_fem.simulation_runner.nonlinear import GeometricNonlinearRunner
+from shell_fem.pre_processing.element_library.added_mass import (
+    STRIP_HEAVE_FORMULA,
+    STRIP_HEAVE_SOURCE,
+    StripHeaveAddedMass,
+    element_added_mass_matrix,
+    strip_heave_added_mass_per_length,
+    strip_heave_areal_density,
+)
+from shell_fem.processing.vibration.added_mass import AssembleAddedMassMatrix
 from shell_fem.simulation_runner.vibration.vibration_simulation import VibrationModes, vibration_modes
 from shell_fem.pre_processing.element_library.connectors import add_reference_node, distributing_link, rigid_link
 

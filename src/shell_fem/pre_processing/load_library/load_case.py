@@ -82,9 +82,11 @@ class LoadCase:
         return self
 
     def add_pressure(self, pressure: PressureLike, element_ids: Optional[Iterable[int]] = None) -> "LoadCase":
-        """Pressure along each element's +normal: a number, or a function of the global position.
+        """Pressure along each element's undeformed +normal: a number, or a field of position.
 
-        Applies to all elements when ``element_ids`` is omitted.
+        Applies to all elements when ``element_ids`` is omitted. The linear
+        solvers keep this as a dead load (the mesh is not updated). Follower
+        pressure is not assembled; see ``shell_fem.processing.nonlinear``.
         """
         if element_ids is None:
             self.global_pressure = _sum_pressures([self.global_pressure, pressure])

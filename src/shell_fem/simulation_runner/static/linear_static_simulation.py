@@ -147,7 +147,8 @@ class LinearStaticRunner:
     >>> results["ULS"].displacements, results.diagnostics.phase_times
 
     One assembly and one factorisation serve every load case; combinations are exact
-    superpositions of the basic cases.
+    superpositions of the basic cases. There is no Newton iteration and no
+    geometric stiffness in this tangent; see ``GeometricNonlinearRunner``.
     """
 
     def __init__(

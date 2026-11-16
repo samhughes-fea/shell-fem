@@ -7,12 +7,15 @@ passes on; nothing here places those modes on a hub or a shaft.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 
 from shell_fem.pre_processing.containers.boundary_conditions import BoundaryConditions
+from shell_fem.pre_processing.element_library.added_mass import StripHeaveAddedMass
 from shell_fem.processing.eigenpairs import element_mode_energy
 from shell_fem.processing.static.operations.assembly import AssembleGlobalSystem
+from shell_fem.processing.vibration.added_mass import AssembleAddedMassMatrix
 from shell_fem.processing.vibration.operations import (
     AssembleMassMatrix, SolveVibrationEigenproblem, modal_mass_metrics,
 )
@@ -46,7 +49,12 @@ class VibrationModes:
         return int(self.angular_frequencies_rad_s.size)
 
 
-def vibration_modes(mesh, bcs: BoundaryConditions, n_modes: int = 6) -> VibrationModes:
+def vibration_modes(
+    mesh,
+    bcs: BoundaryConditions,
+    n_modes: int = 6,
+    added_mass: Optional[StripHeaveAddedMass] = None,
+) -> VibrationModes:
     """Natural frequencies and mass-normalised mode shapes of a shell mesh.
 
     ``mesh`` is an ``FEAMesh`` or a blade mesh (its ``.mesh`` is used). ``bcs``
@@ -55,17 +63,29 @@ def vibration_modes(mesh, bcs: BoundaryConditions, n_modes: int = 6) -> Vibratio
     different count. The result also carries generalised mass, rigid-body mass
     participation and per-element modal strain energy. Rotor assembly is left
     to the caller.
+
+    ``added_mass`` is off by default (structural ``M`` only). Pass a labelled
+    ``StripHeaveAddedMass`` (Newman 1977 / Theodorsen 1935 strip-heave) to add
+    consistent ``M_a`` on the local-normal translation of every shell.
     """
     with stage("shell_fem", "shell_vibration"):
-        return _vibration_modes(mesh, bcs, n_modes)
+        return _vibration_modes(mesh, bcs, n_modes, added_mass)
 
 
-def _vibration_modes(mesh, bcs: BoundaryConditions, n_modes: int) -> VibrationModes:
+def _vibration_modes(
+    mesh,
+    bcs: BoundaryConditions,
+    n_modes: int,
+    added_mass: Optional[StripHeaveAddedMass],
+) -> VibrationModes:
     shell = as_shell_mesh(mesh)
     if any(element.laminate.areal_density() <= 0.0 for element in shell.elements):
         raise ValueError("vibration needs a positive laminate density on every element")
     K = AssembleGlobalSystem(shell, bcs).run().K
-    M = AssembleMassMatrix(shell).run()
+    mass_stage = AssembleMassMatrix(shell)
+    M = mass_stage.run()
+    if added_mass is not None:
+        M = M + AssembleAddedMassMatrix(shell, added_mass, mass_stage.assembler).run()
     with stage("shell_fem", "eigen_solve") as rec:
         omega, modes = SolveVibrationEigenproblem(shell, bcs, n_modes).run(K, M)
         rec.set("modes", int(np.asarray(omega).size))
