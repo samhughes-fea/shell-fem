@@ -62,8 +62,8 @@ def vibration_modes(mesh, bcs: BoundaryConditions, n_modes: int = 6) -> Vibratio
 
 def _vibration_modes(mesh, bcs: BoundaryConditions, n_modes: int) -> VibrationModes:
     shell = as_shell_mesh(mesh)
-    if any(element.laminate.areal_density() <= 0.0 for element in shell.shell_elements):
-        raise ValueError("vibration needs a positive laminate density on every shell element")
+    if any(element.laminate.areal_density() <= 0.0 for element in shell.elements):
+        raise ValueError("vibration needs a positive laminate density on every element")
     K = AssembleGlobalSystem(shell, bcs).run().K
     M = AssembleMassMatrix(shell).run()
     with stage("shell_fem", "eigen_solve") as rec:

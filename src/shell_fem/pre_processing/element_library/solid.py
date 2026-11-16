@@ -123,6 +123,7 @@ class LayeredSolidElement:
         self._kinematics = kinematics
         self._ht_engine = hygrothermal_engine or HygrothermalEngine()
         self._K: Optional[np.ndarray] = None
+        self._M: Optional[np.ndarray] = None
         self._recovery = None
         self._Kaa = None
         self.frame = self.point_frame(0.0, 0.0, 0.0)
@@ -421,6 +422,67 @@ class LayeredSolidElement:
     def strain_energy(self, u_elem) -> float:
         u = np.asarray(u_elem, dtype=float)
         return 0.5 * float(u @ self.stiffness_matrix() @ u)
+
+    def mass_matrix(self) -> np.ndarray:
+        """Consistent mass in global DOFs, ∫ ρ N^T N dV on the three translations.
+
+        Rotational DOFs stay at zero: solids have no rotational inertia, and the
+        solver holds the rotations of solid-only nodes at zero.
+        """
+        if self._M is not None:
+            return self._M
+        n = self.N_NODES
+        trans = np.zeros((n, n))
+        for xi, eta, zeta, w, k in self.integration_points():
+            N, _ = self.shape_functions(xi, eta, zeta)
+            rho = self._laminate.plies[k].material.density
+            trans += np.outer(N, N) * (rho * w * self.jacobian(xi, eta, zeta)[1])
+        M = np.zeros((self.n_dof, self.n_dof))
+        for a in range(3):
+            idx = STANDARD_DOFS * np.arange(n) + a
+            M[np.ix_(idx, idx)] = trans
+        self._M = 0.5 * (M + M.T)
+        return self._M
+
+    def _cauchy(self, voigt: np.ndarray) -> np.ndarray:
+        s11, s22, s33, s23, s13, s12 = np.asarray(voigt, dtype=float).reshape(6)
+        return np.array([[s11, s12, s13], [s12, s22, s23], [s13, s23, s33]])
+
+    def geometric_stiffness_matrix(
+        self,
+        u_elem: Optional[np.ndarray] = None,
+        state=None,
+        stress: Optional[Sequence[float]] = None,
+    ) -> np.ndarray:
+        """Geometric (initial stress) stiffness K_g in global DOFs.
+
+        K_g = sum over the ply Gauss points of (∇N)^T σ (∇N) on each translation,
+        with σ the Cauchy stress in global axes. ``linear_buckling`` passes the
+        element displacements ``u_elem`` (the hygrothermal ``state`` is taken off
+        the stress). A uniform prestress is the Voigt ``stress`` [s11, s22, s33,
+        s23, s13, s12]. Rotational DOFs stay at zero. Compression makes K_g
+        negative. The buckling problem is (K + λ K_g) φ = 0.
+        """
+        from laminate_constitutive_model.laminate_hygrothermal import NULL_STATE
+
+        if u_elem is None and stress is None:
+            raise ValueError("give either the element displacements or a uniform Cauchy stress")
+        if state is None:
+            state = NULL_STATE
+        uniform = None if stress is None else self._cauchy(stress)
+        n = self.N_NODES
+        K = np.zeros((self.n_dof, self.n_dof))
+        for xi, eta, zeta, w, k in self.integration_points():
+            _, detJ, dNdX = self.jacobian(xi, eta, zeta)
+            if uniform is None:
+                sig = self._cauchy(self.stress_at(u_elem, xi, eta, zeta, state).stress_global)
+            else:
+                sig = uniform
+            gram = dNdX.T @ sig @ dNdX * (w * detJ)
+            for a in range(3):
+                idx = STANDARD_DOFS * np.arange(n) + a
+                K[np.ix_(idx, idx)] += gram
+        return 0.5 * (K + K.T)
 
     def quality(self) -> Dict[str, float]:
         dets = [self.jacobian(x, e, z)[1] for x, e, z, _, _ in self.integration_points()]

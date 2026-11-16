@@ -211,14 +211,14 @@ def _csr(A):
 
 
 def element_mode_energy(mesh: FEAMesh, modes: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Per-element strain energy 1/2 φ_e^T K_e φ_e of every shell for each mode column.
+    """Per-element strain energy 1/2 φ_e^T K_e φ_e of every element for each mode column.
 
     Returns ``(element_ids, energy)`` with ``energy`` of shape (n_elements, n_modes).
     """
     modes = np.asarray(modes, dtype=float)
     if modes.ndim != 2:
         raise ValueError("modes must have shape (n_dof, n_modes)")
-    shells = mesh.shell_elements
+    shells = mesh.elements
     energy = np.zeros((len(shells), modes.shape[1]))
     ids = np.empty(len(shells), dtype=int)
     for j, element in enumerate(shells):

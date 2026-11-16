@@ -36,6 +36,10 @@ All notable changes to this project are listed here. The format follows
 
 - `PlyPointField` now includes in-plane total, mechanical and material strains at
   each ply sample (bottom, mid and top of every ply).
+- Layered Hex8 and Hex20 solids assemble a consistent mass matrix and a Cauchy-stress
+  geometric stiffness, so a local solid patch runs in `vibration_modes` and
+  `linear_buckling` / `LinearBucklingRunner`, not only in a static solve. Rotational
+  DOFs of the solids stay inert; the solver still holds solid-only rotations at zero.
 - `GlobalTotals.mass` is the model mass: laminate areal density times element area,
   summed over shells and solids.
 - `VibrationModes` reports generalised mass (`φ^T M φ`), mass participation
@@ -64,8 +68,8 @@ All notable changes to this project are listed here. The format follows
   `linear_buckling`.
 - Shell elements gain `membrane_prestress` and `geometric_stiffness_matrix(..., resultants=)`
   for a uniform membrane prestress. `geometric_stiffness_matrix(u_elem, state)`, the call
-  `linear_buckling` makes, is unchanged. Hygrothermal prestress counts. The runner refuses
-  solid elements.
+  `linear_buckling` makes, is unchanged. Hygrothermal prestress counts. Layered solids
+  contribute Cauchy-stress geometric stiffness on the same path.
 - `shell_fem.verification.buckling_benchmarks`: simply supported plates in compression
   (isotropic or specially orthotropic, any aspect ratio), shear and restrained heating,
   a cantilever column and a cylinder in axial compression, each against its classical
