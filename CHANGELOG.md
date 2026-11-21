@@ -18,6 +18,14 @@ All notable changes to this project are listed here. The format follows
 
 ### Changed
 
+- **Kernel v0.9.3.** CI, the release check and the README install implicit-geometry-kernel
+  `v0.9.3` instead of the non-release tag `K9`, and `pyproject.toml` requires `>=0.9.3`.
+  `tests/test_kernel_pcomp.py` imports `ShellMesh` from `implicit_geometry_kernel.mesh`,
+  since 0.9.3 drops the flat `mesh.shell_mesh` module. Kernel 0.9.3 meshes rib and
+  tip-closure cells as triangles, so `BladeBuilder.from_shell_mesh` takes a 3-node cell
+  as one `tri3` (it used to fan it about a new centre node into three); polygons of five
+  or more nodes from earlier kernels are still fanned.
+
 - **Package layout.** The flat `laminate_*` modules moved into `pre_processing/`
   (containers, element_library, property_library, load_library, mesh_library,
   model_check), `processing/` (static operations and results, progressive damage),

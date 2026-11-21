@@ -55,7 +55,7 @@ def test_kernel_nodes_quads_and_polygon_fans(ribbed):
         assert np.allclose(mesh.node_coordinates(k + 1), sm.nodes[k])
     kinds = [len(e.node_ids) for e in mesh.shell_elements]
     assert kinds.count(4) == len(sm.quads)
-    assert kinds.count(3) == sum(len(sm.elements[i]) for i in sm.polygons)
+    assert kinds.count(3) == len(sm.triangles) + sum(len(sm.elements[i]) for i in sm.polygons)
     assert blade.surface == "mid" and blade.shell_mesh is sm
     assert np.allclose(blade.span_positions, sm.stations)
 
