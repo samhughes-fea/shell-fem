@@ -18,6 +18,17 @@ All notable changes to this project are listed here. The format follows
 
 ### Changed
 
+- **One linear buckling path.** `linear_buckling(mesh, bcs, load_case, n_modes=1)` now
+  runs `LinearBucklingRunner`, so both calls use the same stages
+  (`geometric.AssembleGeometricStiffness`, `eigen.SolveBucklingEigenproblem`,
+  `ComputeBucklingModes`). Its signature and `BucklingResult` are unchanged: positive
+  factors, modes scaled to a largest absolute component of 1 (now always +1), and
+  per-element mode energy. The runner reports `geometric_stiffness` and `eigen_solve` on
+  the `blade.stage` logger. The eigen-solve switches from dense to Lanczos at
+  `processing.eigenpairs.DENSE_LIMIT` (800 free DOFs, the vibration solve's limit), not
+  1500. The old stage classes `processing.buckling.operations.AssembleGeometricStiffness`
+  and `SolveBucklingEigenproblem` (also importable from `processing.buckling`) still work
+  with a DeprecationWarning and go in 0.3.0.
 - **Kernel v0.9.3.** CI, the release check and the README install implicit-geometry-kernel
   `v0.9.3` instead of the non-release tag `K9`, and `pyproject.toml` requires `>=0.9.3`.
   `tests/test_kernel_pcomp.py` imports `ShellMesh` from `implicit_geometry_kernel.mesh`,
@@ -94,11 +105,10 @@ All notable changes to this project are listed here. The format follows
   of one reference load and the corresponding modes.
 - `LinearBucklingRunner(mesh, bcs, load_case, n_modes).execute().get_results()` runs
   the same reference load, then `AssembleGeometricStiffness`, `SolveBucklingEigenproblem`
-  (dense below 1500 free DOFs, Lanczos above; positive load factors, or both signs)
+  (dense or Lanczos; positive load factors, or both signs)
   and `ComputeBucklingModes`. `LinearBucklingResults` holds the modes (`BucklingMode`:
   load factor and mode shape scaled to a unit largest translation, `as_solution()` for
-  VTK), the reference static solution and the stage timings. It does not replace
-  `linear_buckling`.
+  VTK), the reference static solution and the stage timings.
 - Shell elements gain `membrane_prestress` and `geometric_stiffness_matrix(..., resultants=)`
   for a uniform membrane prestress. `geometric_stiffness_matrix(u_elem, state)`, the call
   `linear_buckling` makes, is unchanged. Hygrothermal prestress counts. Layered solids

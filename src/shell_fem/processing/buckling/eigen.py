@@ -1,15 +1,15 @@
-"""Eigen stage for LinearBucklingRunner: load factors and modes of the reduced system.
+"""Eigen stage of linear buckling: load factors and modes of the reduced system.
 
-``operations.SolveBucklingEigenproblem`` is the stage ``linear_buckling`` calls (positive
-factors only, through ``processing.eigenpairs``). This one is constructed as
-``SolveBucklingEigenproblem(n_modes, signs=, method=)`` and is what the runner and the
-closed-form benchmarks use.
+``LinearBucklingRunner`` and ``linear_buckling`` both run this stage.
 """
 
 from __future__ import annotations
 
+from typing import Optional
+
 import numpy as np
 
+from shell_fem.processing import eigenpairs
 from shell_fem.processing.buckling.states import BucklingEigenState, GeometricSystem
 from shell_fem.processing.static.operations.linear_solvers import HAVE_SCIPY, _sp, _spla
 from shell_fem.processing.static.operations.solve_states import FactorisedSystem
@@ -25,10 +25,12 @@ class SolveBucklingEigenproblem:
     ``signs``      "positive" (default) keeps the load factors of the reference load as
                    applied; "both" also returns negative factors (the reversed load).
     ``method``     "auto" (dense below ``dense_limit`` independent DOFs or without
-                   SciPy, Lanczos above), "dense" or "lanczos".
+                   SciPy, Lanczos above), "dense" or "lanczos". ``dense_limit``
+                   defaults to ``processing.eigenpairs.DENSE_LIMIT``, the limit the
+                   vibration solve uses too.
     """
 
-    def __init__(self, n_modes: int = 5, signs: str = "positive", method: str = "auto", dense_limit: int = 1500,
+    def __init__(self, n_modes: int = 5, signs: str = "positive", method: str = "auto", dense_limit: Optional[int] = None,
                  tolerance: float = 0.0):
         if n_modes < 1:
             raise ValueError("n_modes must be at least 1")
@@ -39,7 +41,8 @@ class SolveBucklingEigenproblem:
         if method == "lanczos" and not HAVE_SCIPY:
             raise ImportError("The Lanczos eigensolver requires SciPy")
         self.n_modes, self.signs, self.method = int(n_modes), signs, method
-        self.dense_limit, self.tolerance = int(dense_limit), float(tolerance)
+        self.dense_limit = None if dense_limit is None else int(dense_limit)
+        self.tolerance = float(tolerance)
 
     def run(self, factorised: FactorisedSystem, geometric: GeometricSystem) -> BucklingEigenState:
         reduced = factorised.reduced
@@ -48,7 +51,8 @@ class SolveBucklingEigenproblem:
         n = int(T.shape[1])
         method = self.method
         if method == "auto":
-            method = "dense" if (n <= self.dense_limit or not HAVE_SCIPY) else "lanczos"
+            limit = eigenpairs.DENSE_LIMIT if self.dense_limit is None else self.dense_limit
+            method = "dense" if (n <= limit or not HAVE_SCIPY) else "lanczos"
         if method == "lanczos" and self.n_modes >= n - 1:
             method = "dense"
         if method == "dense":

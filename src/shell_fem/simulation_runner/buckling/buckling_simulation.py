@@ -1,7 +1,8 @@
 """Linear buckling of a shell mesh under one reference load.
 
-The static solve supplies the membrane forces. The load factors multiply that
-reference load. The solve does not rebuild the mesh and does not assemble a rotor.
+A thin call over ``LinearBucklingRunner``: the static solve supplies the prestress,
+and the load factors multiply that reference load. The solve does not rebuild the
+mesh and does not assemble a rotor.
 """
 
 from __future__ import annotations
@@ -12,12 +13,11 @@ import numpy as np
 
 from shell_fem.pre_processing.containers.boundary_conditions import BoundaryConditions
 from shell_fem.pre_processing.load_library.load_case import LoadCase
-from shell_fem.processing.buckling.operations import AssembleGeometricStiffness, SolveBucklingEigenproblem
+from shell_fem.processing.buckling.eigen import SolveBucklingEigenproblem
 from shell_fem.processing.eigenpairs import element_mode_energy
-from shell_fem.processing.static.operations.assembly import AssembleGlobalSystem
-from shell_fem.simulation_runner.shell_mesh import as_shell_mesh
-from shell_fem.simulation_runner.static.linear_static_simulation import StructuralGlobalSolver
 from shell_fem.processing.stage_log import stage
+from shell_fem.simulation_runner.buckling.linear_buckling_simulation import LinearBucklingRunner
+from shell_fem.simulation_runner.shell_mesh import as_shell_mesh
 
 
 @dataclass(frozen=True)
@@ -54,23 +54,14 @@ def linear_buckling(mesh, bcs: BoundaryConditions, load_case: LoadCase, n_modes:
         return _linear_buckling(mesh, bcs, load_case, n_modes)
 
 
-def _nonzeros(matrix: object) -> int:
-    nnz = getattr(matrix, "nnz", None)
-    if isinstance(nnz, int) and not isinstance(nnz, bool):
-        return nnz
-    return int(np.count_nonzero(np.asarray(matrix)))
-
-
 def _linear_buckling(mesh, bcs: BoundaryConditions, load_case: LoadCase, n_modes: int) -> BucklingResult:
     shell = as_shell_mesh(mesh)
-    solution = StructuralGlobalSolver().solve(shell, bcs, load_case)
-    K = AssembleGlobalSystem(shell, bcs).run().K
-    with stage("shell_fem", "geometric_stiffness") as rec:
-        Kg = AssembleGeometricStiffness(shell, solution).run()
-        rec.set("elements", int(shell.n_elements))
-        rec.set("nonzeros", _nonzeros(Kg))
-    with stage("shell_fem", "eigen_solve") as rec:
-        factors, modes = SolveBucklingEigenproblem(shell, bcs, n_modes).run(K, Kg)
-        rec.set("modes", int(np.asarray(factors).size))
+    eigen = SolveBucklingEigenproblem(n_modes)
+    results = LinearBucklingRunner(shell, bcs, load_case, eigensolver=eigen).execute().get_results()
+    if len(results) < n_modes:
+        raise ValueError(f"only {len(results)} positive buckling factors; requested {n_modes}")
+    modes = np.column_stack([m.displacements for m in results]) if len(results) else np.zeros((shell.n_dof, 0))
+    for j in range(modes.shape[1]):
+        modes[:, j] /= modes[np.argmax(np.abs(modes[:, j])), j]
     ids, energy = element_mode_energy(shell, modes)
-    return BucklingResult(factors, modes, load_case.name, ids, energy)
+    return BucklingResult(results.load_factors, modes, load_case.name, ids, energy)

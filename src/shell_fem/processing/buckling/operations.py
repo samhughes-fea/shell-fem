@@ -1,8 +1,8 @@
-"""Buckling stages for ``linear_buckling``: geometric stiffness, then the positive load factors.
+"""Deprecated: the first stage classes of ``linear_buckling``. They go in 0.3.0.
 
-``LinearBucklingRunner`` uses ``geometric.AssembleGeometricStiffness`` and
-``eigen.SolveBucklingEigenproblem`` (dense or Lanczos, either sign). Those classes
-share these names and live in their own modules so this call shape stays:
+``linear_buckling`` now runs ``LinearBucklingRunner``, whose stages are
+``geometric.AssembleGeometricStiffness`` and ``eigen.SolveBucklingEigenproblem``.
+These two keep their old call shapes, and warn when constructed:
 
     AssembleGeometricStiffness(mesh, solution).run() -> K_g
     SolveBucklingEigenproblem(mesh, bcs, n_modes).run(K, K_g) -> factors, modes
@@ -10,6 +10,7 @@ share these names and live in their own modules so this call shape stays:
 
 from __future__ import annotations
 
+import warnings
 from typing import Optional, Tuple
 
 import numpy as np
@@ -22,10 +23,17 @@ from shell_fem.processing.static.operations.assembly import GlobalAssembler
 from shell_fem.processing.static.results.containers import SolutionResult
 
 
+def _deprecated(name: str, module: str) -> None:
+    warnings.warn(f"shell_fem.processing.buckling.operations.{name} goes in 0.3.0; "
+                  f"use shell_fem.processing.buckling.{module}.{name} (or LinearBucklingRunner)",
+                  DeprecationWarning, stacklevel=3)
+
+
 class AssembleGeometricStiffness:
     """Stage: geometric stiffness Kg of the membrane forces in a static solution."""
 
     def __init__(self, mesh: FEAMesh, solution: SolutionResult, assembler: Optional[GlobalAssembler] = None):
+        _deprecated("AssembleGeometricStiffness", "geometric")
         self.mesh = mesh
         self.solution = solution
         self.assembler = assembler or GlobalAssembler()
@@ -48,6 +56,7 @@ class SolveBucklingEigenproblem:
     """
 
     def __init__(self, mesh: FEAMesh, bcs: BoundaryConditions, n_modes: int = 1):
+        _deprecated("SolveBucklingEigenproblem", "eigen")
         self.mesh = mesh
         self.bcs = bcs
         self.n_modes = n_modes
