@@ -11,9 +11,10 @@ does no mechanics itself:
     -> SolveBucklingEigenproblem                  (K_r phi = lambda (-K_g,r) phi)
     -> ComputeBucklingModes
 
-``linear_buckling(mesh, bcs, load_case, n_modes=1)`` remains the call that returns
-positive load factors and full-system modes. This runner adds the stage timings, the
-reference solution, a dense or Lanczos eigen-solve, and negative load factors.
+``linear_buckling(mesh, bcs, load_case, n_modes=1)`` runs this runner and returns its
+positive load factors with full-system modes and per-element mode energy. The
+geometric stiffness and the eigen-solve are reported on the ``blade.stage`` logger
+as ``geometric_stiffness`` and ``eigen_solve``.
 
 The load factor of a mode multiplies the whole reference load case. Loads that
 should not scale (a dead weight under a varying wind load, say) need a nonlinear
@@ -43,7 +44,15 @@ from shell_fem.processing.static.operations.reduction import ReduceConstrainedSy
 from shell_fem.processing.static.operations.solution import SolveReducedSystem
 from shell_fem.processing.static.results.compute_primary import ComputePrimaryResults
 from shell_fem.processing.static.results.containers import SolutionResult
+from shell_fem.processing.stage_log import stage
 from shell_fem.simulation_runner.static.linear_static_simulation import StaticDiagnostics, _Timer
+
+
+def _nonzeros(matrix: object) -> int:
+    nnz = getattr(matrix, "nnz", None)
+    if isinstance(nnz, int) and not isinstance(nnz, bool):
+        return nnz
+    return int(np.count_nonzero(np.asarray(matrix)))
 
 
 @dataclass
@@ -121,10 +130,13 @@ class LinearBucklingRunner:
         info = {"n_dof": mesh.n_dof, "n_free": constrained.n_free, "linear_solver": self.linear_solver.name}
         with _Timer(d, "primary_results"):
             reference = ComputePrimaryResults(mesh, system).run(U, F, self.load_case, 0.0, info)
-        with _Timer(d, "assemble_geometric"):
+        with _Timer(d, "assemble_geometric"), stage("shell_fem", "geometric_stiffness") as rec:
             geometric = AssembleGeometricStiffness(mesh, self.assembler.sparse).run(reference)
-        with _Timer(d, "eigen"):
+            rec.set("elements", int(mesh.n_elements))
+            rec.set("nonzeros", _nonzeros(geometric.K_g))
+        with _Timer(d, "eigen"), stage("shell_fem", "eigen_solve") as rec:
             state = self.eigensolver.run(factorised, geometric)
+            rec.set("modes", int(state.n_modes))
         with _Timer(d, "modes"):
             modes = ComputeBucklingModes(mesh).run(reduced, state)
         d.n_dof, d.n_free, d.linear_solver = mesh.n_dof, constrained.n_free, self.linear_solver.name

@@ -26,9 +26,10 @@ Results         ResultsExtractor (Gauss point, element, node, ply, solid and glo
                 deflection_profile (section translation, rotation and twist along one axis);
                 outer_ply_stress_strain (CLPT stress and strain on the outer ply faces);
                 ply_stack_stress_strain (exact or equilibrium recovery through every ply);
-                linear_buckling (positive load factors of one reference load);
-                LinearBucklingRunner (the same reference load, dense or Lanczos eigen-solve,
-                positive factors or both signs, BucklingMode shapes);
+                LinearBucklingRunner (linear buckling under one reference load, dense or
+                Lanczos eigen-solve, positive factors or both signs, BucklingMode shapes);
+                linear_buckling (a call over that runner: positive factors, modes and
+                per-element mode energy);
                 GeometricNonlinearRunner (scoped post-buckling / large deflection; not a solver);
                 vibration_modes (natural frequencies and mass-normalised blade modes;
                 optional labelled strip-heave added mass);

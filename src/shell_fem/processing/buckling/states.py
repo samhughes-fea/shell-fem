@@ -1,4 +1,4 @@
-"""System states passed between the LinearBucklingRunner stages.
+"""System states passed between the linear buckling stages.
 
 The prestress comes from a linear static solve of the reference load; the buckling
 stages then run on the same constraints:
@@ -8,8 +8,7 @@ stages then run on the same constraints:
                                                    K_r phi = lambda (-T^T K_g T) phi
     BucklingEigenState --ComputeBucklingModes--> modes U = T phi
 
-``operations.py`` is a separate, smaller path used by ``linear_buckling``: it returns
-positive load factors and full-system modes directly and does not use these states.
+``LinearBucklingRunner`` sequences them; ``linear_buckling`` runs the runner.
 
 lambda is the factor on the reference load at which the structure buckles.
 """

@@ -1,13 +1,26 @@
-"""Linear shell buckling under a reference static load.
+"""Linear buckling stages: geometric stiffness of a static prestress, the eigenproblem and the modes.
 
-``operations`` is the geometric stiffness and positive-factor eigenproblem that
-``linear_buckling(mesh, bcs, load_case, n_modes=1)`` calls. ``LinearBucklingRunner``
-uses ``geometric``, ``eigen`` and ``results`` (dense or Lanczos, positive factors or
-both signs) and does not replace that call.
+``geometric.AssembleGeometricStiffness``, ``eigen.SolveBucklingEigenproblem`` and
+``results.ComputeBucklingModes`` are the stages; ``LinearBucklingRunner`` sequences them
+and ``linear_buckling`` runs that runner. The load factors multiply the reference load.
 
-The load factors multiply that reference load. A rotor is not assembled here.
+The earlier stage classes of ``linear_buckling`` (``operations.AssembleGeometricStiffness``
+and ``operations.SolveBucklingEigenproblem``, which this package used to export) still
+import from here with a DeprecationWarning until 0.3.0.
 """
 
-from shell_fem.processing.buckling.operations import AssembleGeometricStiffness, SolveBucklingEigenproblem
+import warnings as _warnings
 
-__all__ = ["AssembleGeometricStiffness", "SolveBucklingEigenproblem"]
+_DEPRECATED = ("AssembleGeometricStiffness", "SolveBucklingEigenproblem")
+
+
+def __getattr__(name):
+    if name in _DEPRECATED:
+        _warnings.warn(
+            f"shell_fem.processing.buckling.{name} is the old linear_buckling stage and goes in 0.3.0; "
+            f"use shell_fem.processing.buckling.{'geometric' if name.startswith('Assemble') else 'eigen'}.{name}",
+            DeprecationWarning, stacklevel=2)
+        from shell_fem.processing.buckling import operations
+
+        return getattr(operations, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
