@@ -4,7 +4,8 @@
 ``ShellMesh`` as it is, with no remeshing:
 
 - skin and web quads become ``quad4`` elements on the kernel's nodes;
-- each rib and tip-closure polygon (five or more nodes) becomes a fan of ``tri3``
+- rib and tip-closure triangles (kernel 0.9.3 and later) become ``tri3`` elements;
+  a polygon of five or more nodes (earlier kernels) becomes a fan of ``tri3``
   elements about a node at its centroid, so its perimeter keeps the skin and web
   nodes it shares;
 - normals are the kernel's: out of the section on the skin, towards the trailing
@@ -214,6 +215,11 @@ class KernelMeshBladeBuilder:
             if len(ids) == 4:
                 new = [eid]
                 mesh.add_element(eid, ids, lam, kinematics, element_type="quad4", **options)
+                eid += 1
+            elif len(ids) == 3:
+                # kernel 0.9.3 meshes rib and tip cells as triangles: take them as they are
+                new = [eid]
+                mesh.add_element(eid, ids, lam, kinematics, element_type="tri3", **tri_options)
                 eid += 1
             else:
                 centre = next_node

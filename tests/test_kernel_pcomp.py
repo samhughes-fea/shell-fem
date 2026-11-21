@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from implicit_geometry_kernel.mesh.shell_mesh import ShellMesh
+from implicit_geometry_kernel.mesh import ShellMesh
 from shell_fem import (
     AnalysisModel,
     BladeBuilder,
