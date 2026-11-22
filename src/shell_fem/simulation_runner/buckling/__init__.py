@@ -1,8 +1,9 @@
 """Linear buckling runners.
 
-``linear_buckling(mesh, bcs, load_case, n_modes=1)`` returns the positive load factors
-of one reference load. ``LinearBucklingRunner`` sequences the static stages and a
-dense or Lanczos eigen-solve, including negative factors when asked.
+``LinearBucklingRunner`` sequences the static stages and the buckling stages (dense or
+Lanczos eigen-solve, negative factors when asked). ``linear_buckling(mesh, bcs,
+load_case, n_modes=1)`` runs it and returns the positive load factors of one reference
+load with full-system modes and per-element mode energy.
 """
 
 from shell_fem.simulation_runner.buckling.buckling_simulation import BucklingResult, linear_buckling

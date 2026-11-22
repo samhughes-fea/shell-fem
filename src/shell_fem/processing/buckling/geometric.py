@@ -1,7 +1,6 @@
-"""Geometric stiffness stage for LinearBucklingRunner.
+"""Geometric stiffness stage of linear buckling: K_g of a static prestress as a ``GeometricSystem``.
 
-``operations.AssembleGeometricStiffness`` is the stage ``linear_buckling`` calls. This
-one returns a ``GeometricSystem`` and is what ``LinearBucklingRunner`` sequences.
+``LinearBucklingRunner`` and ``linear_buckling`` both run this stage.
 """
 
 from __future__ import annotations

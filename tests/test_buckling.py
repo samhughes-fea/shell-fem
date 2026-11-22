@@ -154,3 +154,33 @@ def test_euler_column(element, n, tol):
 
 def test_cylinder_in_axial_compression():
     assert cylinder_axial("quad8_curved", 16).ratio == pytest.approx(1.0, abs=0.02)
+
+
+def test_linear_buckling_runs_the_runner_and_keeps_its_result_shape():
+    from shell_fem import linear_buckling
+
+    named, bcs = small_plate()
+    load = LoadCase("compression").add_line_load(named.nodes("right"), (-1.0, 0, 0))
+    runner = LinearBucklingRunner(named.mesh, bcs, load, n_modes=2).execute().get_results()
+    result = linear_buckling(named.mesh, bcs, load, n_modes=2)
+    assert np.allclose(result.load_factors, runner.load_factors, rtol=1e-12)
+    assert result.modes.shape == (named.mesh.n_dof, 2)
+    assert np.allclose(np.abs(result.modes).max(axis=0), 1.0)
+    with pytest.raises(ValueError, match="positive buckling factors"):
+        linear_buckling(named.mesh, bcs, LoadCase().add_line_load(named.nodes("right"), (1.0, 0, 0)), n_modes=1)
+
+
+def test_the_old_linear_buckling_stages_warn():
+    import shell_fem.processing.buckling as buckling
+
+    with pytest.warns(DeprecationWarning, match="0.3.0"):
+        old = buckling.AssembleGeometricStiffness
+    named, bcs = small_plate()
+    load = LoadCase().add_line_load(named.nodes("right"), (-1.0, 0, 0))
+    solution = StructuralGlobalSolver().solve(named.mesh, bcs, load)
+    with pytest.warns(DeprecationWarning, match="geometric.AssembleGeometricStiffness"):
+        K_g = old(named.mesh, solution).run()
+    from shell_fem.processing.buckling.geometric import AssembleGeometricStiffness
+
+    new = AssembleGeometricStiffness(named.mesh).run(solution).K_g
+    assert abs(K_g - new).max() < 1e-9 * abs(new).max()
