@@ -29,6 +29,8 @@ All notable changes to this project are listed here. The format follows
   1500. The old stage classes `processing.buckling.operations.AssembleGeometricStiffness`
   and `SolveBucklingEigenproblem` (also importable from `processing.buckling`) still work
   with a DeprecationWarning and go in 0.3.0.
+- CI, the wheel check and the README install implicit-geometry-kernel `v0.9.5`, and
+  the dependency floor is `>=0.9.5` (was `v0.9.3`; `v0.9.4` carries 0.9.3 code).
 - **Kernel v0.9.3.** CI, the release check and the README install implicit-geometry-kernel
   `v0.9.3` instead of the non-release tag `K9`, and `pyproject.toml` requires `>=0.9.3`.
   `tests/test_kernel_pcomp.py` imports `ShellMesh` from `implicit_geometry_kernel.mesh`,
