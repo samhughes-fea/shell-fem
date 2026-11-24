@@ -636,6 +636,50 @@ class ShellElement(ABC):
                 F[3 + c :: d] += N * m[c] * detJ * w
         return self.transformation.T @ F
 
+    def _surface_field_load_vector(self, force_per_area: Callable[[np.ndarray], Sequence[float]]) -> np.ndarray:
+        """Consistent load of a force per unit area given in global axes as a function of position."""
+        F = np.zeros(self.n_dof)
+        d = self.dofs_per_node
+        curved = getattr(self, "CURVED", False)
+        for xi, eta, w in self.load_rule():
+            N, _ = self.shape_functions(xi, eta)
+            _, detJ, _ = self.jacobian(xi, eta)
+            f = np.asarray(force_per_area(self.global_coordinates(xi, eta)), dtype=float).reshape(3)
+            f_dof = f if curved else self.frame @ f  # curved elements carry global translations
+            for c in range(3):
+                F[c::d] += N * f_dof[c] * detJ * w
+        return self.transformation.T @ F
+
+    def traction_load_vector(self, traction) -> np.ndarray:
+        """Consistent load of a surface traction (force per unit area, global axes).
+
+        ``traction`` is a 3-vector or a function of the global position returning one.
+        Unlike a pressure it keeps its direction whatever the element orientation, so
+        it can carry a distributed sectional force or a shear flow on a blade skin.
+        """
+        if callable(traction):
+            return self._surface_field_load_vector(traction)
+        t = np.asarray(traction, dtype=float).reshape(3)
+        return self._surface_field_load_vector(lambda xyz: t)
+
+    def centrifugal_load_vector(self, omega: float, origin: Sequence[float], axis: Sequence[float]) -> np.ndarray:
+        """Consistent load of rotation at ``omega`` (rad/s) about the axis through ``origin`` along ``axis``.
+
+        The force per unit area is rho_A omega^2 r, with r the distance vector from the
+        axis and rho_A the laminate areal density. The moment of a laminate offset is
+        neglected, and the rotation is steady (no Coriolis or spin softening).
+        """
+        a = np.asarray(axis, dtype=float)
+        a = a / np.linalg.norm(a)
+        c = np.asarray(origin, dtype=float)
+        k = self._laminate.areal_density() * float(omega) ** 2
+
+        def force(xyz):
+            r = xyz - c
+            return k * (r - np.dot(r, a) * a)
+
+        return self._surface_field_load_vector(force)
+
     def edge_shape_functions(self, edge: int, s: float) -> np.ndarray:
         """1D shape functions on an edge (s in [-1, 1]) for the nodes listed in ``EDGES[edge]``."""
         if len(self.EDGES[edge]) == 2:

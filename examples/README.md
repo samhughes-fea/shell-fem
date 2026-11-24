@@ -47,6 +47,7 @@ and how to read the results.
 | 26 | [Mid-surface meshing](26_mid_surface_meshing/) | Skins on the mould line with offsets or on their mid-surface: thick-tube torsion and six IEA 15 MW stations, for Quad4, flat and curved Quad8 | `BladeBuilder(mesh_surface=...)`, `BladeMesh.to_mid_surface` |
 | 27 | [Shell obstacle course](27_shell_obstacle_course/) | Every shell element on the standard reference problems (Scordelis-Lo roof, pinched cylinder and hemisphere, twisted beam); the warping correction and drilling stiffness of flat elements | `shell_fem.verification.shell_benchmarks` |
 | 28 | [Linear buckling](28_linear_buckling/) | Every shell element against classical buckling loads: simply supported plates in compression (aluminium and cross-ply), shear and restrained heating, a cantilever column, a cylinder in axial compression | `LinearBucklingRunner`, `shell_fem.verification.buckling_benchmarks` |
+| 29 | [Full-blade loading](29_full_blade_loading/) | A tapered, twisted 10 m NACA blade from the kernel's shell mesh, clamped at the root under spanwise aero force and torque, gravity and rotation, and a ULS combination: root loads, deflection, twist and the ULS buckling mode | `BladeStaticRunner`, `blade_loads`, `shell_fem.verification.blade_benchmarks` |
 
 Examples 01–27 are linear static analyses. Example 28 is linear buckling. Each one compares its results with a
 reference: a closed-form or series solution, exact 3D elasticity, laminate or

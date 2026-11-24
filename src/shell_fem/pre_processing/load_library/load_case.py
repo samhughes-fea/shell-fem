@@ -49,6 +49,43 @@ class BodyLoad:
         return BodyLoad(tuple(factor * a for a in self.acceleration), self.element_ids)
 
 
+@dataclass(frozen=True)
+class SurfaceTraction:
+    """Force per unit area in global axes (a 3-vector or a function of position) on shell elements."""
+
+    traction: Union[Tuple[float, float, float], Callable[[np.ndarray], Sequence[float]]]
+    element_ids: Optional[frozenset] = None
+
+    def applies_to(self, element_id: int) -> bool:
+        return self.element_ids is None or element_id in self.element_ids
+
+    def scaled(self, factor: float) -> "SurfaceTraction":
+        t = self.traction
+        if callable(t):
+            return SurfaceTraction(lambda xyz, t=t, f=factor: f * np.asarray(t(xyz), dtype=float), self.element_ids)
+        return SurfaceTraction(tuple(factor * v for v in t), self.element_ids)
+
+
+@dataclass(frozen=True)
+class CentrifugalLoad:
+    """Steady rotation at ``omega`` (rad/s) about the axis through ``origin`` along ``axis``, times ``factor``.
+
+    ``factor`` scales the force (load combinations), since omega^2 cannot be negative.
+    """
+
+    omega: float
+    origin: Tuple[float, float, float]
+    axis: Tuple[float, float, float]
+    element_ids: Optional[frozenset] = None
+    factor: float = 1.0
+
+    def applies_to(self, element_id: int) -> bool:
+        return self.element_ids is None or element_id in self.element_ids
+
+    def scaled(self, factor: float) -> "CentrifugalLoad":
+        return CentrifugalLoad(self.omega, self.origin, self.axis, self.element_ids, self.factor * factor)
+
+
 def _sum_pressures(parts: List[PressureLike]) -> PressureLike:
     numeric = sum(p for p in parts if not callable(p))
     fields_ = [p for p in parts if callable(p)]
@@ -73,6 +110,8 @@ class LoadCase:
         self.element_pressures: Dict[int, PressureLike] = {}
         self.line_loads: List[LineLoad] = []
         self.body_loads: List[BodyLoad] = []
+        self.tractions: List[SurfaceTraction] = []
+        self.centrifugal_loads: List[CentrifugalLoad] = []
         self.hygrothermal: HygrothermalState = NULL_STATE
         self.element_hygrothermal: Dict[int, HygrothermalState] = {}
 
@@ -115,6 +154,29 @@ class LoadCase:
         self.body_loads.append(BodyLoad(a, ids))
         return self
 
+    def add_traction(self, traction, element_ids: Optional[Iterable[int]] = None) -> "LoadCase":
+        """Surface traction (force per unit area, global axes) on shell elements, all of them by default.
+
+        ``traction`` is a 3-vector or a function of the global position returning one.
+        """
+        t = traction if callable(traction) else tuple(float(v) for v in traction)
+        if not callable(t) and len(t) != 3:
+            raise ValueError("a traction needs 3 components")
+        ids = None if element_ids is None else frozenset(int(e) for e in element_ids)
+        self.tractions.append(SurfaceTraction(t, ids))
+        return self
+
+    def add_centrifugal(self, omega: float, origin: Sequence[float] = (0.0, 0.0, 0.0),
+                        axis: Sequence[float] = (0.0, 1.0, 0.0),
+                        element_ids: Optional[Iterable[int]] = None) -> "LoadCase":
+        """Steady rotation at ``omega`` (rad/s) about the axis through ``origin`` along ``axis`` (shells)."""
+        if np.linalg.norm(np.asarray(axis, dtype=float)) == 0.0:
+            raise ValueError("the rotation axis must be non-zero")
+        ids = None if element_ids is None else frozenset(int(e) for e in element_ids)
+        self.centrifugal_loads.append(CentrifugalLoad(float(omega), tuple(float(v) for v in origin),
+                                                      tuple(float(v) for v in axis), ids))
+        return self
+
     def set_hygrothermal(self, state: HygrothermalState, element_ids: Optional[Iterable[int]] = None) -> "LoadCase":
         if element_ids is None:
             self.hygrothermal = state
@@ -146,6 +208,8 @@ class LoadCase:
         new.element_pressures = {k: _scale_pressure(v, factor) for k, v in self.element_pressures.items()}
         new.line_loads = [load.scaled(factor) for load in self.line_loads]
         new.body_loads = [load.scaled(factor) for load in self.body_loads]
+        new.tractions = [load.scaled(factor) for load in self.tractions]
+        new.centrifugal_loads = [load.scaled(factor) for load in self.centrifugal_loads]
         f = factor if scale_hygrothermal else 1.0
         new.hygrothermal = self.hygrothermal.scaled(f)
         new.element_hygrothermal = {k: v.scaled(f) for k, v in self.element_hygrothermal.items()}
@@ -168,6 +232,8 @@ class LoadCase:
                 out.element_pressures[e] = _sum_pressures([out.element_pressures.get(e, 0.0), p])
             out.line_loads += s.line_loads
             out.body_loads += s.body_loads
+            out.tractions += s.tractions
+            out.centrifugal_loads += s.centrifugal_loads
             out.hygrothermal = out.hygrothermal + s.hygrothermal
             for e in ids:
                 element_states[e] = element_states.get(e, NULL_STATE) + s.state_for(e)
