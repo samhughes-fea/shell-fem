@@ -142,3 +142,35 @@ def test_tube_against_beam_theory():
     assert tube_bending("quad8_curved", 16, 20).ratio == pytest.approx(1.0, abs=0.003)
     assert tube_torsion("quad8_curved", 16, 20).ratio == pytest.approx(1.0, abs=0.001)
     assert tube_centrifugal("quad8_curved", 16, 20).ratio == pytest.approx(1.0, abs=0.004)
+
+
+def test_section_loads_from_the_shell_match_beam_integrals_along_the_span():
+    """Shear, bending moment, torque and axial force at every cut, against ∫ from the tip."""
+    blade = tube_blade("quad4", n_around=12, n_span=8)
+    f, m, omega = 1000.0, 300.0, 3.0
+    case = add_sectional_torque(add_sectional_force(LoadCase("c"), blade, lambda z: (0.0, f, 0.0)), blade,
+                                lambda z: m)
+    case.add_centrifugal(omega, origin=(0.0, 0.0, 0.0), axis=(0.0, 1.0, 0.0))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result = BladeStaticRunner(blade, case).execute().get_results()["c"]
+    s = result.section_loads
+    z = s.stations[:-1]
+    np.testing.assert_allclose(s.stations, blade.span_positions)
+    np.testing.assert_allclose(s.internal[0], result.root_load, atol=1e-6 * np.abs(result.root_load).max())
+    assert s.relative_residual < 1e-9
+    internal = s.internal[:-1]
+    np.testing.assert_allclose(internal[:, 1], -f * (L - z), rtol=1e-6)
+    np.testing.assert_allclose(internal[:, 3], 0.5 * f * (L - z) ** 2, rtol=1e-6)
+    np.testing.assert_allclose(internal[:, 5], -m * (L - z), rtol=1e-6)
+    from shell_fem.verification.blade_benchmarks import RHO, T
+    mass_per_length = RHO * T * 12 * 2.0 * R * np.sin(np.pi / 12)   # the flat elements' 12-sided perimeter
+    np.testing.assert_allclose(internal[:, 2], -0.5 * mass_per_length * omega ** 2 * (L ** 2 - z ** 2), rtol=1e-6)
+
+
+def test_section_cuts_need_nodes_on_the_cut():
+    from shell_fem.processing.static.results.section_loads import SectionLoadIntegrator
+
+    blade = tube_blade("quad4", n_around=8, n_span=4)
+    with pytest.raises(ValueError, match="no nodes at the cut"):
+        SectionLoadIntegrator(blade.mesh, [0.123])

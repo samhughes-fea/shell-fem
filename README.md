@@ -65,7 +65,8 @@ composite-laminate-model.
 │       ├── processing/                     computes; one folder per analysis type
 │       │   ├── static/operations/          one class per solve stage (see below), linear solvers, system states
 │       │   ├── static/results/             SolutionResult, primary results, ResultsExtractor, stress recovery,
-│       │   │                               3D-equilibrium σz and interlaminar shear
+│       │   │                               3D-equilibrium σz and interlaminar shear, section_loads.py
+│       │   │                               (internal loads at every span cut)
 │       │   ├── buckling/                   linear_buckling stages in operations.py; LinearBucklingRunner
 │       │   │                               stages in geometric.py, eigen.py and results/
 │       │   ├── vibration/                  shell natural frequencies and mode shapes
@@ -76,7 +77,8 @@ composite-laminate-model.
 │       │   ├── static/                     LinearStaticRunner, StructuralGlobalSolver, solve_kernel_pcomp
 │       │   ├── buckling/                   linear_buckling and LinearBucklingRunner
 │       │   ├── blade/                      BladeStaticRunner: load cases and combinations on a clamped blade,
-│       │   │                               root loads, deflection and twist, optional buckling
+│       │   │                               root loads, section loads along the span, deflection and twist,
+│       │   │                               optional buckling
 │       │   ├── vibration/                  vibration_modes (blade modes; a rotor is not assembled)
 │       │   ├── progressive_damage/         ProgressiveDamageAnalysis (load, degrade, re-solve)
 │       │   └── backends/                   FEAKernel + native / CalculiX / Nastran adapters and deck writers

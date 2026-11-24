@@ -14,7 +14,7 @@ shell-fem meshes nothing itself. It takes the kernel's own shell mesh
 `BladeBuilder.from_shell_mesh`. Each cap and the skin it is bonded to form one
 laminate on the skin mid-surface, offset by the kernel's eccentricity.
 
-![Aero load per unit span; flapwise and edgewise deflection and twist along the span for each case; root loads; and the first buckling mode of the ULS combination on the suction side](figures/full_blade_loading.png)
+![Aero load per unit span; flapwise and edgewise deflection and twist along the span for each case; flapwise bending moment along the span from the shell cuts and from the applied loads; and the first buckling mode of the ULS combination on the suction side](figures/full_blade_loading.png)
 
 ## Load cases
 
@@ -87,6 +87,27 @@ The ULS combination buckles at a load factor of 1.76. The mode sits in the sucti
 skin and spar cap over the first 2 m, where the flapwise bending compression is
 largest and the panels between cap, webs and leading edge are widest.
 
+## Section loads along the span
+
+The runner also cuts the blade at every span position (`BladeCaseResult.section_loads`).
+At each cut it takes two resultants about the pitch axis:
+
+- **internal**: from the shell itself. At the cut nodes, the internal forces K_e u_e of
+  the outboard elements, less their own distributed loads, are what the inboard part
+  supplies. This is the load the section carries, from the element stresses.
+- **applied**: every load on the outboard part, integrated from the tip in. This is what a
+  beam code gets from V(z) = ∫_z^L f dζ and M(z) = ∫_z^L (ζ − z) × f dζ.
+
+Each cut is a free body, so the two balance. In every case here the largest residual
+over all the cuts is about 1e-10 of the largest section load; the bending-moment panel
+plots both. At the root cut, internal equals the root reaction.
+
+```python
+cut = results["ULS"].section_loads
+cut.stations, cut.internal[:, 3]   # flapwise bending moment Mx at every span position
+cut.relative_residual              # ~1e-10
+```
+
 ## Is the loading right?
 
 `shell_fem.verification.blade_benchmarks` puts the same loads on a thin aluminium tube
@@ -98,6 +119,10 @@ theory:
 | uniform force per span | fL⁴/8EI + fL²/(2κGA), κ = 0.5 | 1.028 | 0.9993 | 0.9975 |
 | uniform torque per span | mL²/2GJ | 1.046 | 1.0000 | 0.9989 |
 | rotation about an axis through the root | ρ_A P Ω² L³/(3EA) | 0.997 | 0.9981 | 0.9976 |
+
+The section cuts of the tube match the beam integrals at every span position to 1e-6:
+shear f(L − z), bending moment f(L − z)²/2, torque m(L − z) and axial force
+ρ_A P Ω²(L² − z²)/2 (`tests/test_blade_loads.py`).
 
 ```python
 from shell_fem.verification.blade_benchmarks import tube_bending

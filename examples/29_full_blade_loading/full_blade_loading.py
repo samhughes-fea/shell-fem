@@ -14,7 +14,8 @@ Load cases, from ``shell_fem.pre_processing.load_library.blade_loads``:
 - rotation: 2 rad/s about the rotor axis, 1 m inboard of the root.
 
 ``BladeStaticRunner`` solves them and the combination ULS = 1.35 aero + 1.1 gravity +
-1.0 rotation, reports root loads, deflection and twist along the span, and the linear
+1.0 rotation, reports root loads, the internal loads at every span position from the shell,
+deflection and twist along the span, and the linear
 buckling load factor of ULS.
 """
 
@@ -69,14 +70,20 @@ def main():
                                 buckling_cases=["ULS"]).execute().get_results()
 
     print(f"\n{'case':<10}{'Fx':>10}{'Fy':>10}{'Fz':>10}{'Mx':>11}{'My':>11}{'Mz':>11}"
-          f"{'tip u':>10}{'tip v':>10}{'twist':>9}{'residual':>10}")
+          f"{'tip u':>10}{'tip v':>10}{'twist':>9}{'residual':>10}{'cuts':>10}")
     for name in CASES:
         r = results[name]
         print(f"{name:<10}" + "".join(f"{v / 1e3:10.2f}" for v in r.root_load[:3])
               + "".join(f"{v / 1e3:11.2f}" for v in r.root_load[3:])
               + f"{r.tip_translation[0]:10.4f}{r.tip_translation[1]:10.4f}{np.degrees(r.tip_twist):9.3f}"
-              + f"{np.abs(r.equilibrium_residual).max() / np.abs(r.applied_load).max():10.1e}")
-    print("(root loads in kN and kN m about the pitch axis at the root; tip in m; twist in degrees)")
+              + f"{np.abs(r.equilibrium_residual).max() / np.abs(r.applied_load).max():10.1e}"
+              + f"{r.section_loads.relative_residual:10.1e}")
+    print("(root loads in kN and kN m about the pitch axis at the root; tip in m; twist in degrees;")
+    print(" cuts: largest section-cut residual over all span positions)")
+    print("\nflapwise bending moment Mx (kN m) at each span position, ULS: shell cut / applied from the tip")
+    cut = results["ULS"].section_loads
+    for z, mi, ma in list(zip(cut.stations, cut.internal[:, 3], -cut.applied[:, 3]))[::10]:
+        print(f"  z = {z:5.2f}  {mi / 1e3:9.3f}  {ma / 1e3:9.3f}")
     buckling = results["ULS"].buckling
     print(f"\nULS linear buckling load factor: {buckling.critical_load_factor:.2f}")
 
@@ -110,17 +117,16 @@ def main():
     ax.set_ylabel("twist (degrees)")
 
     ax = axes[1, 1]
-    labels = ["Mx (flap)", "My (edge)", "Mz (pitch)", "Fz (axial)"]
-    picks = [3, 4, 5, 2]
-    width = 0.2
-    for j, name in enumerate(CASES):
-        values = [results[name].root_load[i] / 1e3 for i in picks]
-        ax.bar(np.arange(4) + (j - 1.5) * width, values, width, color=COLOURS[name], label=name)
-    ax.axhline(0.0, color=TEXT_SECONDARY, lw=0.8)
-    ax.set_xticks(np.arange(4), labels)
-    ax.set_ylabel("root reaction (kN m, kN)")
-    ax.set_title("Root loads about the pitch axis")
-    ax.grid(axis="x", visible=False)
+    for name in CASES:
+        cut = results[name].section_loads
+        ax.plot(cut.stations, -cut.applied[:, 3] / 1e3, color=COLOURS[name], ls="--" if name == "ULS" else "-",
+                label=name)
+        ax.plot(cut.stations[::6], cut.internal[::6, 3] / 1e3, "o", color=COLOURS[name], ms=4, mfc="none")
+    ax.set_title("Flapwise bending moment along the span")
+    ax.set_xlabel("span z (m)")
+    ax.set_ylabel("Mx (kN m)")
+    ax.text(0.98, 0.95, "lines: applied loads integrated from the tip\ncircles: shell stresses at the cuts (every 6th shown)",
+            transform=ax.transAxes, ha="right", va="top", fontsize=8, color=TEXT_SECONDARY)
 
     ax = axes[1, 2]
     mode = buckling[0].displacement_array()
