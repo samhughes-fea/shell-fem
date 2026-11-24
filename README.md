@@ -55,7 +55,9 @@ composite-laminate-model.
 │       │   ├── element_library/            shell.py (ShellElement, Tri3 / Quad4 / Quad8), curved_shell.py (curved
 │       │   │                               Quad8 / Tri6), solid.py (layered Hex8 / Hex20), connectors.py (RBE2, RBE3)
 │       │   ├── property_library/           layup.py (ply books, ply drops), orientation.py (material directions)
-│       │   ├── load_library/               load_case.py: LoadCase, LoadCombination, line and body loads
+│       │   ├── load_library/               load_case.py: LoadCase, LoadCombination, line, body, traction and
+│       │   │                               centrifugal loads; blade_loads.py: spanwise force, torque and
+│       │   │                               pressure per span bay, clamp_root
 │       │   ├── mesh_library/               builders.py (plates, panels), gmsh.py, blade.py (BladeBuilder,
 │       │   │                               BladeMesh), blade_geometry.py (from_geometry), blade_kernel_mesh.py
 │       │   │                               (from_shell_mesh on the kernel's own shell mesh, PCOMP assignment)
@@ -73,6 +75,8 @@ composite-laminate-model.
 │       ├── simulation_runner/              sequences the stages and owns the results
 │       │   ├── static/                     LinearStaticRunner, StructuralGlobalSolver, solve_kernel_pcomp
 │       │   ├── buckling/                   linear_buckling and LinearBucklingRunner
+│       │   ├── blade/                      BladeStaticRunner: load cases and combinations on a clamped blade,
+│       │   │                               root loads, deflection and twist, optional buckling
 │       │   ├── vibration/                  vibration_modes (blade modes; a rotor is not assembled)
 │       │   ├── progressive_damage/         ProgressiveDamageAnalysis (load, degrade, re-solve)
 │       │   └── backends/                   FEAKernel + native / CalculiX / Nastran adapters and deck writers
@@ -80,6 +84,7 @@ composite-laminate-model.
 │       │                                   beam_section_properties.py (6 x 6 / 7 x 7 from the shell model)
 │       ├── verification/                   shell obstacle course (Scordelis-Lo, pinched cylinder and hemisphere,
 │       │                                   twisted beam), buckling benchmarks (plates, column, cylinder),
+│       │                                   blade benchmarks (tube in bending, torsion, rotation),
 │       │                                   Pagano stress verifier, benchmark runner (shell-fem-benchmarks)
 │       └── _legacy.py                      the 0.1 module paths (shell_fem.laminate_*), until 0.3.0
 ├── examples/                               worked examples with figures (see examples/README.md)
@@ -96,7 +101,7 @@ each one engineering step from one system state to the next, and
 | `ConstrainGlobalSystem` | supports and multi-point constraints as U = T q + g | `ConstrainedSystem` |
 | `ReduceConstrainedSystem` | K_r = Tᵀ K T | `ReducedSystem` |
 | `SolveReducedSystem` | factorise once, then K_r q = Tᵀ (F − K g) for each load case | `FactorisedSystem`, q |
-| `AssembleLoadVector` | nodal, pressure, line, body and hygrothermal loads into F | F |
+| `AssembleLoadVector` | nodal, pressure, traction, line, body, centrifugal and hygrothermal loads into F | F |
 | `ReconstructGlobalField` | U = T q + g | U |
 | `ComputePrimaryResults` | reactions R = K U − F | `SolutionResult` |
 

@@ -104,7 +104,8 @@ from shell_fem.simulation_runner.progressive_damage.progressive_damage_simulatio
 )
 from shell_fem.pre_processing.containers.mesh import DOF, EnrichedDOF, FEAMesh
 from shell_fem.pre_processing.containers.boundary_conditions import BoundaryConditions, LinearConstraint
-from shell_fem.pre_processing.load_library.load_case import BodyLoad, LineLoad, LoadCase, LoadCombination
+from shell_fem.pre_processing.load_library.load_case import (BodyLoad, CentrifugalLoad, LineLoad, LoadCase, LoadCombination,
+                                                             SurfaceTraction)
 from shell_fem.processing.static.operations import (
     AssembleGlobalSystem,
     AssembleLoadVector,

@@ -6,6 +6,30 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Full-blade loading.** A blade clamped at the root under spanwise loads, solved as
+  load cases and combinations in one run:
+  - `LoadCase.add_traction(traction, element_ids=None)`: a force per unit area in global
+    axes, constant or a function of position (`SurfaceTraction`), integrated over the
+    shell surface. Shells only: a traction listed on a solid raises.
+  - `LoadCase.add_centrifugal(omega, origin, axis)`: ρ_A Ω² r⊥ from each element's areal
+    density (`CentrifugalLoad`). Shells only for now.
+  - `load_library.blade_loads`: `spanwise(z, values)` tables, `span_bays(blade)` (the skin
+    binned between `BladeMesh.span_positions`), `add_sectional_force` (a force per unit
+    span, spread as a uniform traction f/P over each bay's skin perimeter P),
+    `add_sectional_torque` (a moment per unit span as the shear flow m ẑ × (x − c)/J of a
+    thin closed section), `add_spanwise_pressure` and `clamp_root`.
+  - `simulation_runner.blade.BladeStaticRunner`: clamps the root, solves every case and
+    combination, and reports root loads about a root point, the applied resultant and
+    their equilibrium residual, the section deflection and twist along the span, and
+    optionally the linear buckling factors of chosen cases.
+  - `verification.blade_benchmarks`: a thin aluminium tube as a blade, against beam theory
+    in bending (with shear), torsion and rotation; curved Quad8 is within 0.2 %.
+  - `isotropic_laminate(..., density=1.0)`.
+  - Example 29: a tapered, twisted NACA blade from the kernel's shell mesh under aero,
+    gravity, rotation and a ULS combination.
+
 ### Fixed
 
 - **Warped flat shells move rigidly.** Flat Quad4 and Quad8 elements work on their

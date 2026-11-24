@@ -86,9 +86,32 @@ class GlobalAssembler:
         for body in load_case.body_loads:
             if body.applies_to(element.element_id):
                 F += element.body_load_vector(body.acceleration)
+        F += self.surface_load_vector(element, load_case)
         state = load_case.state_for(element.element_id)
         if not state.is_null:
             F += element.hygrothermal_load_vector(state)
+        return F
+
+    @staticmethod
+    def surface_load_vector(element, load_case: LoadCase) -> np.ndarray:
+        """Tractions and centrifugal loads on one shell element (global DOFs).
+
+        Tractions are surface loads, so a layered solid takes none unless it is listed by
+        id, which raises. Centrifugal loads on solids are not implemented and raise.
+        """
+        F = np.zeros(element.n_dof)
+        shell = isinstance(element, ShellElement)
+        for load in load_case.tractions:
+            if load.applies_to(element.element_id):
+                if shell:
+                    F += element.traction_load_vector(load.traction)
+                elif load.element_ids is not None:
+                    raise ValueError(f"element {element.element_id} is a solid; tractions act on shells")
+        for load in load_case.centrifugal_loads:
+            if load.applies_to(element.element_id):
+                if not shell:
+                    raise NotImplementedError(f"centrifugal load on solid element {element.element_id}")
+                F += load.factor * element.centrifugal_load_vector(load.omega, load.origin, load.axis)
         return F
 
     def line_load_vector(self, mesh: FEAMesh, load_case: LoadCase) -> np.ndarray:

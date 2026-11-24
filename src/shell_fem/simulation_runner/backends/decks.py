@@ -114,7 +114,7 @@ class DeckCatalogue:
 
 
 def equivalent_nodal_forces(mesh: FEAMesh, load_case: LoadCase, body_loads: bool = True) -> Dict[int, np.ndarray]:
-    """Nodal forces and moments from nodal, line and body loads (consistent element vectors).
+    """Nodal forces and moments from nodal, line, body, traction and centrifugal loads (consistent element vectors).
 
     Pressures and hygrothermal states are written with the deck's own cards instead.
     ``body_loads=False`` leaves the body loads out, for decks that write them as
@@ -131,6 +131,9 @@ def equivalent_nodal_forces(mesh: FEAMesh, load_case: LoadCase, body_loads: bool
         for element in mesh.elements:
             if body.applies_to(element.element_id):
                 vector[mesh.element_dofs(element)] += element.body_load_vector(body.acceleration)
+    if load_case.tractions or load_case.centrifugal_loads:
+        for element in mesh.elements:
+            vector[mesh.element_dofs(element)] += assembler.surface_load_vector(element, load_case)
     if np.any(vector):
         std = mesh.standard_array(vector)
         for node, row in zip(mesh.node_ids, std):

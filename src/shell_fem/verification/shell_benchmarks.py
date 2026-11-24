@@ -60,12 +60,12 @@ class BenchmarkResult:
         return self.value / self.reference
 
 
-def isotropic_laminate(E: float, nu: float, t: float, alpha: float = 0.0) -> Laminate:
-    """One isotropic ply of thickness t (thermal expansion ``alpha``, no strength limits)."""
+def isotropic_laminate(E: float, nu: float, t: float, alpha: float = 0.0, density: float = 1.0) -> Laminate:
+    """One isotropic ply of thickness t (thermal expansion ``alpha``, mass ``density``, no strength limits)."""
     G = E / (2.0 * (1.0 + nu))
     thermal = HygrothermalProperties(alpha, alpha, alpha) if alpha else None
     card = MaterialCard("isotropic", ElasticProperties3D(E1=E, E2=E, E3=E, v12=nu, v13=nu, v23=nu, G12=G, G13=G, G23=G),
-                        StrengthProperties3D(1e30, 1e30, 1e30, 1e30, 1e30), thermal, density=1.0)
+                        StrengthProperties3D(1e30, 1e30, 1e30, 1e30, 1e30), thermal, density=density)
     return Laminate.from_angles(card, [0], t)
 
 
