@@ -76,7 +76,9 @@ class SectionLoads:
 class SectionLoadIntegrator:
     """Section cuts of one mesh at fixed span positions, reused for many load cases.
 
-    ``stations`` must each pass through mesh nodes (a blade's ``span_positions`` do).
+    ``stations`` must each lie on element boundaries: through mesh nodes, with no
+    element crossing the cut plane (a blade's ``span_positions`` do). A cut that misses
+    every node or crosses an element raises ``ValueError``.
     Moments are taken about ``(reference[0], reference[1], z_k)`` at each cut, the
     span axis by default. Only the elements that touch a cut are evaluated.
     """
@@ -100,11 +102,18 @@ class SectionLoadIntegrator:
                                        np.full(self.stations.size, float(reference[1])), self.stations])
         self._cut_nodes, self._cut_elements = [], []
         centroids = {e.element_id: float(np.mean([z[self._row[n]] for n in e.node_ids])) for e in mesh.elements}
+        element_ids = [e.element_id for e in mesh.elements]
+        z_min = np.array([min(z[self._row[n]] for n in e.node_ids) for e in mesh.elements])
+        z_max = np.array([max(z[self._row[n]] for n in e.node_ids) for e in mesh.elements])
         for zk in self.stations:
             on_cut = np.abs(z - zk) <= self._tol
             if not on_cut.any():
                 raise ValueError(f"no nodes at the cut z = {zk:g}; cut at span positions that pass through nodes")
             cut_ids = {ids[i] for i in np.flatnonzero(on_cut)}
+            crossing = np.flatnonzero((z_min < zk - self._tol) & (z_max > zk + self._tol))
+            if crossing.size:
+                raise ValueError(f"the cut z = {zk:g} crosses {crossing.size} elements (e.g. "
+                                 f"{element_ids[crossing[0]]}); cut at span positions on element boundaries")
             self._cut_nodes.append(on_cut)
             self._cut_elements.append([e for e in mesh.elements
                                        if centroids[e.element_id] >= zk - self._tol

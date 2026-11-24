@@ -45,20 +45,24 @@ A beam code gives loads per unit span at a reference axis. A shell has no axis, 
 `blade_loads` spreads each one over the skin of a span bay, the strip between two
 consecutive `BladeMesh.span_positions`:
 
-- **Force per unit span f(z)** becomes a uniform traction f/P on the bay's skin, where P
-  is the bay's skin perimeter (skin area / bay length). Its resultant over the bay is f
-  times the bay length. It acts at the skin centroid, not at the shear centre or an
-  aerodynamic centre.
+- **Force per unit span f(z)** acts at an application point a of the section, the pitch
+  axis (x = y = 0) by default or any `point=(x, y)` or function of z. On the bay's skin it
+  becomes a uniform traction f/P, where P is the bay's skin perimeter (skin area / bay
+  length), plus a traction with no net force that carries the moment (a − c) × f of
+  moving the force from the skin centroid c to a: a shear flow for the torque about z and
+  an axial traction linear over the section for the bending moments of an axial force.
+  The bay's resultant is then f times the bay length, acting at a.
 - **Moment per unit span m(z)** about z becomes the shear flow of a thin closed section,
   a traction m/J · ẑ × (x − c) about the bay's skin centroid c, with J = ∮ r² ds over
   the skin. It adds no net force and a moment of exactly m per unit length.
 
-So the force carries an extra moment, f × (skin centroid − reference axis), that a beam
-model with the force on its reference axis would not see. In this blade the skin
-centroid lies aft of the shear centre. That moment twists the blade nose-up by more
-than the nose-down pitching moment, which is why the aero twist is positive. To put a
-force at another point, add its moment about the skin centroid with
-`add_sectional_torque`.
+In this blade the skin centroid lies about 0.17 m aft of the pitch axis at the root
+(near 47 % chord). Before the application point was added, the force acted there, and
+its offset torque was about three times the nose-down pitching moment and of the other
+sign, so the aero twist came out positive (+0.34° at the tip). With the force on the
+pitch axis, the root torque is the integral of the pitching moment alone (0.42 kN m)
+and the blade twists nose-down. `point=None` keeps the old placement at the skin
+centroid.
 
 Gravity and rotation act on every element through its areal density ρ_A, from the
 laminate. The centrifugal load ρ_A Ω² r⊥ uses each integration point's distance from
@@ -68,10 +72,10 @@ the rotation axis.
 
 | Case | Root Mx (kN m) | Root My (kN m) | Root Fz (kN) | Tip flap v (mm) | Tip edge u (mm) | Tip twist (°) | Equilibrium residual |
 |---|---|---|---|---|---|---|---|
-| aero | 76.81 | 7.68 | 0.00 | 255.0 | 14.4 | 0.338 | 3.5e-11 |
-| gravity | 0.00 | 5.93 | 0.00 | −2.0 | −10.7 | 0.001 | 2.4e-11 |
-| rotation | 0.02 | 0.05 | −2.99 | 0.0 | 0.0 | −0.001 | 1.5e-13 |
-| ULS | 103.71 | 16.94 | −2.99 | 342.1 | 7.7 | 0.457 | 3.5e-11 |
+| aero | 76.81 | 7.68 | 0.00 | 255.5 | 14.1 | −0.277 | 2.3e-11 |
+| gravity | 0.00 | 5.93 | 0.00 | −2.0 | −10.7 | 0.001 | 6.0e-11 |
+| rotation | 0.02 | 0.05 | −2.99 | 0.0 | 0.0 | −0.001 | 6.1e-14 |
+| ULS | 103.71 | 16.94 | −2.99 | 342.7 | 7.3 | −0.374 | 2.3e-11 |
 
 Root loads are the reactions of the clamped root nodes, as a resultant about the pitch
 axis at the root. The residual is the largest component of (applied load + root
@@ -80,8 +84,10 @@ ULS is solved as one combined load case (`LoadCase.combine`); being linear, its 
 loads equal 1.35, 1.1 and 1.0 times those of the three cases.
 
 Deflection and twist are those of a rigid section fitted to the nodes at each span
-position. The twist peaks near 8 m and falls over the last metre. The likely cause is
-the tip closure, which keeps the tip section from warping; this is not yet checked.
+position. The aero twist grows nose-down along the span and levels off over the last
+half metre, where the tip closure keeps the section from warping. The small nose-up
+twist near the root is most likely local to the clamp, which stops the root section
+warping; this is not checked.
 
 The ULS combination buckles at a load factor of 1.76. The mode sits in the suction-side
 skin and spar cap over the first 2 m, where the flapwise bending compression is

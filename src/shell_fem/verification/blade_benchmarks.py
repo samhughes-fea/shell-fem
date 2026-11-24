@@ -34,13 +34,19 @@ R, T, L = 0.5, 0.01, 10.0
 E, NU, RHO = 70.0e9, 0.3, 2700.0
 
 
-def tube_blade(element: str = "quad8_curved", n_around: int = 16, n_span: int = 20, **element_options) -> BladeMesh:
-    """Cantilever tube along z as a ``BladeMesh``: ``n_around`` elements round, ``n_span`` along."""
+def tube_blade(element: str = "quad8_curved", n_around: int = 16, n_span: int = 20, centre=(0.0, 0.0),
+               **element_options) -> BladeMesh:
+    """Cantilever tube along z as a ``BladeMesh``: ``n_around`` elements round, ``n_span`` along.
+
+    ``centre`` is the (x, y) of the tube axis; off the origin, the pitch axis x = y = 0
+    lies outside the skin centroid, as on an aerofoil.
+    """
     lam = isotropic_laminate(E, NU, T, density=RHO)
+    cx, cy = (float(v) for v in centre)
 
     def point(s, t):
         a = 2.0 * np.pi * s
-        return np.array([R * np.cos(a), R * np.sin(a), L * t])
+        return np.array([cx + R * np.cos(a), cy + R * np.sin(a), L * t])
 
     named = _structured(n_around, n_span, point, lam, FSDTModel(), element, ("", "", "root", "tip"),
                         element_options, periodic_u=True)

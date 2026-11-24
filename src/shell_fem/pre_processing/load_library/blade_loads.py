@@ -4,9 +4,11 @@ The span runs along global z, as in ``BladeMesh``. Loads from an aeroelastic or
 hydrodynamic code usually come as sectional quantities per unit span. These
 functions turn them into surface loads on the blade's shell elements:
 
-``add_sectional_force``  force per unit span [fx, fy, fz](z) (N/m, global axes), spread
-                         over the skin of each span bay as a uniform traction, so the
-                         force in a bay is the integral of the distribution over it
+``add_sectional_force``  force per unit span [fx, fy, fz](z) (N/m, global axes) acting at
+                         a point of the section (the pitch axis x = y = 0 by default),
+                         spread over the skin of each span bay as a uniform traction plus
+                         the self-balanced traction that moves it from the skin centroid
+                         to that point
 ``add_sectional_torque`` twisting moment per unit span m(z) (N m/m about z), applied as
                          a tangential shear flow about the centroid of the skin in each
                          bay, so it carries no net force
@@ -16,10 +18,14 @@ functions turn them into surface loads on the blade's shell elements:
 Gravity is ``LoadCase.add_body_load`` and rotation ``LoadCase.add_centrifugal``.
 
 A bay is the part of the mesh between consecutive ``BladeMesh.span_positions`` (or
-between distinct node z values when the blade has none). Within a bay the traction is
-uniform round the section, which places the sectional force on the skin rather than at
-a chosen axis: use it for loads whose chordwise position does not matter to the result
-(root bending, deflection), and a pressure field where it does.
+between distinct node z values when the blade has none). A uniform traction round the
+section acts at the skin centroid c of the bay, which on an aerofoil lies well aft of the
+pitch axis. ``add_sectional_force`` therefore adds, in each bay, a traction with no net
+force that carries the moment (a - c) x f of the offset to the application point a: a
+shear flow for the torque about z and an axial traction linear over the section for the
+bending moments of an axial force. The resultant of the bay then matches a beam model
+with the force at a. The local distribution round the section is still a smeared one;
+use a pressure field where the chordwise distribution itself matters.
 
 A distribution is a function of z, or a table ``spanwise(z, values)`` interpolated
 linearly and held at its end values beyond the table.
@@ -73,6 +79,7 @@ class SpanBay:
     area: float
     centroid: np.ndarray  # (x, y) of the skin area
     polar_moment: float   # integral of the squared distance from the centroid, over the skin area
+    second_moment: np.ndarray = None  # (2, 2) integral of r r^T over the skin area, r = (x, y) - centroid
 
     @property
     def length(self) -> float:
@@ -97,20 +104,21 @@ def span_bays(blade, element_set: Union[str, Sequence[int]] = "skin") -> List[Sp
     members: Dict[int, List[int]] = {}
     for eid in _element_ids(blade, element_set):
         element = mesh.element(eid)
-        acc = np.zeros(5)  # area, int x, int y, int (x^2 + y^2), int z
+        acc = np.zeros(7)  # area, int x, int y, int z, int x^2, int y^2, int xy
         for xi, eta, w in element.load_rule():
             dA = element.jacobian(xi, eta)[1] * w
             x = element.global_coordinates(xi, eta)
-            acc += dA * np.array([1.0, x[0], x[1], x[0] ** 2 + x[1] ** 2, x[2]])
-        k = int(np.clip(np.searchsorted(edges, acc[4] / acc[0]) - 1, 0, edges.size - 2))
-        sums[k] = sums.get(k, np.zeros(5)) + acc
+            acc += dA * np.array([1.0, x[0], x[1], x[2], x[0] ** 2, x[1] ** 2, x[0] * x[1]])
+        k = int(np.clip(np.searchsorted(edges, acc[3] / acc[0]) - 1, 0, edges.size - 2))
+        sums[k] = sums.get(k, np.zeros(7)) + acc
         members.setdefault(k, []).append(eid)
     bays = []
     for k in sorted(sums):
-        A, sx, sy, sr, _ = sums[k]
+        A, sx, sy, _, sxx, syy, sxy = sums[k]
         c = np.array([sx, sy]) / A
+        S = np.array([[sxx, sxy], [sxy, syy]]) - A * np.outer(c, c)
         bays.append(SpanBay(float(edges[k]), float(edges[k + 1]), tuple(members[k]), float(A), c,
-                            float(sr - A * (c @ c))))
+                            float(np.trace(S)), S))
     return bays
 
 
@@ -121,18 +129,53 @@ def _as_function(distribution: Distribution) -> Callable[[float], object]:
 
 
 def add_sectional_force(load_case: LoadCase, blade, force_per_length: Distribution,
-                        element_set: Union[str, Sequence[int]] = "skin") -> LoadCase:
-    """Spread a force per unit span [fx, fy, fz](z) over the skin as a uniform traction in each bay.
+                        element_set: Union[str, Sequence[int]] = "skin",
+                        point: Union[None, Sequence[float], Callable[[float], Sequence[float]]] = (0.0, 0.0)
+                        ) -> LoadCase:
+    """A force per unit span [fx, fy, fz](z) acting at ``point`` of each section, spread over the skin.
 
-    In each bay the traction is f(z) / P, with P the skin area of the bay over its
-    length (the mean skin perimeter), so the total force on the bay is the integral of
-    f over it wherever the perimeter is uniform along the bay.
+    ``point`` is the application point (x, y), fixed or a function of z: the pitch axis
+    (0, 0) by default. In each bay the traction is
+
+        t = f / P + (m_z / J) e_z x r + (g . r) e_z,     r = (x, y) - c,
+
+    with P the skin area of the bay over its length (the mean perimeter), c the skin
+    centroid, J and S its polar and second moments of area over the length, and
+    m = (a - c) x f the moment that moves the force from c to the application point a.
+    The shear-flow term carries m_z and the axial term, with S g = (-m_y, m_x), carries
+    the bending moments of an axial force; neither has a net force. So the bay's force
+    is the integral of f over it, and its moment is that of f at a, wherever the section
+    is uniform along the bay.
+
+    ``point=None`` leaves the force at the skin centroid (the uniform traction alone).
     """
     f = _as_function(force_per_length)
+    if point is None:
+        at = None
+    elif callable(point):
+        at = point
+    else:
+        fixed = np.asarray(point, dtype=float).reshape(2)
+        at = lambda z, a=fixed: a  # noqa: E731
     for bay in span_bays(blade, element_set):
-        perimeter = bay.area / bay.length
-        load_case.add_traction(lambda xyz, f=f, P=perimeter: np.asarray(f(xyz[2]), dtype=float) / P,
-                               bay.element_ids)
+        P = bay.area / bay.length
+        if at is None:
+            load_case.add_traction(lambda xyz, f=f, P=P: np.asarray(f(xyz[2]), dtype=float) / P, bay.element_ids)
+            continue
+        J = bay.polar_moment / bay.length
+        S_inv = np.linalg.pinv(bay.second_moment / bay.length)
+        c = bay.centroid
+
+        def traction(xyz, f=f, P=P, J=J, S_inv=S_inv, c=c):
+            z = xyz[2]
+            fz = np.asarray(f(z), dtype=float).reshape(3)
+            d = np.asarray(at(z), dtype=float).reshape(2) - c       # a - c
+            m = np.array([d[1] * fz[2], -d[0] * fz[2], d[0] * fz[1] - d[1] * fz[0]])  # (a - c, 0) x f
+            g = S_inv @ np.array([-m[1], m[0]])
+            r = np.array([xyz[0] - c[0], xyz[1] - c[1]])
+            return fz / P + m[2] / J * np.array([-r[1], r[0], 0.0]) + np.array([0.0, 0.0, g @ r])
+
+        load_case.add_traction(traction, bay.element_ids)
     return load_case
 
 
