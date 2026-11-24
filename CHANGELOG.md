@@ -13,7 +13,7 @@ All notable changes to this project are listed here. The format follows
   in `docs/conventions/standard/`. Releases are now tagged by `release.yml` when a
   `chore(release): prepare X.Y.Z` PR merges. The PR build and wheel smoke test moved
   from `release.yml` to the `core-install` job in `tests.yml`. Added `AGENTS.md`,
-  `SCOPE.md`, `CONTRIBUTING.md` and `.github/labels.yml`. (#PR)
+  `SCOPE.md`, `CONTRIBUTING.md` and `.github/labels.yml`. (#25)
 
 ### Added
 
