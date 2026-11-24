@@ -27,6 +27,12 @@ All notable changes to this project are listed here. The format follows
   - `verification.blade_benchmarks`: a thin aluminium tube as a blade, against beam theory
     in bending (with shear), torsion and rotation; curved Quad8 is within 0.2 %.
   - `isotropic_laminate(..., density=1.0)`.
+  - `processing.static.results.section_loads`: section cuts at every span position.
+    `SectionLoadIntegrator` takes the six internal resultants at each cut from the shell
+    (Σ K_e u_e − f_e of the outboard elements at the cut nodes) and the applied loads
+    integrated from the tip to the cut; their sum is zero to round-off. On the tube,
+    shear, bending moment, torque and axial force match the beam integrals to 1e-6.
+    `BladeCaseResult.section_loads` holds them for every case.
   - Example 29: a tapered, twisted NACA blade from the kernel's shell mesh under aero,
     gravity, rotation and a ULS combination.
 

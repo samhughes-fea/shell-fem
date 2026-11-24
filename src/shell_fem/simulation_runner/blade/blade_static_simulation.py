@@ -7,6 +7,8 @@ load case and combination, collects what a blade check reads first:
 - the applied loads about the same point, and their sum with the root loads (the
   equilibrium residual, zero to round-off for a sound model);
 - the deflection and twist of each span section (``deflection_profile``);
+- the internal loads at every span position, integrated from the shell stresses, and the
+  applied loads integrated from the tip to each cut (``section_loads``);
 - optionally the linear buckling load factors and modes of each case.
 
 The supports are a rigid root (``clamp_root``) unless other boundary conditions are
@@ -26,17 +28,9 @@ from shell_fem.pre_processing.load_library.load_case import LoadCase, LoadCombin
 from shell_fem.processing.static.operations.linear_solvers import LinearSystemSolver
 from shell_fem.processing.static.results.containers import SolutionResult
 from shell_fem.processing.static.results.deflection import DeflectionProfile, deflection_profile
+from shell_fem.processing.static.results.section_loads import SectionLoadIntegrator, SectionLoads, resultant_about
 from shell_fem.simulation_runner.buckling.linear_buckling_simulation import LinearBucklingResults, LinearBucklingRunner
 from shell_fem.simulation_runner.static.linear_static_simulation import LinearStaticRunner, StaticDiagnostics
-
-
-def resultant_about(mesh, vector: np.ndarray, point: Sequence[float]) -> np.ndarray:
-    """[Fx, Fy, Fz, Mx, My, Mz] of a nodal force vector (global DOFs) about ``point``."""
-    nodal = mesh.standard_array(np.asarray(vector, dtype=float))
-    r = mesh.coordinates_array() - np.asarray(point, dtype=float)
-    force = nodal[:, :3].sum(axis=0)
-    moment = np.cross(r, nodal[:, :3]).sum(axis=0) + nodal[:, 3:6].sum(axis=0)
-    return np.concatenate([force, moment])
 
 
 @dataclass
@@ -46,6 +40,8 @@ class BladeCaseResult:
     ``root_load`` is the resultant of the support reactions about ``BladeStaticResults.root_point``
     (what the hub applies to the blade); ``applied_load`` is the resultant of the
     applied loads about the same point. Their sum is ``equilibrium_residual``.
+    ``section_loads`` holds the same balance at every span position (``None`` when the
+    blade has no span positions through its nodes).
     """
 
     solution: SolutionResult
@@ -53,6 +49,7 @@ class BladeCaseResult:
     applied_load: np.ndarray
     deflection: DeflectionProfile
     buckling: Optional[LinearBucklingResults] = None
+    section_loads: Optional[SectionLoads] = None
 
     @property
     def equilibrium_residual(self) -> np.ndarray:
@@ -145,6 +142,7 @@ class BladeStaticRunner:
         static = LinearStaticRunner(mesh, self.bcs, self.load_cases, self.combinations,
                                     linear_solver=self.linear_solver).execute().get_results()
         stations = self._stations()
+        cuts = None if stations is None else SectionLoadIntegrator(mesh, stations, self.root_point[:2])
         by_name = {c.name: c for c in self.load_cases}
         for combo in self.combinations:
             by_name[combo.name] = LoadCase.combine(combo.terms(by_name), combo.name)
@@ -157,7 +155,8 @@ class BladeStaticRunner:
             if self.buckling_modes > 0 and (self.buckling_cases is None or name in self.buckling_cases):
                 buckling = LinearBucklingRunner(mesh, self.bcs, by_name[name], n_modes=self.buckling_modes,
                                                 linear_solver=self.linear_solver).execute().get_results()
-            cases[name] = BladeCaseResult(solution, root, applied, profile, buckling)
+            sections = None if cuts is None else cuts.integrate(solution, by_name[name])
+            cases[name] = BladeCaseResult(solution, root, applied, profile, buckling, sections)
         self._results = BladeStaticResults(cases, self.root_point, static.diagnostics)
         return self
 
