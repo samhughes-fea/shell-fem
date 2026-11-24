@@ -8,6 +8,10 @@ All notable changes to this project are listed here. The format follows
 
 ### Changed
 
+- Follows the shared development standard 0.1.1: the bug form asks for the system
+  libraries the package loads (GEOS) and where they came from. (#PR)
+- CI lints with a pinned ruff (`requirements/lint.txt`, syntax errors and pyflakes);
+  thirteen unused imports removed. (#PR)
 - Follows the shared development standard 0.1.0: synced issue forms, PR template,
   labels, `pr-title`, `label-sync`, `codeql` and `release` workflows, and the standard
   in `docs/conventions/standard/`. Releases are now tagged by `release.yml` when a

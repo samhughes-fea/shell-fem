@@ -13,11 +13,9 @@ from shell_fem import (
     FEAMesh,
     FSDTModel,
     HygrothermalEngine,
-    HygrothermalProperties,
     HygrothermalState,
     Laminate,
     LoadCase,
-    Ply,
     StructuralGlobalSolver,
     integrate_abd,
 )

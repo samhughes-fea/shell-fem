@@ -13,6 +13,8 @@ constitutive model are installed from their tags, as pinned in `tests.yml`.
 
 ```bash
 pip install -e ".[dev]"
+pip install -r requirements/lint.txt
+ruff check .                                           # lint (pinned ruff)
 pytest -q                                              # the test suite
 shell-fem-benchmarks --n 6 --work-dir benchmark_runs   # the benchmark ladder
 python -m build                                        # sdist and wheel
