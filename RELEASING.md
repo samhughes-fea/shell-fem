@@ -1,51 +1,19 @@
 # Releasing
 
-Nothing is published to PyPI automatically. A release is three deliberate steps.
+The rules are the shared standard's
+[releasing](docs/conventions/standard/releasing.md) and
+[versioning](docs/conventions/standard/versioning.md): a release is a pull request
+titled `chore(release): prepare X.Y.Z`, and the synced `release.yml` tags and
+releases its squash commit when it merges. Never push or move a tag by hand.
 
-## 1. Prepare
+This repository's specifics:
 
-1. Set `__version__` in `src/shell_fem/__init__.py`;
-   `pyproject.toml` reads it from there. This package depends on
-   [implicit-geometry-kernel](https://github.com/samhughes-fea/implicit-geometry-kernel)
-   and [laminate-constitutive-model](https://github.com/samhughes-fea/laminate-constitutive-model),
-   so release those first.
-2. Move the `Unreleased` notes in `CHANGELOG.md` under the new version and date.
-3. Check locally:
-
-   ```bash
-   pip install -e ".[dev]"
-   pytest
-   python -m build
-   python -m twine check --strict dist/*
-   ```
-
-4. Merge to `main`.
-
-## 2. Tag
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The `release` workflow builds the sdist and wheel, checks that the tag matches
-`__version__`, installs the wheel in a clean environment, runs the benchmark from
-it, and creates a GitHub release with both files attached. It does not upload
-anything to PyPI.
-
-## 3. Publish to PyPI (when ready)
-
-One-time setup:
-
-1. On PyPI, add a trusted publisher for the project `shell-fem`:
-   owner `samhughes-fea`, repository `shell-fem`, workflow
-   `release.yml`, environment `pypi`.
-2. In the GitHub repository settings, create an environment called `pypi`
-   (optionally with required reviewers, so every upload needs an approval).
-
-Then, for each release: Actions → release → Run workflow, choose the tag (for
-example `v0.1.0`) as the ref and tick "Publish to PyPI". The `pypi` job runs only
-for a manual run from a `v*` tag with that box ticked.
-
-PyPI versions cannot be replaced once uploaded, so to try the process first, point
-a second trusted publisher at TestPyPI and upload there.
+- `__version__` lives in `src/shell_fem/__init__.py`; `pyproject.toml` reads it
+  from there.
+- The release PR moves the `## [Unreleased]` notes in `CHANGELOG.md` under
+  `## [X.Y.Z] - YYYY-MM-DD`.
+- shell-fem depends on implicit-geometry-kernel and laminate-constitutive-model by
+  tag, so release those first and bump the pins in `tests.yml` (and the minimum versions in `pyproject.toml`).
+- PyPI: `pypi: false` in `.github/repo.yml`. To publish, add a PyPI trusted
+  publisher for `shell-fem` (workflow `release.yml`, environment `pypi`), create
+  the `pypi` environment in the repository settings, and set `pypi: true`.

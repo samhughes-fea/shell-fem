@@ -1,0 +1,22 @@
+# This repository's own labels; the shared ones are in labels.base.yml (synced).
+# label-sync.yml applies both files; labels in neither are deleted.
+# Rules: docs/conventions/standard/labels.md. Never repeat a base label here.
+
+- name: "area: pre-processing"
+  color: "fef2c0"
+  description: Model building, meshing, blade builder (pre_processing/)
+- name: "area: processing"
+  color: "fef2c0"
+  description: Elements, assembly and solvers (processing/)
+- name: "area: post-processing"
+  color: "fef2c0"
+  description: Stress recovery, failure and results (post_processing/)
+- name: "area: simulation-runner"
+  color: "fef2c0"
+  description: Analysis drivers and stage log (simulation_runner/)
+- name: "area: verification"
+  color: "fef2c0"
+  description: Benchmarks and verification cases (verification/)
+- name: "area: examples"
+  color: "fef2c0"
+  description: Worked examples and figures
