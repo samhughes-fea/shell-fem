@@ -61,12 +61,12 @@ All notable changes to this project are listed here. The format follows
   placement. `SpanBay` gains `second_moment`. Golden change: Example 29's aero tip twist
   goes from +0.338° to −0.277° and its root torque from −1.38 to +0.42 kN m; root
   bending and deflection barely move. Loads on sections centred on the axis (the tube
-  checks) are unchanged. (#PR)
+  checks) are unchanged. (#28)
 - **Section cuts must lie on element boundaries.** `SectionLoadIntegrator` accepted a
   cut through midside nodes, where elements cross the cut plane, and returned zero
   internal load with a residual of about 1e13. It now raises `ValueError`;
   `BladeStaticRunner` warns and reports no section loads if the blade's span positions
-  cross elements. (#PR)
+  cross elements. (#28)
 
 - **Warped flat shells move rigidly.** Flat Quad4 and Quad8 elements work on their
   nodes projected onto a mean plane. On a warped element, a rigid rotation strained
