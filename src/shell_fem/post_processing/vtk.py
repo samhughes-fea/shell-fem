@@ -34,7 +34,7 @@ the ply's failure index, so a single ply can be picked out with a threshold filt
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Mapping, Sequence, Tuple, Union
 from xml.sax.saxutils import quoteattr
 
 import numpy as np

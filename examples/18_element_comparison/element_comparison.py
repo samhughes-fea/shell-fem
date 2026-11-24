@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "08_open_hole_gmsh"
 import numpy as np
 from matplotlib.collections import PolyCollection
 
-from _shared.plotting import REFERENCE, SERIES, TEXT_SECONDARY, plt, save
+from _shared.plotting import SERIES, TEXT_SECONDARY, plt, save
 from open_hole_gmsh import L, PLY_T, R, W, lekhnitskii
 from shell_fem import (
     DOF,

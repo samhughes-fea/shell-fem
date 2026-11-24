@@ -1,6 +1,5 @@
 """Element family, orientation, loads, 3D benchmark, delamination and model checks."""
 
-import warnings
 
 import numpy as np
 import pytest
@@ -15,7 +14,6 @@ from shell_fem import (
     CylindricalPanelBuilder,
     DelaminationOnsetCriterion,
     ElasticProperties3D,
-    EnrichedDOF,
     EquilibriumStressRecoverer,
     FailureCriterion,
     FailureResult,

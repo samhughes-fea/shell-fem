@@ -13,7 +13,6 @@ from shell_fem import (  # noqa: E402
     BoundaryConditions,
     EnrichedDOF,
     FEAMesh,
-    Laminate,
     create_default_library,
 )
 

@@ -37,11 +37,11 @@ with quadratic elements they agree closely between neighbours.
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 
-from shell_fem.pre_processing.element_library.shell import STANDARD_DOFS, ShellElement, _direction, _tensor_rule, _Q8_NODES
+from shell_fem.pre_processing.element_library.shell import ShellElement, _direction, _tensor_rule, _Q8_NODES
 
 _TRI6_NODES = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.5, 0.0], [0.5, 0.5], [0.0, 0.5]])
 _TRI3_POINT = [(1.0 / 6.0, 1.0 / 6.0, 1.0 / 6.0), (2.0 / 3.0, 1.0 / 6.0, 1.0 / 6.0), (1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0)]
