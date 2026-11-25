@@ -9,7 +9,9 @@ load case and combination, collects what a blade check reads first:
 - the deflection and twist of each span section (``deflection_profile``);
 - the internal loads at every span position, integrated from the shell stresses, and the
   applied loads integrated from the tip to each cut (``section_loads``);
-- optionally the linear buckling load factors and modes of each case.
+- optionally the linear buckling load factors and modes of each case;
+- optionally the failure index of every ply of every shell element under a failure
+  criterion (``ply_failure_field``), and their envelope over all cases.
 
 The supports are a rigid root (``clamp_root``) unless other boundary conditions are
 given. The runner does no mechanics itself.
@@ -29,6 +31,8 @@ from shell_fem.pre_processing.load_library.load_case import LoadCase, LoadCombin
 from shell_fem.processing.static.operations.linear_solvers import LinearSystemSolver
 from shell_fem.processing.static.results.containers import SolutionResult
 from shell_fem.processing.static.results.deflection import DeflectionProfile, deflection_profile
+from shell_fem.processing.static.results.ply_failure import (FailureEnvelope, PlyFailureField, failure_envelope,
+                                                            ply_failure_field)
 from shell_fem.processing.static.results.section_loads import SectionLoadIntegrator, SectionLoads, resultant_about
 from shell_fem.simulation_runner.buckling.linear_buckling_simulation import LinearBucklingResults, LinearBucklingRunner
 from shell_fem.simulation_runner.static.linear_static_simulation import LinearStaticRunner, StaticDiagnostics
@@ -51,6 +55,7 @@ class BladeCaseResult:
     deflection: DeflectionProfile
     buckling: Optional[LinearBucklingResults] = None
     section_loads: Optional[SectionLoads] = None
+    failure: Optional[PlyFailureField] = None
 
     @property
     def equilibrium_residual(self) -> np.ndarray:
@@ -75,6 +80,14 @@ class BladeStaticResults:
     root_point: np.ndarray
     diagnostics: StaticDiagnostics
 
+    def failure_envelope(self, names: Optional[Sequence[str]] = None) -> FailureEnvelope:
+        """Worst ply failure index over the cases ``names`` (all with a failure field by default)."""
+        names = [n for n in self.cases if self.cases[n].failure is not None] if names is None else list(names)
+        missing = [n for n in names if self.cases[n].failure is None]
+        if missing or not names:
+            raise ValueError(f"no failure field for {missing or 'any case'}: pass failure_criterion to the runner")
+        return failure_envelope({n: self.cases[n].failure for n in names})
+
     def __getitem__(self, name: str) -> BladeCaseResult:
         return self.cases[name]
 
@@ -95,7 +108,8 @@ class BladeStaticRunner:
     optionally, ``span_positions``). ``root_point`` defaults to the pitch axis at the
     root, (0, 0, z_root). ``buckling_modes`` > 0 also runs linear buckling of every case
     and combination named in ``buckling_cases`` (all of them by default); each one
-    scales its own reference load.
+    scales its own reference load. ``failure_criterion`` (a laminate-constitutive-model
+    ``FailureCriterion``) adds the ply failure field of every case and combination.
     """
 
     def __init__(
@@ -108,6 +122,7 @@ class BladeStaticRunner:
         buckling_modes: int = 0,
         buckling_cases: Optional[Sequence[str]] = None,
         linear_solver: Optional[LinearSystemSolver] = None,
+        failure_criterion=None,
     ):
         if isinstance(load_cases, LoadCase):
             load_cases = [load_cases]
@@ -126,6 +141,7 @@ class BladeStaticRunner:
         if unknown:
             raise KeyError(f"buckling_cases names unknown load cases or combinations {unknown}")
         self.linear_solver = linear_solver
+        self.failure_criterion = failure_criterion
         self._results: Optional[BladeStaticResults] = None
 
     def _stations(self) -> Optional[np.ndarray]:
@@ -162,7 +178,10 @@ class BladeStaticRunner:
                 buckling = LinearBucklingRunner(mesh, self.bcs, by_name[name], n_modes=self.buckling_modes,
                                                 linear_solver=self.linear_solver).execute().get_results()
             sections = None if cuts is None else cuts.integrate(solution, by_name[name])
-            cases[name] = BladeCaseResult(solution, root, applied, profile, buckling, sections)
+            failure = None
+            if self.failure_criterion is not None:
+                failure = ply_failure_field(solution, self.failure_criterion, by_name[name])
+            cases[name] = BladeCaseResult(solution, root, applied, profile, buckling, sections, failure)
         self._results = BladeStaticResults(cases, self.root_point, static.diagnostics)
         return self
 

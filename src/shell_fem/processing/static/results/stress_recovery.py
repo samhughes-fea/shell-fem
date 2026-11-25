@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -146,10 +146,28 @@ class ExactStressRecoverer(StressRecoverer):
         state: HygrothermalState = NULL_STATE,
         side: str = "above",
     ) -> PointStressState:
+        e, s = element.strain_state(u_elem, xi, eta)
+        return self.recover_from_strains(element, e, s, z, xi, eta, state, side)
+
+    def recover_at_heights(
+        self,
+        element: ShellElement,
+        u_elem: np.ndarray,
+        heights: Sequence[Tuple[float, str]],
+        xi: float = 0.0,
+        eta: float = 0.0,
+        state: HygrothermalState = NULL_STATE,
+    ) -> List[PointStressState]:
+        """``recover`` at several (z, side) heights of one point, computing its strains once."""
+        e, s = element.strain_state(u_elem, xi, eta)
+        return [self.recover_from_strains(element, e, s, z, xi, eta, state, side) for z, side in heights]
+
+    def recover_from_strains(self, element: ShellElement, e: np.ndarray, s: np.ndarray, z: float, xi: float,
+                             eta: float, state: HygrothermalState = NULL_STATE, side: str = "above") -> PointStressState:
+        """Ply stresses at height z from the generalised strains e, s of ``element.strain_state``."""
         laminate = element.laminate
         k = laminate.ply_index_at(z, side)
         ply = laminate.plies[k]
-        e, s = element.strain_state(u_elem, xi, eta)
         basis = element.section.basis
         E, G = strain_operators_at(basis, z, side)
         eps_total = E @ e
