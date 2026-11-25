@@ -91,7 +91,9 @@ warping; this is not checked.
 
 The ULS combination buckles at a load factor of 1.76. The mode sits in the suction-side
 skin and spar cap over the first 2 m, where the flapwise bending compression is
-largest and the panels between cap, webs and leading edge are widest.
+largest and the panels between cap, webs and leading edge are widest. This mesh is too coarse for the
+buckling factor: on a refined ladder it converges to about 1.57 (Example 30), so 1.76
+overstates the margin by about 12 %.
 
 ## Section loads along the span
 

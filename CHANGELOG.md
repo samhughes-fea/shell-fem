@@ -21,6 +21,21 @@ All notable changes to this project are listed here. The format follows
 
 ### Added
 
+- **Mesh convergence with the ASME GCI.**
+  - `processing.diagnostics.grid_convergence_index(h, values)`: the grid convergence
+    index of Celik et al. (2008) from three meshes. It returns the observed order, the
+    Richardson extrapolated value, the relative and extrapolated errors, the fine- and
+    medium-mesh GCI and the asymptotic-range ratio, and flags oscillatory convergence.
+    A result that doesn't change between meshes (within `rtol`/`atol`) is reported as
+    converged. `mesh_size(mesh)` gives h = (A / N)^½.
+  - `simulation_runner.convergence.MeshConvergenceStudy` runs any analysis on a ladder
+    of meshes and reports each result's GCI. `blade_convergence_study` does this for a
+    blade under `BladeStaticRunner`, tracking tip deflection and twist, root moments and
+    optionally the buckling factor.
+  - Example 30 runs the Example 29 blade on five systematically refined kernel meshes
+    (4k to 70k DOFs). Example 29's `blade()` now passes kernel mesh options through, and
+    its load cases are a reusable `load_cases(blade)`. (#PR)
+
 - **Full-blade loading.** A blade clamped at the root under spanwise loads, solved as
   load cases and combinations in one run:
   - `LoadCase.add_traction(traction, element_ids=None)`: a force per unit area in global
