@@ -34,7 +34,7 @@ All notable changes to this project are listed here. The format follows
     optionally the buckling factor.
   - Example 30 runs the Example 29 blade on five systematically refined kernel meshes
     (4k to 70k DOFs). Example 29's `blade()` now passes kernel mesh options through, and
-    its load cases are a reusable `load_cases(blade)`. (#PR)
+    its load cases are a reusable `load_cases(blade)`. (#29)
 
 - **Full-blade loading.** A blade clamped at the root under spanwise loads, solved as
   load cases and combinations in one run:
