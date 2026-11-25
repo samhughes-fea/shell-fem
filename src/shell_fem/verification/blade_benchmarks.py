@@ -35,13 +35,14 @@ E, NU, RHO = 70.0e9, 0.3, 2700.0
 
 
 def tube_blade(element: str = "quad8_curved", n_around: int = 16, n_span: int = 20, centre=(0.0, 0.0),
-               **element_options) -> BladeMesh:
+               laminate=None, **element_options) -> BladeMesh:
     """Cantilever tube along z as a ``BladeMesh``: ``n_around`` elements round, ``n_span`` along.
 
     ``centre`` is the (x, y) of the tube axis; off the origin, the pitch axis x = y = 0
-    lies outside the skin centroid, as on an aerofoil.
+    lies outside the skin centroid, as on an aerofoil. ``laminate`` replaces the
+    aluminium wall (which has no strengths) by any other.
     """
-    lam = isotropic_laminate(E, NU, T, density=RHO)
+    lam = laminate if laminate is not None else isotropic_laminate(E, NU, T, density=RHO)
     cx, cy = (float(v) for v in centre)
 
     def point(s, t):

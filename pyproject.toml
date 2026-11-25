@@ -31,6 +31,7 @@ classifiers = [
 [project.optional-dependencies]
 sparse = ["scipy>=1.8"]
 gmsh = ["gmsh>=4.11"]
+plots = ["matplotlib>=3.5"]
 examples = ["scipy>=1.8", "matplotlib>=3.5", "gmsh>=4.11"]
 dev = ["scipy>=1.8", "pytest>=7", "gmsh>=4.11", "matplotlib>=3.5", "build>=1.0", "twine>=5"]
 

@@ -1,1 +1,1 @@
-"""Post-processing: ParaView export and beam section properties from a shell model."""
+"""Post-processing: ParaView export, beam section properties from a shell model, and fringe plots (plots.py)."""

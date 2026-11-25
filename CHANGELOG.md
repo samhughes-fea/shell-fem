@@ -21,6 +21,23 @@ All notable changes to this project are listed here. The format follows
 
 ### Added
 
+- **Per-ply failure field and fringe plots.**
+  - `processing.static.results.ply_failure.ply_failure_field(solution, criterion)`:
+    the largest failure index of every ply of every shell element, from any
+    laminate-constitutive-model criterion. It samples bottom, mid and top of each ply at
+    every recovery point, and returns the strength ratio, mode, location and governing
+    ply as a `PlyFailureField` (`worst()`, `for_elements()`). `failure_envelope` takes
+    the worst of several cases per element and ply.
+  - `ExactStressRecoverer.recover_at_heights` and `recover_from_strains` compute a
+    point's strains once for all its plies. Results are identical to
+    `ResultsExtractor`'s, about four times faster.
+  - `BladeStaticRunner(failure_criterion=...)` adds `BladeCaseResult.failure`, and
+    `BladeStaticResults.failure_envelope()` envelopes the cases.
+  - `post_processing.plots`: `surface_fringe` (element polygons on two global axes) and
+    `section_fringe` (the elements crossing a span position, in the section plane). A
+    new `[plots]` extra installs matplotlib. `tube_blade` takes a `laminate`.
+  - Example 31: the Tsai-Wu field of the Example 29 blade. (#30)
+
 - **Mesh convergence with the ASME GCI.**
   - `processing.diagnostics.grid_convergence_index(h, values)`: the grid convergence
     index of Celik et al. (2008) from three meshes. It returns the observed order, the
