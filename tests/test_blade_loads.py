@@ -108,6 +108,30 @@ def test_sectional_force_and_torque_carry_their_span_integrals():
     assert np.any(loads.run(pressure))
 
 
+@pytest.mark.parametrize("point", [(0.0, 0.0), (0.3, -0.2), lambda z: (0.1 * z, 0.05)])
+def test_sectional_force_acts_at_its_application_point(point):
+    """Off the skin centroid, the force keeps its resultant and takes the moment of its point."""
+    blade = tube_blade("quad8_curved", 12, 10, centre=(0.4, 0.15))
+    loads = AssembleLoadVector(blade.mesh, GlobalAssembler())
+    f = np.array([120.0, -300.0, 80.0])
+    total = resultant_about(blade.mesh, loads.run(add_sectional_force(LoadCase(), blade, lambda z: f,
+                                                                      point=point)), (0, 0, 0))
+    at = point if callable(point) else (lambda z, p=point: p)
+    zs, ws = np.polynomial.legendre.leggauss(8)
+    zs, ws = 0.5 * L * (zs + 1.0), 0.5 * L * ws
+    moment = sum(w * np.cross([*at(z), z], f) for z, w in zip(zs, ws))
+    np.testing.assert_allclose(total[:3], f * L, rtol=1e-9)
+    np.testing.assert_allclose(total[3:], moment, rtol=1e-6, atol=1e-9 * np.abs(f).max() * L ** 2)
+
+
+def test_sectional_force_at_the_skin_centroid_with_no_point():
+    blade = tube_blade("quad4", 12, 6, centre=(0.4, 0.0))
+    loads = AssembleLoadVector(blade.mesh, GlobalAssembler())
+    total = resultant_about(blade.mesh, loads.run(add_sectional_force(LoadCase(), blade, lambda z: (0.0, 100.0, 0.0),
+                                                                      point=None)), (0, 0, 0))
+    assert total[5] == pytest.approx(0.4 * 100.0 * L, rel=1e-6)   # at the tube axis, not the pitch axis
+
+
 def test_blade_runner_balances_root_loads_against_every_applied_load():
     blade = tube_blade("quad8_curved", 12, 8)
     gravity = LoadCase("gravity").add_body_load((0.0, -9.81, 0.0))
@@ -174,3 +198,12 @@ def test_section_cuts_need_nodes_on_the_cut():
     blade = tube_blade("quad4", n_around=8, n_span=4)
     with pytest.raises(ValueError, match="no nodes at the cut"):
         SectionLoadIntegrator(blade.mesh, [0.123])
+
+
+def test_section_cuts_must_not_cross_elements():
+    from shell_fem.processing.static.results.section_loads import SectionLoadIntegrator
+
+    blade = tube_blade("quad8", n_around=8, n_span=4)
+    with pytest.raises(ValueError, match="crosses"):
+        SectionLoadIntegrator(blade.mesh, [0.5 * L / 4])    # through the midside nodes of the first bay
+    SectionLoadIntegrator(blade.mesh, blade.span_positions)

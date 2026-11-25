@@ -17,6 +17,7 @@ given. The runner does no mechanics itself.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Dict, Iterator, Optional, Sequence
 
@@ -41,7 +42,7 @@ class BladeCaseResult:
     (what the hub applies to the blade); ``applied_load`` is the resultant of the
     applied loads about the same point. Their sum is ``equilibrium_residual``.
     ``section_loads`` holds the same balance at every span position (``None`` when the
-    blade has no span positions through its nodes).
+    blade has no span positions on element boundaries).
     """
 
     solution: SolutionResult
@@ -142,7 +143,12 @@ class BladeStaticRunner:
         static = LinearStaticRunner(mesh, self.bcs, self.load_cases, self.combinations,
                                     linear_solver=self.linear_solver).execute().get_results()
         stations = self._stations()
-        cuts = None if stations is None else SectionLoadIntegrator(mesh, stations, self.root_point[:2])
+        cuts = None
+        if stations is not None:
+            try:
+                cuts = SectionLoadIntegrator(mesh, stations, self.root_point[:2])
+            except ValueError as error:  # span positions that cross elements: no section loads
+                warnings.warn(f"no section loads: {error}", stacklevel=2)
         by_name = {c.name: c for c in self.load_cases}
         for combo in self.combinations:
             by_name[combo.name] = LoadCase.combine(combo.terms(by_name), combo.name)
