@@ -36,7 +36,7 @@ All notable changes to this project are listed here. The format follows
   - `post_processing.plots`: `surface_fringe` (element polygons on two global axes) and
     `section_fringe` (the elements crossing a span position, in the section plane). A
     new `[plots]` extra installs matplotlib. `tube_blade` takes a `laminate`.
-  - Example 31: the Tsai-Wu field of the Example 29 blade. (#PR)
+  - Example 31: the Tsai-Wu field of the Example 29 blade. (#30)
 
 - **Mesh convergence with the ASME GCI.**
   - `processing.diagnostics.grid_convergence_index(h, values)`: the grid convergence
