@@ -40,7 +40,8 @@ CASES = ("aero", "gravity", "rotation", "ULS")
 COLOURS = dict(zip(CASES, (SERIES[0], SERIES[1], SERIES[2], SERIES[7])))
 
 
-def blade():
+def blade(h: float = 0.1, **mesh_options):
+    """The kernel's shell mesh of the blade at edge length ``h``, or with the kernel's other mesh options."""
     stations = [Station(0.0, 1.0, Airfoil.naca4("0030"), pitch_axis=0.3, twist=10.0),
                 Station(L, 0.4, Airfoil.naca4("0015"), pitch_axis=0.3, twist=0.0)]
     geometry = BladeGeometry(stations, "2D-F-LC-0R", 0.003, pivot_fraction=0.3, spar_cap_thickness=0.008,
@@ -50,23 +51,37 @@ def blade():
     laminates = {"skin": Laminate.from_angles(glass, [0, 45, -45, -45, 45, 0], 0.5e-3),
                  "web": Laminate.from_angles(glass, [45, -45, -45, 45], 0.5e-3),
                  "cap": Laminate.from_angles(carbon, [0] * 16, 0.5e-3)}
-    return BladeBuilder.from_shell_mesh(kernel_mesh.shell_mesh(geometry, h=0.1), geometry).build(laminates, FSDTModel())
+    return BladeBuilder.from_shell_mesh(kernel_mesh.shell_mesh(geometry, **(mesh_options or {"h": h})), geometry).build(laminates, FSDTModel())
+
+
+def aero_distributions():
+    """The illustrative aero force (N/m) and pitching moment (N m/m) per unit span."""
+    s = np.linspace(0.0, 1.0, 11)
+    flap = 2500.0 * np.sin(0.5 * np.pi * s) * (1.0 - 0.6 * s ** 4)        # N/m
+    chord = 1.0 - 0.6 * s
+    force = spanwise(L * s, np.column_stack([-0.1 * flap, flap, 0.0 * s]))
+    torque = spanwise(L * s, -0.05 * chord * flap)                         # N m/m, nose down
+    return force, torque
+
+
+def load_cases(b):
+    """aero, gravity and rotation on blade ``b`` (the aero loads are spread over its own span bays)."""
+    force, torque = aero_distributions()
+    aero = add_sectional_torque(add_sectional_force(LoadCase("aero"), b, force), b, torque)
+    gravity = LoadCase("gravity").add_body_load((-9.81, 0.0, 0.0))
+    rotation = LoadCase("rotation").add_centrifugal(2.0, origin=(0.0, 0.0, -1.0), axis=(0.0, 1.0, 0.0))
+    return [aero, gravity, rotation]
+
+
+ULS = LoadCombination("ULS", {"aero": 1.35, "gravity": 1.1, "rotation": 1.0})
 
 
 def main():
     warnings.simplefilter("ignore")
     b = blade()
     print(f"kernel shell mesh: {b.mesh.n_elements} elements, {b.mesh.n_dof} DOFs")
-    s = np.linspace(0.0, 1.0, 11)
-    flap = 2500.0 * np.sin(0.5 * np.pi * s) * (1.0 - 0.6 * s ** 4)        # N/m
-    chord = 1.0 - 0.6 * s
-    force = spanwise(L * s, np.column_stack([-0.1 * flap, flap, 0.0 * s]))
-    torque = spanwise(L * s, -0.05 * chord * flap)                         # N m/m, nose down
-    aero = add_sectional_torque(add_sectional_force(LoadCase("aero"), b, force), b, torque)
-    gravity = LoadCase("gravity").add_body_load((-9.81, 0.0, 0.0))
-    rotation = LoadCase("rotation").add_centrifugal(2.0, origin=(0.0, 0.0, -1.0), axis=(0.0, 1.0, 0.0))
-    uls = LoadCombination("ULS", {"aero": 1.35, "gravity": 1.1, "rotation": 1.0})
-    results = BladeStaticRunner(b, [aero, gravity, rotation], [uls], buckling_modes=1,
+    force, torque = aero_distributions()
+    results = BladeStaticRunner(b, load_cases(b), [ULS], buckling_modes=1,
                                 buckling_cases=["ULS"]).execute().get_results()
 
     print(f"\n{'case':<10}{'Fx':>10}{'Fy':>10}{'Fz':>10}{'Mx':>11}{'My':>11}{'Mz':>11}"

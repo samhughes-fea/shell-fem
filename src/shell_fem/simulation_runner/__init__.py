@@ -3,6 +3,7 @@
 static/              LinearStaticRunner, StructuralGlobalSolver, solve_kernel_pcomp
 buckling/            linear_buckling and LinearBucklingRunner
 blade/               BladeStaticRunner (load cases on a clamped blade, root loads, deflection)
+convergence/         MeshConvergenceStudy and blade_convergence_study (a mesh ladder and its GCI)
 nonlinear/           GeometricNonlinearRunner (scoped; execute() raises)
 vibration/           vibration_modes (the blade; a rotor is not assembled)
 progressive_damage/  ProgressiveDamageAnalysis
